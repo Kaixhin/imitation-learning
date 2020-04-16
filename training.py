@@ -80,6 +80,7 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
       D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_policy)
       D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy)
  
+    # Binary logistic regression
     discriminator_optimiser.zero_grad()
     expert_loss = F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
     policy_loss = F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data

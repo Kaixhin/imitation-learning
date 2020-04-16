@@ -9,7 +9,8 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - BC [[4]](#references)
 - GAIL [[5]](#references)
 - ~~GMMIL [[6]](#references)~~
-- ~~RED [[7]](#references)~~
+- ~~InfoGAIL [[7]](#references)~~
+- ~~RED [[8]](#references)~~
 
 ```
 python main.py --imitation [AIRL|BC|GAIL]
@@ -24,11 +25,17 @@ Train | Test
 :----:|:---:
 ![ppo_train_returns](figures/ppo_train_returns.png) | ![ppo_test_returns](figures/ppo_test_returns.png)
 
-**AIRL**
+**AIRL(s, a)**
 
 Train | Test
 :----:|:---:
-![airl_train_returns](figures/airl_train_returns.png) | ![airl_test_returns](figures/airl_test_returns.png)
+![airl_sa_train_returns](figures/airl_sa_train_returns.png) | ![airl_sa_test_returns](figures/airl_sa_test_returns.png)
+
+**AIRL(s)**
+
+Train | Test
+:----:|:---:
+![airl_s_train_returns](figures/airl_s_train_returns.png) | ![airl_s_test_returns](figures/airl_s_test_returns.png)
 
 **BC**
 
@@ -36,11 +43,17 @@ Train | Test
 :----:|:---:
 ![bc_test_returns](figures/bc_test_returns.png) | ![bc_test_returns](figures/bc_test_returns.png)
 
-**GAIL**
+**GAIL(s, a)**
 
 Train | Test
 :----:|:---:
-![gail_train_returns](figures/gail_train_returns.png) | ![gail_test_returns](figures/gail_test_returns.png)
+![gail_sa_train_returns](figures/gail_sa_train_returns.png) | ![gail_sa_test_returns](figures/gail_sa_test_returns.png)
+
+**GAIL(s)**
+
+Train | Test
+:----:|:---:
+![gail_s_train_returns](figures/gail_s_train_returns.png) | ![gail_s_test_returns](figures/gail_s_test_returns.png)
 
 Acknowledgements
 ----------------
@@ -56,4 +69,5 @@ References
 [4] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
 [5] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [6] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[7] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)
+[7] [InfoGAIL: Interpretable Imitation Learning from Visual Demonstrations](https://arxiv.org/abs/1703.08840)  
+[8] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
