@@ -35,8 +35,7 @@ class ActorCritic(nn.Module):
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
-    with torch.no_grad():
-      return self.actor(state).log_prob(action)
+    return self.actor(state).log_prob(action)
 
 
 class AddLinearEmbed(nn.Module):
@@ -61,9 +60,8 @@ class GAILDiscriminator(nn.Module):
     return D
   
   def predict_reward(self, state, action):
-    with torch.no_grad():
-      D = self.forward(state, action)
-      return torch.log(D) - torch.log1p(-D)
+    D = self.forward(state, action)
+    return torch.log(D) - torch.log1p(-D)
 
 
 class AIRLDiscriminator(nn.Module):
@@ -86,6 +84,5 @@ class AIRLDiscriminator(nn.Module):
     return f_exp / (f_exp + policy)
 
   def predict_reward(self, state, action, next_state, policy):
-    with torch.no_grad():
-      D = self.forward(state, action, next_state, policy)
-      return torch.log(D) - torch.log1p(-D)
+    D = self.forward(state, action, next_state, policy)
+    return torch.log(D) - torch.log1p(-D)

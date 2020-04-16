@@ -37,18 +37,28 @@ def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss
     policy, trajectories['values'] = agent(trajectories['states'])
     trajectories['log_prob_actions'], trajectories['entropies'] = policy.log_prob(trajectories['actions'].detach()), policy.entropy()
 
-  # Update the policy by maximising the clipped PPO objective
   policy_ratio = (trajectories['log_prob_actions'] - trajectories['old_log_prob_actions']).exp()
-  policy_loss = -torch.min(policy_ratio * trajectories['advantages'], torch.clamp(policy_ratio, min=1 - ppo_clip, max=1 + ppo_clip) * trajectories['advantages']).mean()
-  # Fit value function by regression on mean squared error
-  value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])
-  # Add entropy regularisation
-  entropy_loss = -trajectories['entropies'].mean()  
+  policy_loss = -torch.min(policy_ratio * trajectories['advantages'], torch.clamp(policy_ratio, min=1 - ppo_clip, max=1 + ppo_clip) * trajectories['advantages']).mean()  # Update the policy by maximising the clipped PPO objective
+  value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])  # Fit value function by regression on mean squared error
+  entropy_loss = -trajectories['entropies'].mean()  # Add entropy regularisation
   
   agent_optimiser.zero_grad()
   (policy_loss + value_loss_coeff * value_loss + entropy_loss_coeff * entropy_loss).backward()
   clip_grad_norm_(agent.parameters(), 1)  # Clamp norm of gradients
   agent_optimiser.step()
+
+
+# Performs a behavioural cloning update
+def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batch_size):
+  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
+
+  for expert_transition in expert_dataloader:
+    expert_state, expert_action = expert_transition[0], expert_transition[1]
+
+    agent_optimiser.zero_grad()
+    behavioural_cloning_loss = -agent.log_prob(expert_state, expert_action).mean()  # Maximum likelihood objective
+    behavioural_cloning_loss.backward()
+    agent_optimiser.step()
 
 
 # Performs an adversarial imitation learning update
@@ -64,8 +74,11 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
       D_expert = discriminator(expert_state, expert_action)
       D_policy = discriminator(policy_state, policy_action)
     elif algorithm == 'AIRL':
-      D_expert = discriminator(expert_state, expert_action, expert_next_state, agent.log_prob(expert_state, expert_action).exp())
-      D_policy = discriminator(policy_state, expert_action, policy_next_state, agent.log_prob(policy_state, policy_action).exp())
+      with torch.no_grad():
+        expert_data_policy = agent.log_prob(expert_state, expert_action).exp()
+        policy_data_policy = agent.log_prob(policy_state, policy_action).exp()
+      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_policy)
+      D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy)
  
     discriminator_optimiser.zero_grad()
     expert_loss = F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
