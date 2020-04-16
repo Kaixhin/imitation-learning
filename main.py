@@ -1,4 +1,5 @@
 import argparse
+from collections import deque
 import os
 
 import torch
@@ -20,7 +21,7 @@ parser.add_argument('--hidden-size', type=int, default=32, metavar='H', help='Hi
 parser.add_argument('--discount', type=float, default=0.99, metavar='γ', help='Discount')
 parser.add_argument('--trace-decay', type=float, default=0.95, metavar='λ', help='GAE trace decay')
 parser.add_argument('--ppo-clip', type=float, default=0.2, metavar='ε', help='PPO clip ratio')
-parser.add_argument('--ppo-epochs', type=int, default=4, metavar='E', help='PPO epochs')
+parser.add_argument('--ppo-epochs', type=int, default=4, metavar='K', help='PPO epochs')
 parser.add_argument('--value-loss-coeff', type=float, default=1, metavar='c1', help='Value loss coefficient')
 parser.add_argument('--entropy-loss-coeff', type=float, default=0, metavar='c2', help='Entropy loss coefficient')
 parser.add_argument('--learning-rate', type=float, default=0.001, metavar='η', help='Learning rate')
@@ -31,8 +32,9 @@ parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE',
 parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
 parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'GAIL'], metavar='I', help='Imitation learning algorithm')
 parser.add_argument('--state-only', action='store_true', default=False, help='State-only imitation learning')
-parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='B', help='Imitation learning minibatch size')
-parser.add_argument('--imitation-epochs', type=int, default=5, metavar='E', help='Imitation learning epochs')
+parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='IB', help='Imitation learning minibatch size')
+parser.add_argument('--imitation-epochs', type=int, default=5, metavar='IE', help='Imitation learning epochs')
+parser.add_argument('--imitation-replay-size', type=int, default=1, metavar='IRS', help='Imitation learning trajectory replay size')
 args = parser.parse_args()
 torch.manual_seed(args.seed)
 os.makedirs('results', exist_ok=True)
@@ -58,7 +60,7 @@ metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
 
 
 # Main training loop
-state, terminal, episode_return, trajectories = env.reset(), False, 0, []
+state, terminal, episode_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=args.imitation_replay_size)
 pbar = tqdm(range(1, args.steps + 1), unit_scale=1, smoothing=0)
 for step in pbar:
   # Collect set of trajectories by running policy π in the environment
@@ -87,9 +89,12 @@ for step in pbar:
       trajectories = []  # Clear the set of trajectories
 
       if args.imitation:
+        # Use a replay buffer of previous trajectories to prevent overfitting to current policy
+        policy_trajectory_replay_buffer.append(policy_trajectories)
+        policy_trajectory_replays = {k: torch.cat([trajectory[k] for trajectory in policy_trajectory_replay_buffer], dim=0) for k in policy_trajectory_replay_buffer[0].keys()}
         # Train discriminator and infer rewards
-        for _ in range(100 if step < 1000 else args.imitation_epochs):  # Warm up discriminator for longer at begining of training TODO: How to set?
-          adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectories), discriminator_optimiser, args.imitation_batch_size)
+        for _ in range(args.imitation_epochs):
+          adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size)
         if args.imitation == 'GAIL':
           policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
         elif args.imitation == 'AIRL':
