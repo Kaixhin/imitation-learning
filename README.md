@@ -7,6 +7,7 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - GAIL [[2]](#references)
 - ~~GMMIL [[3]](#references)~~
 - AIRL [[4]](#references)
+- ~~RED [[5]](#references)~~
 
 ```
 python main.py --imitation [AIRL|GAIL]
@@ -44,4 +45,5 @@ References
 [1] [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)  
 [2] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [3] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[4] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)
+[4] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
+[5] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)

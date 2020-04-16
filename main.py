@@ -21,8 +21,11 @@ parser.add_argument('--discount', type=float, default=0.99, metavar='γ', help='
 parser.add_argument('--trace-decay', type=float, default=0.95, metavar='λ', help='GAE trace decay')
 parser.add_argument('--ppo-clip', type=float, default=0.2, metavar='ε', help='PPO clip ratio')
 parser.add_argument('--ppo-epochs', type=int, default=4, metavar='E', help='PPO epochs')
+parser.add_argument('--value-loss-coeff', type=float, default=1, metavar='c1', help='Value loss coefficient')
+parser.add_argument('--entropy-loss-coeff', type=float, default=0, metavar='c2', help='Entropy loss coefficient')
 parser.add_argument('--learning-rate', type=float, default=0.001, metavar='η', help='Learning rate')
 parser.add_argument('--batch-size', type=int, default=2048, metavar='B', help='Minibatch size')
+parser.add_argument('--max-grad-norm', type=float, default=1, metavar='N', help='Maximum gradient L2 norm')
 parser.add_argument('--evaluation-interval', type=int, default=10000, metavar='EI', help='Evaluation interval')
 parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE', help='Evaluation episodes')
 parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
@@ -39,8 +42,7 @@ os.makedirs('results', exist_ok=True)
 env = CartPoleEnv()
 env.seed(args.seed)
 agent = ActorCritic(env.observation_space.shape[0], env.action_space.n, args.hidden_size)
-actor_optimiser = optim.RMSprop(agent.actor.parameters(), lr=args.learning_rate)
-critic_optimiser = optim.RMSprop(agent.critic.parameters(), lr=args.learning_rate)
+agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.learning_rate)
 if args.imitation:
   # Set up expert trajectories dataset and discriminator
   expert_trajectories = torch.load('expert_trajectories.pth')
@@ -62,10 +64,10 @@ for step in pbar:
   # Collect set of trajectories by running policy π in the environment
   policy, value = agent(state)
   action = policy.sample()
-  log_prob_action = policy.log_prob(action)
+  log_prob_action, entropy = policy.log_prob(action), policy.entropy()
   next_state, reward, terminal = env.step(action)
   episode_return += reward
-  trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))
+  trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value, entropies=entropy))
   state = next_state
 
   if terminal:
@@ -89,13 +91,13 @@ for step in pbar:
         for _ in range(100 if step < 1000 else args.imitation_epochs):  # Warm up discriminator for longer at begining of training TODO: How to set?
           adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectories), discriminator_optimiser, args.imitation_batch_size)
         if args.imitation == 'GAIL':
-          policy_trajectories['rewards'] = discriminator.predict_rewards(policy_trajectories['states'], policy_trajectories['actions'])
+          policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
         elif args.imitation == 'AIRL':
-          policy_trajectories['rewards'] = discriminator.predict_rewards(policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['log_prob_actions'].exp())  # TODO: Implement terminal masking?
+          policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['log_prob_actions'].exp())  # TODO: Implement terminal masking?
 
       # Perform PPO updates
       for epoch in range(args.ppo_epochs):
-        ppo_update(agent, policy_trajectories, actor_optimiser, critic_optimiser, args.ppo_clip, epoch)
+        ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff)
 
   # Evaluate agent and plot metrics
   if step % args.evaluation_interval == 0:

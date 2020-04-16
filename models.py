@@ -33,8 +33,10 @@ class ActorCritic(nn.Module):
     policy, value = self.actor(state), self.critic(state)
     return policy, value
 
+  # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
-    return self.actor(state).log_prob(action)
+    with torch.no_grad():
+      return self.actor(state).log_prob(action)
 
 
 class AddLinearEmbed(nn.Module):
@@ -58,7 +60,7 @@ class GAILDiscriminator(nn.Module):
     D = self.discriminator(state if self.state_only else (state, action)).squeeze(dim=1)
     return D
   
-  def predict_rewards(self, state, action):
+  def predict_reward(self, state, action):
     with torch.no_grad():
       D = self.forward(state, action)
       return torch.log(D) - torch.log1p(-D)
@@ -72,18 +74,18 @@ class AIRLDiscriminator(nn.Module):
     self.g = nn.Linear(state_size, 1) if state_only else AddLinearEmbed(state_size, action_size, 1)  # Reward function r
     self.h = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))  # Shaping function Φ
 
-  def get_reward(self, state_action):
+  def reward(self, state_action):
     return self.g(state_action[0] if self.state_only else state_action).squeeze(dim=1)
 
-  def get_value(self, state):
+  def value(self, state):
     return self.h(state).squeeze(dim=1)
 
   def forward(self, state, action, next_state, policy):
-    f = self.get_reward((state, ) if self.state_only else (state, action)) + self.discount * self.get_value(next_state) - self.get_value(state)
+    f = self.reward((state, ) if self.state_only else (state, action)) + self.discount * self.value(next_state) - self.value(state)
     f_exp = f.exp()
     return f_exp / (f_exp + policy)
 
-  def predict_rewards(self, state, action, next_state, policy):
+  def predict_reward(self, state, action, next_state, policy):
     with torch.no_grad():
       D = self.forward(state, action, next_state, policy)
       return torch.log(D) - torch.log1p(-D)
