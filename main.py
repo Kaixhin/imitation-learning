@@ -23,7 +23,7 @@ parser.add_argument('--trace-decay', type=float, default=0.95, metavar='λ', hel
 parser.add_argument('--ppo-clip', type=float, default=0.2, metavar='ε', help='PPO clip ratio')
 parser.add_argument('--ppo-epochs', type=int, default=4, metavar='K', help='PPO epochs')
 parser.add_argument('--value-loss-coeff', type=float, default=1, metavar='c1', help='Value loss coefficient')
-parser.add_argument('--entropy-loss-coeff', type=float, default=0, metavar='c2', help='Entropy loss coefficient')
+parser.add_argument('--entropy-loss-coeff', type=float, default=0, metavar='c2', help='Entropy regularisation coefficient')
 parser.add_argument('--learning-rate', type=float, default=0.001, metavar='η', help='Learning rate')
 parser.add_argument('--batch-size', type=int, default=2048, metavar='B', help='Minibatch size')
 parser.add_argument('--max-grad-norm', type=float, default=1, metavar='N', help='Maximum gradient L2 norm')
@@ -32,9 +32,10 @@ parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE',
 parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
 parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'GAIL', 'GMMIL'], metavar='I', help='Imitation learning algorithm')
 parser.add_argument('--state-only', action='store_true', default=False, help='State-only imitation learning')
-parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='IB', help='Imitation learning minibatch size')
 parser.add_argument('--imitation-epochs', type=int, default=5, metavar='IE', help='Imitation learning epochs')
-parser.add_argument('--imitation-replay-size', type=int, default=1, metavar='IRS', help='Imitation learning trajectory replay size')
+parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='IB', help='Imitation learning minibatch size')
+parser.add_argument('--imitation-replay-size', type=int, default=4, metavar='IRS', help='Imitation learning trajectory replay size')
+parser.add_argument('--r1-reg-coeff', type=float, default=1, metavar='γ', help='R1 gradient regularisation coefficient')
 args = parser.parse_args()
 torch.manual_seed(args.seed)
 os.makedirs('results', exist_ok=True)
@@ -47,8 +48,7 @@ agent = ActorCritic(env.observation_space.shape[0], env.action_space.n, args.hid
 agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.learning_rate)
 if args.imitation:
   # Set up expert trajectories dataset
-  expert_trajectories = torch.load('expert_trajectories.pth')
-  expert_trajectories = TransitionDataset(flatten_list_dicts(expert_trajectories))
+  expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load('expert_trajectories.pth')))
   # Set up discriminator
   if args.imitation in ['AIRL', 'GAIL', 'GMMIL']:
     if args.imitation == 'AIRL':
@@ -94,13 +94,13 @@ for step in pbar:
         trajectories = []  # Clear the set of trajectories
 
         if args.imitation in ['AIRL', 'GAIL', 'GMMIL']:
-          # Train discriminator and infer rewards
+          # Train discriminator and predict rewards
           if args.imitation in ['AIRL', 'GAIL']:
             # Use a replay buffer of previous trajectories to prevent overfitting to current policy
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
             for _ in tqdm(range(args.imitation_epochs), leave=False):
-              adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size)
+              adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size, args.r1_reg_coeff)
           # Predict rewards
           with torch.no_grad():
             if args.imitation == 'AIRL':
@@ -111,7 +111,7 @@ for step in pbar:
               policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], expert_trajectories['states'], expert_trajectories['actions'])
         
         # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-        compute_advantages(policy_trajectories, args.discount, args.trace_decay, agent(state)[1])
+        compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)
         # Normalise advantages
         policy_trajectories['advantages'] = (policy_trajectories['advantages'] - policy_trajectories['advantages'].mean()) / (policy_trajectories['advantages'].std() + 1e-8)
 
