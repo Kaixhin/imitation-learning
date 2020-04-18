@@ -3,9 +3,15 @@ import os
 from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
+import torch
 
 
 sns.set(style='white')
+
+
+# Flattens a list of dicts with torch Tensors
+def flatten_list_dicts(list_dicts):
+  return {k: torch.cat([d[k] for d in list_dicts], dim=0) for k in list_dicts[0].keys()}
 
 
 # Makes a lineplot with scalar x and statistics of vector y

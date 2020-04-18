@@ -8,7 +8,7 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - AIRL [[3]](#references)
 - BC [[4]](#references)
 - GAIL [[5]](#references)
-- ~~GMMIL [[6]](#references)~~
+- GMMIL [[6]](#references)
 - ~~InfoGAIL [[7]](#references)~~
 - ~~RED [[8]](#references)~~
 
@@ -54,6 +54,12 @@ Train | Test
 Train | Test
 :----:|:---:
 ![gail_s_train_returns](figures/gail_s_train_returns.png) | ![gail_s_test_returns](figures/gail_s_test_returns.png)
+
+**GMMIL(s, a)**
+
+Train | Test
+:----:|:---:
+![gmmil_sa_train_returns](figures/gmmil_sa_train_returns.png) | ![gmmil_sa_test_returns](figures/gmmil_sa_test_returns.png)
 
 Acknowledgements
 ----------------

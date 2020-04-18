@@ -9,6 +9,20 @@ def _join_state_action(state, action, action_size):
   return torch.cat([state, F.one_hot(action, action_size).to(dtype=torch.float32)], dim=1)
 
 
+# Computes the scaled squared distance between two sets of vectors
+def _squared_distance(X, Y, lengthscale=1):
+  X, Y = X / lengthscale, Y / lengthscale
+  XX = X.pow(2).sum(1, keepdim=True)
+  YY = Y.pow(2).sum(1, keepdim=True)
+  XY = X @ Y.t()
+  return torch.clamp(XX - 2 * XY + YY.t(), min=0)
+
+
+# Gaussian/radial basis function/exponentiated quadratic kernel
+def _gaussian_kernel(X, Y, variance=1, lengthscale=1):
+  return variance * torch.exp(-0.5 * _squared_distance(X, Y, lengthscale=lengthscale))
+
+
 class Actor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size):
     super().__init__()
@@ -45,7 +59,7 @@ class ActorCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=True):
+  def __init__(self, state_size, action_size, hidden_size, state_only=False):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
     input_layer = nn.Linear(state_size if state_only else state_size + action_size, hidden_size)
@@ -58,6 +72,18 @@ class GAILDiscriminator(nn.Module):
   def predict_reward(self, state, action):
     D = self.forward(state, action)
     return torch.log(D) - torch.log1p(-D)
+
+
+class GMMILDiscriminator(nn.Module):
+  def __init__(self, state_size, action_size, state_only=True):
+    super().__init__()
+    self.action_size, self.state_only = action_size, state_only
+
+  def predict_reward(self, state, action, expert_state, expert_action):
+    state_action = state if self.state_only else _join_state_action(state, action, self.action_size)
+    expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action, self.action_size)
+    # TODO: Use median heuristics to select 2 data-dependent bandwidths
+    return _gaussian_kernel(state_action, expert_state_action).mean(dim=1)  # Return maximum mean discrepancy
 
 
 class AIRLDiscriminator(nn.Module):

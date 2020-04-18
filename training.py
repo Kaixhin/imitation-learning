@@ -10,24 +10,32 @@ class TransitionDataset(Dataset):
     super().__init__()
     self.states, self.actions, self.rewards, self.terminals = transitions['states'], transitions['actions'].detach(), transitions['rewards'], transitions['terminals']
 
+  # Allows string-based access for entire data of one type, or int-based access for single transition
   def __getitem__(self, idx):
-    return self.states[idx], self.actions[idx], self.rewards[idx], self.states[idx + 1], self.terminals[idx]
+    if isinstance(idx, str):
+      if idx == 'states':
+        return self.states
+      elif idx == 'actions':
+        return self.actions
+    else:
+      return self.states[idx], self.actions[idx], self.rewards[idx], self.states[idx + 1], self.terminals[idx]
 
   def __len__(self):
     return self.terminals.size(0) - 1  # Need to return state and next state
 
 
 # Computes and stores generalised advantage estimates ψ in the set of trajectories
-def compute_advantages(trajectories, discount, trace_decay):
+def compute_advantages(trajectories, discount, trace_decay, next_value):
   with torch.no_grad():  # Do not differentiate through advantage calculation
-    reward_to_go, advantage, next_value = torch.tensor([0.]), torch.tensor([0.]), torch.tensor([0.])
-    for transition in reversed(trajectories):
-      reward_to_go = transition['rewards'] + (1 - transition['terminals']) * (discount * reward_to_go)  # Reward-to-go/value R
-      transition['rewards_to_go'] = reward_to_go
-      td_error = transition['rewards'] + (1 - transition['terminals']) * discount * next_value - transition['values']  # TD-error δ
-      advantage = td_error + (1 - transition['terminals']) * discount * trace_decay * advantage  # Generalised advantage estimate ψ
-      transition['advantages'] = advantage
-      next_value = transition['values']
+    reward_to_go, advantage = torch.tensor([0.]), torch.tensor([0.])
+    trajectories['rewards_to_go'], trajectories['advantages'] = torch.empty_like(trajectories['rewards']), torch.empty_like(trajectories['rewards'])
+    for t in reversed(range(trajectories['states'].size(0))):
+      reward_to_go = trajectories['rewards'][t] + (1 - trajectories['terminals'][t]) * (discount * reward_to_go)  # Reward-to-go/value R
+      trajectories['rewards_to_go'][t] = reward_to_go
+      td_error = trajectories['rewards'][t] + (1 - trajectories['terminals'][t]) * discount * next_value - trajectories['values'][t]  # TD-error δ
+      advantage = td_error + (1 - trajectories['terminals'][t]) * discount * trace_decay * advantage  # Generalised advantage estimate ψ
+      trajectories['advantages'][t] = advantage
+      next_value = trajectories['values'][t]
 
 
 # Performs one PPO update (assumes trajectories for first epoch are attached to agent)
