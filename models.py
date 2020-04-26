@@ -26,7 +26,8 @@ def _gaussian_kernel(X, Y, variance=1, lengthscale=1):
 class Actor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size):
     super().__init__()
-    self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
+    self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(
+        hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
 
   def forward(self, state):
     policy = Categorical(logits=self.actor(state))
@@ -36,7 +37,8 @@ class Actor(nn.Module):
 class Critic(nn.Module):
   def __init__(self, state_size, hidden_size):
     super().__init__()
-    self.critic = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))
+    self.critic = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(
+    ), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))
 
   def forward(self, state):
     value = self.critic(state).squeeze(dim=1)
@@ -62,13 +64,16 @@ class GAILDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, state_only=False):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
-    input_layer = nn.Linear(state_size if state_only else state_size + action_size, hidden_size)
-    self.discriminator = nn.Sequential(input_layer, nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1), nn.Sigmoid())
+    input_layer = nn.Linear(
+        state_size if state_only else state_size + action_size, hidden_size)
+    self.discriminator = nn.Sequential(input_layer, nn.Tanh(), nn.Linear(
+        hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1), nn.Sigmoid())
 
   def forward(self, state, action):
-    D = self.discriminator(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
+    D = self.discriminator(state if self.state_only else _join_state_action(
+        state, action, self.action_size)).squeeze(dim=1)
     return D
-  
+
   def predict_reward(self, state, action):
     D = self.forward(state, action)
     return torch.log(D) - torch.log1p(-D)
@@ -80,10 +85,13 @@ class GMMILDiscriminator(nn.Module):
     self.action_size, self.state_only = action_size, state_only
 
   def predict_reward(self, state, action, expert_state, expert_action):
-    state_action = state if self.state_only else _join_state_action(state, action, self.action_size)
-    expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action, self.action_size)
+    state_action = state if self.state_only else _join_state_action(
+        state, action, self.action_size)
+    expert_state_action = expert_state if self.state_only else _join_state_action(
+        expert_state, expert_action, self.action_size)
     # TODO: Use median heuristics to select 2 data-dependent bandwidths
-    return _gaussian_kernel(state_action, expert_state_action).mean(dim=1)  # Return maximum mean discrepancy
+    # Return maximum mean discrepancy
+    return _gaussian_kernel(state_action, expert_state_action).mean(dim=1)
 
 
 class AIRLDiscriminator(nn.Module):
@@ -91,8 +99,10 @@ class AIRLDiscriminator(nn.Module):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
     self.discount = discount
-    self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    self.h = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))  # Shaping function Φ
+    self.g = nn.Linear(state_size if state_only else state_size +
+                       action_size, 1)  # Reward function r
+    self.h = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(
+        hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))  # Shaping function Φ
 
   def reward(self, state, action):
     return self.g(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
@@ -101,7 +111,8 @@ class AIRLDiscriminator(nn.Module):
     return self.h(state).squeeze(dim=1)
 
   def forward(self, state, action, next_state, policy):
-    f = self.reward(state, action) + self.discount * self.value(next_state) - self.value(state)
+    f = self.reward(state, action) + self.discount * \
+        self.value(next_state) - self.value(state)
     f_exp = f.exp()
     return f_exp / (f_exp + policy)
 
