@@ -108,3 +108,31 @@ class AIRLDiscriminator(nn.Module):
   def predict_reward(self, state, action, next_state, policy, terminal):
     D = self.forward(state, action, next_state, policy, terminal)
     return torch.log(D) - torch.log1p(-D)
+
+
+class EmbeddingNetwork(nn.Module):
+  def __init__(self, state_size, action_size, hidden_size, state_only=False):
+    super().__init__()
+    self.action_size, self.state_only = action_size, state_only
+    self.embedding = nn.Sequential(nn.Linear(state_size if state_only else state_size + action_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, state_size if state_only else state_size + action_size))
+
+  def forward(self, state, action):
+    return self.embedding(state if self.state_only else _join_state_action(state, action, self.action_size))
+
+
+class REDDiscriminator(nn.Module):
+  def __init__(self, state_size, action_size, hidden_size, state_only=False):
+    super().__init__()
+    self.action_size, self.state_only = action_size, state_only
+    self.predictor = EmbeddingNetwork(state_size, action_size, hidden_size, state_only=state_only)
+    self.target = EmbeddingNetwork(state_size, action_size, hidden_size, state_only=state_only)
+    for param in self.target.parameters():
+      param.requires_grad = False
+
+  def forward(self, state, action):
+    prediction, target = self.predictor(state, action), self.target(state, action)
+    return prediction, target
+
+  def predict_reward(self, state, action, sigma=1):  # TODO: Set sigma based such that r(s, a) from expert demonstrations ≈ 1
+    prediction, target = self.forward(state, action)
+    return torch.exp(-sigma * F.pairwise_distance(prediction, target, p=2).pow(2))

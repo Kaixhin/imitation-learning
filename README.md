@@ -10,10 +10,11 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - GAIL [[5]](#references)
 - GMMIL [[6]](#references)
 - ~~InfoGAIL [[7]](#references)~~
-- ~~RED [[8]](#references)~~
+- RED [[8]](#references)
 
 ```
-python main.py --imitation [AIRL|BC|GAIL|GMMIL]
+python main.py --imitation [AIRL|BC|GAIL|GMMIL|RED]
+
 ```
 
 Results
@@ -66,6 +67,18 @@ Train | Test
 Train | Test
 :----:|:---:
 ![gmmil_s_train_returns](figures/gmmil_s_train_returns.png) | ![gmmil_s_test_returns](figures/gmmil_s_test_returns.png)
+
+**RED(s, a)**
+
+Train | Test
+:----:|:---:
+![red_sa_train_returns](figures/red_sa_train_returns.png) | ![red_sa_test_returns](figures/red_sa_test_returns.png)
+
+**RED(s)**
+
+Train | Test
+:----:|:---:
+![red_s_train_returns](figures/red_s_train_returns.png) | ![red_s_test_returns](figures/red_s_test_returns.png)
 
 Acknowledgements
 ----------------

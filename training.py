@@ -70,6 +70,20 @@ def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batc
     agent_optimiser.step()
 
 
+# Performs a target estimation update
+def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size):
+  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
+
+  for expert_transition in expert_dataloader:
+    expert_state, expert_action = expert_transition['states'], expert_transition['actions']
+
+    discriminator_optimiser.zero_grad()
+    prediction, target = discriminator(expert_state, expert_action)
+    regression_loss = F.mse_loss(prediction, target)
+    regression_loss.backward()
+    discriminator_optimiser.step()
+
+
 # Performs an adversarial imitation learning update
 def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, r1_reg_coeff=1):
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)

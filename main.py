@@ -8,8 +8,8 @@ from tqdm import tqdm
 
 from environments import CartPoleEnv
 from evaluation import evaluate_agent
-from models import ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator
-from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, ppo_update
+from models import ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
+from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
 
@@ -30,7 +30,7 @@ parser.add_argument('--max-grad-norm', type=float, default=1, metavar='N', help=
 parser.add_argument('--evaluation-interval', type=int, default=10000, metavar='EI', help='Evaluation interval')
 parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE', help='Evaluation episodes')
 parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
-parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'GAIL', 'GMMIL'], metavar='I', help='Imitation learning algorithm')
+parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'GAIL', 'GMMIL', 'RED'], metavar='I', help='Imitation learning algorithm')
 parser.add_argument('--state-only', action='store_true', default=False, help='State-only imitation learning')
 parser.add_argument('--imitation-epochs', type=int, default=5, metavar='IE', help='Imitation learning epochs')
 parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='IB', help='Imitation learning minibatch size')
@@ -50,14 +50,16 @@ if args.imitation:
   # Set up expert trajectories dataset
   expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load('expert_trajectories.pth')))
   # Set up discriminator
-  if args.imitation in ['AIRL', 'GAIL', 'GMMIL']:
+  if args.imitation in ['AIRL', 'GAIL', 'GMMIL', 'RED']:
     if args.imitation == 'AIRL':
       discriminator = AIRLDiscriminator(env.observation_space.shape[0], env.action_space.n, args.hidden_size, args.discount, state_only=args.state_only)
     elif args.imitation == 'GAIL':
       discriminator = GAILDiscriminator(env.observation_space.shape[0], env.action_space.n, args.hidden_size, state_only=args.state_only)
     elif args.imitation == 'GMMIL':
       discriminator = GMMILDiscriminator(env.observation_space.shape[0], env.action_space.n, state_only=args.state_only)
-    if args.imitation in ['AIRL', 'GAIL']:
+    elif args.imitation == 'RED':
+      discriminator = REDDiscriminator(env.observation_space.shape[0], env.action_space.n, args.hidden_size, state_only=args.state_only)
+    if args.imitation in ['AIRL', 'GAIL', 'RED']:
       discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
 # Metrics
 metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
@@ -67,12 +69,16 @@ metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
 state, terminal, episode_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=args.imitation_replay_size)
 pbar = tqdm(range(1, args.steps + 1), unit_scale=1, smoothing=0)
 for step in pbar:
-  if args.imitation == 'BC':
-    # Perform behavioural cloning updates offline
+  if args.imitation in ['BC', 'RED']:
     if step == 1:
       for _ in tqdm(range(args.imitation_epochs), leave=False):
-        behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, args.imitation_batch_size)
-  else:
+        if args.imitation == 'BC':
+          # Perform behavioural cloning updates offline
+          behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, args.imitation_batch_size)
+        elif args.imitation == 'RED':
+          # Train predictor network to match random target network
+          target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, args.imitation_batch_size)
+  if args.imitation != 'BC':
     # Collect set of trajectories by running policy π in the environment
     policy, value = agent(state)
     action = policy.sample()
@@ -93,7 +99,7 @@ for step in pbar:
         policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
         trajectories = []  # Clear the set of trajectories
 
-        if args.imitation in ['AIRL', 'GAIL', 'GMMIL']:
+        if args.imitation in ['AIRL', 'GAIL', 'GMMIL', 'RED']:
           # Train discriminator and predict rewards
           if args.imitation in ['AIRL', 'GAIL']:
             # Use a replay buffer of previous trajectories to prevent overfitting to current policy
@@ -109,6 +115,8 @@ for step in pbar:
               policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
             elif args.imitation == 'GMMIL':
               policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], expert_trajectories['states'], expert_trajectories['actions'])
+            elif args.imitation == 'RED':
+              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
         
         # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
         compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)
