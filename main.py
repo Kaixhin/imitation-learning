@@ -22,7 +22,7 @@ parser.add_argument('--discount', type=float, default=0.99, metavar='γ', help='
 parser.add_argument('--trace-decay', type=float, default=0.95, metavar='λ', help='GAE trace decay')
 parser.add_argument('--ppo-clip', type=float, default=0.2, metavar='ε', help='PPO clip ratio')
 parser.add_argument('--ppo-epochs', type=int, default=4, metavar='K', help='PPO epochs')
-parser.add_argument('--value-loss-coeff', type=float, default=1, metavar='c1', help='Value loss coefficient')
+parser.add_argument('--value-loss-coeff', type=float, default=0.5, metavar='c1', help='Value loss coefficient')
 parser.add_argument('--entropy-loss-coeff', type=float, default=0, metavar='c2', help='Entropy regularisation coefficient')
 parser.add_argument('--learning-rate', type=float, default=0.001, metavar='η', help='Learning rate')
 parser.add_argument('--batch-size', type=int, default=2048, metavar='B', help='Minibatch size')
