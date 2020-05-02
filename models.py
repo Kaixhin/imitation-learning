@@ -101,7 +101,7 @@ class AIRLDiscriminator(nn.Module):
     return self.h(state).squeeze(dim=1)
 
   def forward(self, state, action, next_state, policy):
-    f = self.reward(state, action) + self.discount * self.value(next_state) - self.value(state)
+    f = self.reward(state, action) + self.discount * self.value(next_state) - self.value(state)  # Note: Does not need to take terminal into account
     f_exp = f.exp()
     return f_exp / (f_exp + policy)
 

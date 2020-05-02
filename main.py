@@ -104,7 +104,7 @@ for step in pbar:
           # Predict rewards
           with torch.no_grad():
             if args.imitation == 'AIRL':
-              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['log_prob_actions'].exp())  # TODO: Implement terminal masking?
+              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['log_prob_actions'].exp())
             elif args.imitation == 'GAIL':
               policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
             elif args.imitation == 'GMMIL':

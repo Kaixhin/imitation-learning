@@ -19,7 +19,7 @@ class TransitionDataset(Dataset):
       elif idx == 'actions':
         return self.actions
     else:
-      return self.states[idx], self.actions[idx], self.rewards[idx], self.states[idx + 1], self.terminals[idx]
+      return dict(states=self.states[idx], actions=self.actions[idx], rewards=self.rewards[idx], next_states=self.states[idx + 1], terminals=self.terminals[idx])
 
   def __len__(self):
     return self.terminals.size(0) - 1  # Need to return state and next state
@@ -62,7 +62,7 @@ def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batc
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
 
   for expert_transition in expert_dataloader:
-    expert_state, expert_action = expert_transition[0], expert_transition[1]
+    expert_state, expert_action = expert_transition['states'], expert_transition['actions']
 
     agent_optimiser.zero_grad()
     behavioural_cloning_loss = -agent.log_prob(expert_state, expert_action).mean()  # Maximum likelihood objective
@@ -77,7 +77,8 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
 
   # Iterate over mininum of expert and policy data
   for expert_transition, policy_transition in zip(expert_dataloader, policy_dataloader):
-    expert_state, expert_action, expert_next_state, policy_state, policy_action, policy_next_state = expert_transition[0], expert_transition[1], expert_transition[3], policy_transition[0], policy_transition[1], policy_transition[3]
+    expert_state, expert_action, expert_next_state = expert_transition['states'], expert_transition['actions'], expert_transition['next_states']
+    policy_state, policy_action, policy_next_state = policy_transition['states'], policy_transition['actions'], policy_transition['next_states']
 
     if algorithm == 'GAIL':
       D_expert = discriminator(expert_state, expert_action)
