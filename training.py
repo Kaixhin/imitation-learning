@@ -77,8 +77,8 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
 
   # Iterate over mininum of expert and policy data
   for expert_transition, policy_transition in zip(expert_dataloader, policy_dataloader):
-    expert_state, expert_action, expert_next_state = expert_transition['states'], expert_transition['actions'], expert_transition['next_states']
-    policy_state, policy_action, policy_next_state = policy_transition['states'], policy_transition['actions'], policy_transition['next_states']
+    expert_state, expert_action, expert_next_state, expert_terminal = expert_transition['states'], expert_transition['actions'], expert_transition['next_states'], expert_transition['terminals']
+    policy_state, policy_action, policy_next_state, policy_terminal = policy_transition['states'], policy_transition['actions'], policy_transition['next_states'], policy_transition['terminals']
 
     if algorithm == 'GAIL':
       D_expert = discriminator(expert_state, expert_action)
@@ -87,8 +87,8 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
       with torch.no_grad():
         expert_data_policy = agent.log_prob(expert_state, expert_action).exp()
         policy_data_policy = agent.log_prob(policy_state, policy_action).exp()
-      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_policy)
-      D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy)
+      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_policy, expert_terminal)
+      D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy, policy_terminal)
  
     # Binary logistic regression
     discriminator_optimiser.zero_grad()
