@@ -78,6 +78,7 @@ for step in pbar:
         elif args.imitation == 'RED':
           # Train predictor network to match random target network
           target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, args.imitation_batch_size)
+
   if args.imitation != 'BC':
     # Collect set of trajectories by running policy π in the environment
     policy, value = agent(state)

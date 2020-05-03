@@ -19,8 +19,8 @@ def _squared_distance(X, Y, lengthscale=1):
 
 
 # Gaussian/radial basis function/exponentiated quadratic kernel
-def _gaussian_kernel(X, Y, variance=1, lengthscale=1):
-  return variance * torch.exp(-0.5 * _squared_distance(X, Y, lengthscale=lengthscale))
+def _gaussian_kernel(distances, gamma=1):
+  return torch.exp(-gamma * distances)
 
 
 class Actor(nn.Module):
@@ -78,12 +78,20 @@ class GMMILDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, state_only=True):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
+    self.gamma_1, self.gamma_2 = None, None
 
   def predict_reward(self, state, action, expert_state, expert_action):
     state_action = state if self.state_only else _join_state_action(state, action, self.action_size)
     expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action, self.action_size)
-    # TODO: Use median heuristics to select 2 data-dependent bandwidths
-    return _gaussian_kernel(state_action, expert_state_action).mean(dim=1)  # Return maximum mean discrepancy
+    
+    # Use median heuristics to set data-dependent bandwidths
+    if self.gamma_1 is None:
+      self.gamma_1 = 1 / _squared_distance(state_action, expert_state_action).median().item()
+      self.gamma_2 = 1 / _squared_distance(expert_state_action, expert_state_action).median().item()
+
+    # Return sum of maximum mean discrepancies
+    distances = _squared_distance(state_action, expert_state_action)
+    return _gaussian_kernel(distances, gamma=self.gamma_1).mean(dim=1) + _gaussian_kernel(distances, gamma=self.gamma_2).mean(dim=1)
 
 
 class AIRLDiscriminator(nn.Module):
@@ -111,28 +119,29 @@ class AIRLDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=False):
+  def __init__(self, input_size, hidden_size):
     super().__init__()
-    self.action_size, self.state_only = action_size, state_only
-    self.embedding = nn.Sequential(nn.Linear(state_size if state_only else state_size + action_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, state_size if state_only else state_size + action_size))
+    self.embedding = nn.Sequential(nn.Linear(input_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, input_size))
 
-  def forward(self, state, action):
-    return self.embedding(state if self.state_only else _join_state_action(state, action, self.action_size))
+  def forward(self, input):
+    return self.embedding(input)
 
 
 class REDDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, state_only=False):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
-    self.predictor = EmbeddingNetwork(state_size, action_size, hidden_size, state_only=state_only)
-    self.target = EmbeddingNetwork(state_size, action_size, hidden_size, state_only=state_only)
+    self.gamma = None
+    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
+    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
     for param in self.target.parameters():
       param.requires_grad = False
 
   def forward(self, state, action):
-    prediction, target = self.predictor(state, action), self.target(state, action)
+    state_action = state if self.state_only else _join_state_action(state, action, self.action_size)
+    prediction, target = self.predictor(state_action), self.target(state_action)
     return prediction, target
 
   def predict_reward(self, state, action, sigma=1):  # TODO: Set sigma based such that r(s, a) from expert demonstrations ≈ 1
     prediction, target = self.forward(state, action)
-    return torch.exp(-sigma * F.pairwise_distance(prediction, target, p=2).pow(2))
+    return _gaussian_kernel(F.pairwise_distance(prediction, target, p=2).pow(2), gamma=1)

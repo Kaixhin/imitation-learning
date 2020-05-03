@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, Dataset
 class TransitionDataset(Dataset):
   def __init__(self, transitions):
     super().__init__()
-    self.states, self.actions, self.rewards, self.terminals = transitions['states'], transitions['actions'].detach(), transitions['rewards'], transitions['terminals']
+    self.states, self.actions, self.rewards, self.terminals = transitions['states'], transitions['actions'].detach(), transitions['rewards'], transitions['terminals']  # Detach actions
 
   # Allows string-based access for entire data of one type, or int-based access for single transition
   def __getitem__(self, idx):
