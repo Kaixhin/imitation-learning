@@ -10,7 +10,8 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - GAIL [[5]](#references)
 - GMMIL [[6]](#references)
 - ~~InfoGAIL [[7]](#references)~~
-- RED [[8]](#references)
+- ~~PWIL [[8]](#references)~~
+- RED [[9]](#references)
 
 ```
 python main.py --imitation [AIRL|BC|GAIL|GMMIL|RED]
@@ -95,4 +96,5 @@ References
 [5] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [6] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
 [7] [InfoGAIL: Interpretable Imitation Learning from Visual Demonstrations](https://arxiv.org/abs/1703.08840)  
-[8] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[8] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
+[9] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
