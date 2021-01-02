@@ -9,18 +9,16 @@ def _join_state_action(state, action, action_size):
   return torch.cat([state, F.one_hot(action, action_size).to(dtype=torch.float32)], dim=1)
 
 
-# Computes the scaled squared distance between two sets of vectors
-def _squared_distance(X, Y, lengthscale=1):
-  X, Y = X / lengthscale, Y / lengthscale
-  XX = X.pow(2).sum(1, keepdim=True)
-  YY = Y.pow(2).sum(1, keepdim=True)
-  XY = X @ Y.t()
-  return torch.clamp(XX - 2 * XY + YY.t(), min=0)
+# Computes the squared distance between two sets of vectors
+def _squared_distance(x, y):
+  n_1, n_2, d = x.size(0), y.size(0), x.size(1)
+  tiled_x, tiled_y = x.view(n_1, 1, d).expand(n_1, n_2, d), y.view(1, n_2, d).expand(n_1, n_2, d)
+  return (tiled_x - tiled_y).pow(2).mean(dim=2)
 
 
 # Gaussian/radial basis function/exponentiated quadratic kernel
-def _gaussian_kernel(distances, gamma=1):
-  return torch.exp(-gamma * distances)
+def _gaussian_kernel(x, y, gamma=1):
+  return torch.exp(-gamma * _squared_distance(x, y))
 
 
 class Actor(nn.Module):
@@ -89,9 +87,8 @@ class GMMILDiscriminator(nn.Module):
       self.gamma_1 = 1 / _squared_distance(state_action, expert_state_action).median().item()
       self.gamma_2 = 1 / _squared_distance(expert_state_action, expert_state_action).median().item()
 
-    # Return sum of maximum mean discrepancies
-    distances = _squared_distance(state_action, expert_state_action)
-    return _gaussian_kernel(distances, gamma=self.gamma_1).mean(dim=1) + _gaussian_kernel(distances, gamma=self.gamma_2).mean(dim=1)
+    # Calculate negative of witness function (based on kernel mean embeddings)
+    return (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0)) # - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0))  TODO: GMMIL seems to fail with the self-similarity terms (commented out)? 
 
 
 class AIRLDiscriminator(nn.Module):
