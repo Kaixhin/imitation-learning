@@ -9,7 +9,7 @@ from tqdm import tqdm
 from environments import CartPoleEnv
 from evaluation import evaluate_agent
 from models import ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
-from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, ppo_update, target_estimation_update
+from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
 
@@ -32,6 +32,7 @@ parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE',
 parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
 parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'GAIL', 'GMMIL', 'RED'], metavar='I', help='Imitation learning algorithm')
 parser.add_argument('--state-only', action='store_true', default=False, help='State-only imitation learning')
+parser.add_argument('--absorbing', action='store_true', default=False, help='Indicate absorbing states')
 parser.add_argument('--imitation-epochs', type=int, default=5, metavar='IE', help='Imitation learning epochs')
 parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='IB', help='Imitation learning minibatch size')
 parser.add_argument('--imitation-replay-size', type=int, default=4, metavar='IRS', help='Imitation learning trajectory replay size')
@@ -52,13 +53,13 @@ if args.imitation:
   # Set up discriminator
   if args.imitation in ['AIRL', 'GAIL', 'GMMIL', 'RED']:
     if args.imitation == 'AIRL':
-      discriminator = AIRLDiscriminator(env.observation_space.shape[0], env.action_space.n, args.hidden_size, args.discount, state_only=args.state_only)
+      discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, args.discount, state_only=args.state_only)
     elif args.imitation == 'GAIL':
-      discriminator = GAILDiscriminator(env.observation_space.shape[0], env.action_space.n, args.hidden_size, state_only=args.state_only)
+      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only)
     elif args.imitation == 'GMMIL':
-      discriminator = GMMILDiscriminator(env.observation_space.shape[0], env.action_space.n, state_only=args.state_only)
+      discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, state_only=args.state_only)
     elif args.imitation == 'RED':
-      discriminator = REDDiscriminator(env.observation_space.shape[0], env.action_space.n, args.hidden_size, state_only=args.state_only)
+      discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only)
     if args.imitation in ['AIRL', 'GAIL', 'RED']:
       discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
 # Metrics
@@ -77,7 +78,7 @@ for step in pbar:
           behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, args.imitation_batch_size)
         elif args.imitation == 'RED':
           # Train predictor network to match random target network
-          target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, args.imitation_batch_size)
+          target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, args.imitation_batch_size, args.absorbing)
 
   if args.imitation != 'BC':
     # Collect set of trajectories by running policy π in the environment
@@ -107,17 +108,23 @@ for step in pbar:
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
             for _ in tqdm(range(args.imitation_epochs), leave=False):
-              adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size, args.r1_reg_coeff)
+              adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size, args.absorbing, args.r1_reg_coeff)
+
           # Predict rewards
+          states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
+          if args.absorbing: states, actions, next_states = indicate_absorbing(states, actions, policy_trajectories['terminals'], next_states)
+
           with torch.no_grad():
             if args.imitation == 'AIRL':
-              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['log_prob_actions'].exp(), policy_trajectories['terminals'])
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'].exp(), terminals)
             elif args.imitation == 'GAIL':
-              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
             elif args.imitation == 'GMMIL':
-              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'], expert_trajectories['states'], expert_trajectories['actions'])
+              expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
+              if args.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
             elif args.imitation == 'RED':
-              policy_trajectories['rewards'] = discriminator.predict_reward(policy_trajectories['states'], policy_trajectories['actions'])
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
         
         # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
         compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)

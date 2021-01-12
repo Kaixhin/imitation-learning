@@ -141,4 +141,4 @@ class REDDiscriminator(nn.Module):
 
   def predict_reward(self, state, action, sigma=1):  # TODO: Set sigma based such that r(s, a) from expert demonstrations ≈ 1
     prediction, target = self.forward(state, action)
-    return _gaussian_kernel(F.pairwise_distance(prediction, target, p=2).pow(2), gamma=1)
+    return _gaussian_kernel(prediction, target, gamma=sigma).mean(dim=1)

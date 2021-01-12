@@ -18,6 +18,12 @@ python main.py --imitation [AIRL|BC|GAIL|GMMIL|RED]
 
 ```
 
+Options include:
+
+- State-only imitation learning: `--state-only`
+- Absorbing state indicator [[10]](#references): `--absorbing`
+- R1 gradient regularisation [[11]](#references): `--r1-reg-coeff 1` (default)
+
 Results
 -------
 
@@ -27,17 +33,11 @@ Train | Test
 :----:|:---:
 ![ppo_train_returns](figures/ppo_train_returns.png) | ![ppo_test_returns](figures/ppo_test_returns.png)
 
-**AIRL(s, a)**
+**AIRL**
 
 Train | Test
 :----:|:---:
-![airl_sa_train_returns](figures/airl_sa_train_returns.png) | ![airl_sa_test_returns](figures/airl_sa_test_returns.png)
-
-**AIRL(s)**
-
-Train | Test
-:----:|:---:
-![airl_s_train_returns](figures/airl_s_train_returns.png) | ![airl_s_test_returns](figures/airl_s_test_returns.png)
+![airl_sa_train_returns](figures/airl_train_returns.png) | ![airl_sa_test_returns](figures/airl_test_returns.png)
 
 **BC**
 
@@ -45,41 +45,23 @@ Train | Test
 :----:|:---:
 ![bc_test_returns](figures/bc_test_returns.png) | ![bc_test_returns](figures/bc_test_returns.png)
 
-**GAIL(s, a)**
+**GAIL**
 
 Train | Test
 :----:|:---:
-![gail_sa_train_returns](figures/gail_sa_train_returns.png) | ![gail_sa_test_returns](figures/gail_sa_test_returns.png)
+![gail_sa_train_returns](figures/gail_train_returns.png) | ![gail_sa_test_returns](figures/gail_test_returns.png)
 
-**GAIL(s)**
-
-Train | Test
-:----:|:---:
-![gail_s_train_returns](figures/gail_s_train_returns.png) | ![gail_s_test_returns](figures/gail_s_test_returns.png)
-
-**GMMIL(s, a)**
+**GMMIL**
 
 Train | Test
 :----:|:---:
-![gmmil_sa_train_returns](figures/gmmil_sa_train_returns.png) | ![gmmil_sa_test_returns](figures/gmmil_sa_test_returns.png)
+![gmmil_sa_train_returns](figures/gmmil_train_returns.png) | ![gmmil_sa_test_returns](figures/gmmil_test_returns.png)
 
-**GMMIL(s)**
-
-Train | Test
-:----:|:---:
-![gmmil_s_train_returns](figures/gmmil_s_train_returns.png) | ![gmmil_s_test_returns](figures/gmmil_s_test_returns.png)
-
-**RED(s, a)**
+**RED**
 
 Train | Test
 :----:|:---:
-![red_sa_train_returns](figures/red_sa_train_returns.png) | ![red_sa_test_returns](figures/red_sa_test_returns.png)
-
-**RED(s)**
-
-Train | Test
-:----:|:---:
-![red_s_train_returns](figures/red_s_train_returns.png) | ![red_s_test_returns](figures/red_s_test_returns.png)
+![red_sa_train_returns](figures/red_train_returns.png) | ![red_sa_test_returns](figures/red_test_returns.png)
 
 Acknowledgements
 ----------------
@@ -98,3 +80,5 @@ References
 [7] [InfoGAIL: Interpretable Imitation Learning from Visual Demonstrations](https://arxiv.org/abs/1703.08840)  
 [8] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
 [9] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[10] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[11] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  

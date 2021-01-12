@@ -5,6 +5,21 @@ from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader, Dataset
 
 
+# Indicate absorbing states
+def indicate_absorbing(states, actions, terminals, next_states=None):
+  absorbing_idxs = terminals.to(dtype=torch.bool)
+  abs_states = torch.cat([states, torch.zeros(states.size(0), 1)], axis=1)
+  abs_states[absorbing_idxs] = 0
+  abs_states[absorbing_idxs, -1] = 1
+  abs_actions = actions.clone()
+  abs_actions[absorbing_idxs] = 0
+  if next_states is not None:
+    abs_next_states = torch.cat([next_states, torch.zeros(next_states.size(0), 1)], axis=1)
+    return abs_states, abs_actions, abs_next_states
+  else:
+    return abs_states, abs_actions
+
+
 # Dataset that returns transition tuples of the form (s, a, r, s', terminal)
 class TransitionDataset(Dataset):
   def __init__(self, transitions):
@@ -18,6 +33,8 @@ class TransitionDataset(Dataset):
         return self.states
       elif idx == 'actions':
         return self.actions
+      elif idx == 'terminals':
+        return self.terminals
     else:
       return dict(states=self.states[idx], actions=self.actions[idx], rewards=self.rewards[idx], next_states=self.states[idx + 1], terminals=self.terminals[idx])
 
@@ -71,11 +88,12 @@ def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batc
 
 
 # Performs a target estimation update
-def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size):
+def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size, absorbing):
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
 
   for expert_transition in expert_dataloader:
     expert_state, expert_action = expert_transition['states'], expert_transition['actions']
+    if absorbing: expert_state, expert_action = indicate_absorbing(expert_state, expert_action, expert_transition['terminals'])
 
     discriminator_optimiser.zero_grad()
     prediction, target = discriminator(expert_state, expert_action)
@@ -85,7 +103,7 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, r1_reg_coeff=1):
+def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, absorbing=False, r1_reg_coeff=1):
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
   policy_dataloader = DataLoader(policy_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
 
@@ -95,12 +113,14 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
     policy_state, policy_action, policy_next_state, policy_terminal = policy_transition['states'], policy_transition['actions'], policy_transition['next_states'], policy_transition['terminals']
 
     if algorithm == 'GAIL':
+      if absorbing: expert_state, expert_action, policy_state, policy_action = *indicate_absorbing(expert_state, expert_action, expert_terminal), *indicate_absorbing(policy_state, policy_action, policy_terminal)
       D_expert = discriminator(expert_state, expert_action)
       D_policy = discriminator(policy_state, policy_action)
     elif algorithm == 'AIRL':
       with torch.no_grad():
         expert_data_policy = agent.log_prob(expert_state, expert_action).exp()
         policy_data_policy = agent.log_prob(policy_state, policy_action).exp()
+      if absorbing: expert_state, expert_action, expert_next_state, policy_state, policy_action, policy_next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(policy_state, policy_action, policy_terminal, policy_next_state)
       D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_policy, expert_terminal)
       D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy, policy_terminal)
  
