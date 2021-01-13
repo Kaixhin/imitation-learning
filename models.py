@@ -22,13 +22,39 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0):
     super().__init__()
-    self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
+    if dropout > 0:
+      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, action_size))
+    else:
+      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
 
   def forward(self, state):
     policy = Categorical(logits=self.actor(state))
     return policy
+
+  # Calculates the log probability of an action a with the policy π(·|s) given state s
+  def log_prob(self, state, action):
+    return self.forward(state).log_prob(action)
+
+  def _get_action_uncertainty(self, state, action):
+    ensemble_policies = []
+    for _ in range(5):  # Perform Monte-Carlo dropout for an implicit ensemble
+      ensemble_policies.append(self.forward(state).log_prob(action).exp())
+    return torch.stack(ensemble_policies).var(dim=0)
+
+  # Set uncertainty threshold at the 98th quantile of uncertainty costs calculated over the expert data
+  def set_uncertainty_threshold(self, expert_state, expert_action):
+    self.q = torch.quantile(self._get_action_uncertainty(expert_state, expert_action), 0.98).item()
+
+  def predict_reward(self, state, action):
+    # Calculate (raw) uncertainty cost
+    uncertainty_cost = self._get_action_uncertainty(state, action)
+    # Calculate clipped uncertainty cost
+    neg_idxs = uncertainty_cost.less_equal(self.q)
+    uncertainty_cost[neg_idxs] = -1
+    uncertainty_cost[~neg_idxs] = 1
+    return -uncertainty_cost
 
 
 class Critic(nn.Module):
@@ -53,7 +79,7 @@ class ActorCritic(nn.Module):
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
-    return self.actor(state).log_prob(action)
+    return self.actor.log_prob(state, action)
 
 
 class GAILDiscriminator(nn.Module):

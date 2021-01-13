@@ -7,11 +7,12 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - ~~ABC [[2]](#references)~~
 - AIRL [[3]](#references)
 - BC [[4]](#references)
-- GAIL [[5]](#references)
-- GMMIL [[6]](#references)
-- ~~InfoGAIL [[7]](#references)~~
-- ~~PWIL [[8]](#references)~~
-- RED [[9]](#references)
+- DRIL [[5]](#references)
+- GAIL [[6]](#references)
+- GMMIL [[7]](#references)
+- ~~InfoGAIL [[8]](#references)~~
+- ~~PWIL [[9]](#references)~~
+- RED [[10]](#references)
 
 ```
 python main.py --imitation [AIRL|BC|GAIL|GMMIL|RED]
@@ -21,8 +22,8 @@ python main.py --imitation [AIRL|BC|GAIL|GMMIL|RED]
 Options include:
 
 - State-only imitation learning: `--state-only`
-- Absorbing state indicator [[10]](#references): `--absorbing`
-- R1 gradient regularisation [[11]](#references): `--r1-reg-coeff 1` (default)
+- Absorbing state indicator [[11]](#references): `--absorbing`
+- R1 gradient regularisation [[12]](#references): `--r1-reg-coeff 1` (default)
 
 Results
 -------
@@ -44,6 +45,12 @@ Train | Test
 Train | Test
 :----:|:---:
 ![bc_test_returns](figures/bc_test_returns.png) | ![bc_test_returns](figures/bc_test_returns.png)
+
+**DRIL**
+
+Train | Test
+:----:|:---:
+![dril_train_returns](figures/dril_train_returns.png) | ![dril_test_returns](figures/dril_test_returns.png)
 
 **GAIL**
 
@@ -75,10 +82,11 @@ References
 [2] [Adversarial Behavioral Cloning](https://www.tandfonline.com/doi/abs/10.1080/01691864.2020.1729237)  
 [3] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
 [4] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
-[5] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
-[6] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[7] [InfoGAIL: Interpretable Imitation Learning from Visual Demonstrations](https://arxiv.org/abs/1703.08840)  
-[8] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
-[9] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[10] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[11] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
+[5] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  
+[6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
+[7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
+[8] [InfoGAIL: Interpretable Imitation Learning from Visual Demonstrations](https://arxiv.org/abs/1703.08840)  
+[9] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
+[10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[12] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
