@@ -68,7 +68,7 @@ def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss
   value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])  # Fit value function by regression on mean squared error
   entropy_reg = -trajectories['entropies'].mean()  # Add entropy regularisation
   
-  agent_optimiser.zero_grad()
+  agent_optimiser.zero_grad(set_to_none=True)
   (policy_loss + value_loss_coeff * value_loss + entropy_reg_coeff * entropy_reg).backward()
   clip_grad_norm_(agent.parameters(), 1)  # Clamp norm of gradients
   agent_optimiser.step()
@@ -76,12 +76,12 @@ def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss
 
 # Performs a behavioural cloning update
 def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batch_size):
-  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
+  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
 
   for expert_transition in expert_dataloader:
     expert_state, expert_action = expert_transition['states'], expert_transition['actions']
 
-    agent_optimiser.zero_grad()
+    agent_optimiser.zero_grad(set_to_none=True)
     behavioural_cloning_loss = -agent.log_prob(expert_state, expert_action).mean()  # Maximum likelihood objective
     behavioural_cloning_loss.backward()
     agent_optimiser.step()
@@ -89,13 +89,13 @@ def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batc
 
 # Performs a target estimation update
 def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size, absorbing):
-  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
+  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
 
   for expert_transition in expert_dataloader:
     expert_state, expert_action = expert_transition['states'], expert_transition['actions']
     if absorbing: expert_state, expert_action = indicate_absorbing(expert_state, expert_action, expert_transition['terminals'])
 
-    discriminator_optimiser.zero_grad()
+    discriminator_optimiser.zero_grad(set_to_none=True)
     prediction, target = discriminator(expert_state, expert_action)
     regression_loss = F.mse_loss(prediction, target)
     regression_loss.backward()
@@ -104,8 +104,8 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 # Performs an adversarial imitation learning update
 def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, absorbing=False, r1_reg_coeff=1):
-  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
-  policy_dataloader = DataLoader(policy_trajectories, batch_size=batch_size, shuffle=True, drop_last=True)
+  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
+  policy_dataloader = DataLoader(policy_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
 
   # Iterate over mininum of expert and policy data
   for expert_transition, policy_transition in zip(expert_dataloader, policy_dataloader):
@@ -125,7 +125,7 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
       D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy, policy_terminal)
  
     # Binary logistic regression
-    discriminator_optimiser.zero_grad()
+    discriminator_optimiser.zero_grad(set_to_none=True)
     expert_loss = F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
     autograd.backward(expert_loss, create_graph=True)
     r1_reg = 0
