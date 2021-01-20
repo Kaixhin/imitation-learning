@@ -130,7 +130,7 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
     autograd.backward(expert_loss, create_graph=True)
     r1_reg = 0
     for param in discriminator.parameters():
-      r1_reg += param.grad.norm().mean()  # R1 gradient penalty
+      r1_reg += param.grad.norm()  # R1 gradient penalty
     policy_loss = F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
     (policy_loss + r1_reg_coeff * r1_reg).backward()
     discriminator_optimiser.step()
