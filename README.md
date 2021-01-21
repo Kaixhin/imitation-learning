@@ -15,8 +15,7 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - RED [[10]](#references)
 
 ```
-python main.py --imitation [AIRL|BC|GAIL|GMMIL|RED]
-
+python main.py --imitation [AIRL|BC|DRIL|GAIL|GMMIL|RED]
 ```
 
 Options include:
