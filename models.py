@@ -83,9 +83,9 @@ class ActorCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, state_only=False, forward_kl=False):
     super().__init__()
-    self.action_size, self.state_only = action_size, state_only
+    self.action_size, self.state_only, self.forward_kl = action_size, state_only, forward_kl
     input_layer = nn.Linear(state_size if state_only else state_size + action_size, hidden_size)
     self.discriminator = nn.Sequential(input_layer, nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1), nn.Sigmoid())
 
@@ -95,7 +95,8 @@ class GAILDiscriminator(nn.Module):
   
   def predict_reward(self, state, action):
     D = self.forward(state, action)
-    return torch.log(D) - torch.log1p(-D)
+    h = torch.log(D) - torch.log1p(-D)
+    return torch.exp(h * -h) if self.forward_kl else h
 
 
 class GMMILDiscriminator(nn.Module):

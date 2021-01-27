@@ -112,7 +112,7 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
     expert_state, expert_action, expert_next_state, expert_terminal = expert_transition['states'], expert_transition['actions'], expert_transition['next_states'], expert_transition['terminals']
     policy_state, policy_action, policy_next_state, policy_terminal = policy_transition['states'], policy_transition['actions'], policy_transition['next_states'], policy_transition['terminals']
 
-    if algorithm == 'GAIL':
+    if algorithm in ['FAIRL', 'GAIL']:
       if absorbing: expert_state, expert_action, policy_state, policy_action = *indicate_absorbing(expert_state, expert_action, expert_terminal), *indicate_absorbing(policy_state, policy_action, policy_terminal)
       D_expert = discriminator(expert_state, expert_action)
       D_policy = discriminator(policy_state, policy_action)

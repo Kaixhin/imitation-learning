@@ -8,14 +8,14 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - AIRL [[3]](#references)
 - BC [[4]](#references)
 - DRIL [[5]](#references)
-- GAIL [[6]](#references)
-- GMMIL [[7]](#references)
-- ~~InfoGAIL [[8]](#references)~~
+- FAIRL [[6]](#references)
+- GAIL [[7]](#references)
+- GMMIL [[8]](#references)
 - ~~PWIL [[9]](#references)~~
 - RED [[10]](#references)
 
 ```
-python main.py --imitation [AIRL|BC|DRIL|GAIL|GMMIL|RED]
+python main.py --imitation [AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|RED]
 ```
 
 Options include:
@@ -37,7 +37,7 @@ Train | Test
 
 Train | Test
 :----:|:---:
-![airl_sa_train_returns](figures/airl_train_returns.png) | ![airl_sa_test_returns](figures/airl_test_returns.png)
+![airl_train_returns](figures/airl_train_returns.png) | ![airl_test_returns](figures/airl_test_returns.png)
 
 **BC**
 
@@ -51,23 +51,29 @@ Train | Test
 :----:|:---:
 ![dril_train_returns](figures/dril_train_returns.png) | ![dril_test_returns](figures/dril_test_returns.png)
 
+**FAIRL**
+
+Train | Test
+:----:|:---:
+![fairl_train_returns](figures/fairl_train_returns.png) | ![fairl_test_returns](figures/fairl_test_returns.png)
+
 **GAIL**
 
 Train | Test
 :----:|:---:
-![gail_sa_train_returns](figures/gail_train_returns.png) | ![gail_sa_test_returns](figures/gail_test_returns.png)
+![gail_train_returns](figures/gail_train_returns.png) | ![gail_test_returns](figures/gail_test_returns.png)
 
 **GMMIL**
 
 Train | Test
 :----:|:---:
-![gmmil_sa_train_returns](figures/gmmil_train_returns.png) | ![gmmil_sa_test_returns](figures/gmmil_test_returns.png)
+![gmmil_train_returns](figures/gmmil_train_returns.png) | ![gmmil_test_returns](figures/gmmil_test_returns.png)
 
 **RED**
 
 Train | Test
 :----:|:---:
-![red_sa_train_returns](figures/red_train_returns.png) | ![red_sa_test_returns](figures/red_test_returns.png)
+![red_train_returns](figures/red_train_returns.png) | ![red_test_returns](figures/red_test_returns.png)
 
 Acknowledgements
 ----------------
@@ -82,9 +88,9 @@ References
 [3] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
 [4] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
 [5] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  
-[6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
-[7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[8] [InfoGAIL: Interpretable Imitation Learning from Visual Demonstrations](https://arxiv.org/abs/1703.08840)  
+[6] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
+[7] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
+[8] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
 [9] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
 [10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
 [11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  

@@ -30,7 +30,7 @@ parser.add_argument('--max-grad-norm', type=float, default=1, metavar='N', help=
 parser.add_argument('--evaluation-interval', type=int, default=10000, metavar='EI', help='Evaluation interval')
 parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE', help='Evaluation episodes')
 parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
-parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'RED'], metavar='I', help='Imitation learning algorithm')
+parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'RED'], metavar='I', help='Imitation learning algorithm')
 parser.add_argument('--state-only', action='store_true', default=False, help='State-only imitation learning')
 parser.add_argument('--absorbing', action='store_true', default=False, help='Indicate absorbing states')
 parser.add_argument('--imitation-epochs', type=int, default=5, metavar='IE', help='Imitation learning epochs')
@@ -51,18 +51,18 @@ if args.imitation:
   # Set up expert trajectories dataset
   expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load('expert_trajectories.pth')))
   # Set up discriminator
-  if args.imitation in ['AIRL', 'DRIL', 'GAIL', 'GMMIL', 'RED']:
+  if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'RED']:
     if args.imitation == 'AIRL':
       discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, args.discount, state_only=args.state_only)
     elif args.imitation == 'DRIL':
       discriminator = Actor(env.observation_space.shape[0], env.action_space.n, args.hidden_size, dropout=0.1)
-    elif args.imitation == 'GAIL':
-      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only)
+    elif args.imitation in ['FAIRL', 'GAIL']:
+      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only, forward_kl=args.imitation == 'FAIRL')
     elif args.imitation == 'GMMIL':
       discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, state_only=args.state_only)
     elif args.imitation == 'RED':
       discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only)
-    if args.imitation in ['AIRL', 'DRIL', 'GAIL', 'RED']:
+    if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'RED']:
       discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
 # Metrics
 metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
@@ -108,9 +108,9 @@ for step in pbar:
         policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
         trajectories = []  # Clear the set of trajectories
 
-        if args.imitation in ['AIRL', 'DRIL', 'GAIL', 'GMMIL', 'RED']:
+        if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'RED']:
           # Train discriminator and predict rewards
-          if args.imitation in ['AIRL', 'GAIL']:
+          if args.imitation in ['AIRL', 'FAIRL', 'GAIL']:
             # Use a replay buffer of previous trajectories to prevent overfitting to current policy
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
@@ -127,7 +127,7 @@ for step in pbar:
             elif args.imitation == 'DRIL':
               # Note that by default DRIL also includes behavioural cloning online
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
-            elif args.imitation == 'GAIL':
+            elif args.imitation in ['FAIRL', 'GAIL']:
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
             elif args.imitation == 'GMMIL':
               expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
@@ -160,6 +160,6 @@ if args.save_trajectories:
 
 # Save agent and metrics
 torch.save(agent.state_dict(), os.path.join('results', 'agent.pth'))
-if args.imitation in ['AIRL', 'GAIL']: torch.save(discriminator.state_dict(), os.path.join('results', 'discriminator.pth'))
+if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'RED']: torch.save(discriminator.state_dict(), os.path.join('results', 'discriminator.pth'))
 torch.save(metrics, os.path.join('results', 'metrics.pth'))
 env.close()
