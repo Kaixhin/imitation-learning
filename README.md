@@ -19,6 +19,9 @@ Requirements
 ------------
 The code runs on Python3. You can install most of the requirements by running `pip install -r requirements.txt`(to be added). Notable required packages are PyTorch, OpenAI gym, and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet)
 
+Run
+---
+
 ```
 python main.py --imitation [AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|RED]
 ```
