@@ -1,4 +1,4 @@
-IL
+Imitation Learning
 ==
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
@@ -13,6 +13,11 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - GMMIL [[8]](#references)
 - ~~PWIL [[9]](#references)~~
 - RED [[10]](#references)
+
+
+Requirements
+------------
+The code runs on Python3. You can install most of the requirements by running `pip install -r requirements.txt`(to be added). Notable required packages are PyTorch, OpenAI gym, and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet)
 
 ```
 python main.py --imitation [AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|RED]
