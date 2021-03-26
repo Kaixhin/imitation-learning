@@ -103,7 +103,7 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, absorbing=False, r1_reg_coeff=1):
+def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, absorbing=False, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
   policy_dataloader = DataLoader(policy_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
 
@@ -112,7 +112,7 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
     expert_state, expert_action, expert_next_state, expert_terminal = expert_transition['states'], expert_transition['actions'], expert_transition['next_states'], expert_transition['terminals']
     policy_state, policy_action, policy_next_state, policy_terminal = policy_transition['states'], policy_transition['actions'], policy_transition['next_states'], policy_transition['terminals']
 
-    if algorithm in ['FAIRL', 'GAIL']:
+    if algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
       if absorbing: expert_state, expert_action, policy_state, policy_action = *indicate_absorbing(expert_state, expert_action, expert_terminal), *indicate_absorbing(policy_state, policy_action, policy_terminal)
       D_expert = discriminator(expert_state, expert_action)
       D_policy = discriminator(policy_state, policy_action)
@@ -126,11 +126,14 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
  
     # Binary logistic regression
     discriminator_optimiser.zero_grad(set_to_none=True)
-    expert_loss = F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
+    expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
     autograd.backward(expert_loss, create_graph=True)
     r1_reg = 0
     for param in discriminator.parameters():
       r1_reg += param.grad.norm()  # R1 gradient penalty
-    policy_loss = F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
+    if algorithm == 'PUGAIL':
+      policy_loss = torch.clamp(F.binary_cross_entropy(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
+    else:
+      policy_loss = F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
     (policy_loss + r1_reg_coeff * r1_reg).backward()
     discriminator_optimiser.step()
