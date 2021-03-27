@@ -2,6 +2,7 @@ from logging import ERROR
 
 import gym
 import torch
+import numpy as np
 import d4rl_pybullet
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
@@ -64,11 +65,16 @@ class D4RLEnv():
     """ Also adds next_state in the dataset"""
     dataset = self.env.get_dataset()
     N = dataset['rewards'].shape[0]
+    obs = dataset['observations']
+    next_obs = np.roll(obs, -1, axis=0)
     dataset_out = dict()
-    dataset_out['rewards'] = torch.as_tensor(dataset['rewards'], dtype=dtype)
-    dataset_out['observations'] = torch.as_tensor(dataset['observations'], dtype=dtype)
-    
-    dataset_out['actions'] = torch.as_tensor(dataset['actions'], dtype=dtype)
+    dataset_out['rewards'] = torch.as_tensor(dataset['rewards'][:-1], dtype=dtype)
+    dataset_out['observations'] = torch.as_tensor(obs[:-1], dtype=dtype)
+    dataset_out['next_obeservations'] = np.roll(next_obs[:-1], -1)
+    dataset_out['actions'] = torch.as_tensor(dataset['actions'][:-1], dtype=dtype)
+    dataset_out['terminals'] = torch.as_tensor(dataset['terminals'][:-1], dtype=dtype)
+
+    return dataset_out
 
 
     return self.env.get_dataset()
