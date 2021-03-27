@@ -1,5 +1,5 @@
-Imitation Learning
-==
+A Pragmatic Look at Deep Imitation Learning
+===========================================
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
 Imitation learning algorithms (with PPO [[1]](#references)):
@@ -11,8 +11,9 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - FAIRL [[6]](#references)
 - GAIL [[7]](#references)
 - GMMIL [[8]](#references)
-- ~~PWIL [[9]](#references)~~
-- RED [[10]](#references)
+- nn-PUGAIL [[9]](#references)
+- ~~PWIL [[10]](#references)~~
+- RED [[11]](#references)
 
 
 Requirements
@@ -23,14 +24,14 @@ Run
 ---
 
 ```
-python main.py --imitation [AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|RED]
+python main.py --imitation [AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED]
 ```
 
 Options include:
 
 - State-only imitation learning: `--state-only`
-- Absorbing state indicator [[11]](#references): `--absorbing`
-- R1 gradient regularisation [[12]](#references): `--r1-reg-coeff 1` (default)
+- Absorbing state indicator [[12]](#references): `--absorbing`
+- R1 gradient regularisation [[13]](#references): `--r1-reg-coeff 1` (default)
 
 Results
 -------
@@ -77,6 +78,12 @@ Train | Test
 :----:|:---:
 ![gmmil_train_returns](figures/gmmil_train_returns.png) | ![gmmil_test_returns](figures/gmmil_test_returns.png)
 
+**nn-PUGAIL**
+
+Train | Test
+:----:|:---:
+![pugail_train_returns](figures/pugail_train_returns.png) | ![pugail_test_returns](figures/pugail_test_returns.png)
+
 **RED**
 
 Train | Test
@@ -87,6 +94,20 @@ Acknowledgements
 ----------------
 
 - [@ikostrikov](https://github.com/ikostrikov) for [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail)
+
+Citation
+--------
+
+If you find this work useful and would like to cite it, the following would be appropriate:
+
+```
+@misc{arulkumaran2020pragmatic,
+  author = {Arulkumaran, Kai},
+  title = {A Pragmatic Look at Deep Imitation Learning},
+  url = {https://github.com/Kaixhin/imitation-learning},
+  year = {2020}
+}
+```
 
 References
 ----------
@@ -99,7 +120,8 @@ References
 [6] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
 [7] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [8] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[9] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
-[10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[12] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
+[9] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
+[10] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
+[11] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[12] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[13] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
