@@ -35,8 +35,17 @@ class CartPoleEnv():
     return self.env.action_space
 
 
+d4rl_envnames = [
+  'hopper-bullet-medium-v0',
+  'halfcheetah-bullet-medium-v0',
+  'ant-bullet-medium-v0',
+  'walker2d-bullet-medium-v0',
+]
+
 class D4RLEnv():
   def __init__(self, envname):
+    if envname not in d4rl_envnames:
+      raise NameError("The given environment name is not part of D4RL Pybullet. use one of the following: \n" + str(d4rl_envnames))
     self.env = gym.make(envname)
 
   def reset(self):
