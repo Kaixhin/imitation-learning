@@ -79,7 +79,7 @@ class D4RLEnv():
     dataset_out = dict()
     dataset_out['rewards'] = torch.as_tensor(dataset['rewards'][:-1], dtype=dtype)
     dataset_out['observations'] = torch.as_tensor(obs[:-1], dtype=dtype)
-    dataset_out['next_obeservations'] = np.roll(next_obs[:-1], -1)
+    dataset_out['next_observations'] = np.roll(next_obs[:-1], -1)
     dataset_out['actions'] = torch.as_tensor(dataset['actions'][:-1], dtype=dtype)
     dataset_out['terminals'] = torch.as_tensor(dataset['terminals'][:-1], dtype=dtype)
 
