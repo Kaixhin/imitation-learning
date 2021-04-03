@@ -1,20 +1,19 @@
 defaults:
   - hydra/sweeper: ax
   - algorithm: BC
-  - hyperparameters:
-
+  - environment: hopper
 
 seed: 0
-steps: 100000
-hidden_size: ???
-discout: 0.99
+steps: 1000
+hidden_size: 32
+discount: 0.99
 trace_decay: 0.95
 ppo_clip: 0.2
 ppo_epochs: 4
 value_loss_coeff: 0.5
 entropy_loss_coeff: 0.5
-learning_rate: ???
-batch_size: ???
+learning_rate: 0.001
+batch_size: 1024
 max_grad_nord: 1
 evaluation_interval: 10000
 evaluation_episodes: 50
@@ -31,6 +30,10 @@ nonnegative_margin: 0.0
 
 # ax sweep setting
 hydra:
+  run:
+    dir: ./outputs/${environment.env_type}_${algorithm.imitation}
+  sweep:
+    dir: ./outputs/sweeper_${environment.env_type}_${algorithm.imitation}
   sweeper:
     #ax configuration. Same across all algorithms
     ax_config:
@@ -54,6 +57,3 @@ hydra:
         learning_rate:
           type: range
           bounds: [ 0.0001, 0.001 ]
-        weight_decay:
-          type: range
-          bounds: [ 0.0, 0.1 ]

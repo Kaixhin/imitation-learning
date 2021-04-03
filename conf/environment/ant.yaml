@@ -1,2 +1,3 @@
-name: ant
+# @package _group_
+env_type: ant
 env_name: ant-bullet-medium-v0

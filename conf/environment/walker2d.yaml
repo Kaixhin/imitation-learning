@@ -1,2 +1,3 @@
-name: walker2d
+# @package _group_
+env_type: walker2d
 env_name: walker2d-bullet-medium-v0

@@ -24,5 +24,5 @@ def lineplot(x, y, filename, xaxis='Steps', yaxis='Returns'):
   plt.ylim(bottom=0, top=500)  # Return limits for CartPole-v1
   plt.xlabel(xaxis)
   plt.ylabel(yaxis)
-  plt.savefig(os.path.join('results', filename + '.png'))
+  plt.savefig(os.path.join('./results', filename + '.png'))
   plt.close()

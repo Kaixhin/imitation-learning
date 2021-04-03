@@ -1,2 +1,3 @@
-name: hopper
+# @package _group_
+env_type: hopper
 env_name: hopper-bullet-medium-v0

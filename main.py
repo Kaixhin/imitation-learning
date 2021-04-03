@@ -6,7 +6,7 @@ import torch
 from torch import optim
 from tqdm import tqdm
 
-from environments import CartPoleEnv
+from environments import CartPoleEnv, D4RLEnv
 from evaluation import evaluate_agent
 from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, indicate_absorbing, ppo_update, target_estimation_update
@@ -17,6 +17,7 @@ from omegaconf import DictConfig, OmegaConf
 
 
 # Setup
+"""
 parser = argparse.ArgumentParser(description='IL')
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='Random seed')
 parser.add_argument('--steps', type=int, default=100000, metavar='T', help='Number of environment steps')
@@ -43,20 +44,23 @@ parser.add_argument('--r1-reg-coeff', type=float, default=1, metavar='γ', help=
 parser.add_argument('--pos-class-prior', type=float, default=0.5, metavar='η', help='Positive class prior')
 parser.add_argument('--nonnegative-margin', type=float, default=0, metavar='β', help='Non-negative margin')
 #args = parser.parse_args()
-os.makedirs('results', exist_ok=True)
+"""
 
-
+code_path = os.getcwd()
 # Set up environment and models
 @hydra.main(config_path='conf', config_name='config')
 def main(args: DictConfig) -> None:
+  os.makedirs('./results', exist_ok=True)
+  print("Working directory for current run: " + os.getcwd())
   torch.manual_seed(args.seed)
-  env = CartPoleEnv()
+  env = D4RLEnv(args.environment.env_name)
   env.seed(args.seed)
-  agent = ActorCritic(env.observation_space.shape[0], env.action_space.n, args.hidden_size)
+  agent = ActorCritic(env.observation_space.shape[0], env.action_space.shape[0], args.hidden_size)
   agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.learning_rate)
   if args.imitation:
     # Set up expert trajectories dataset
-    expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load('expert_trajectories.pth')))
+    expert_trajectories = env.get_dataset()
+    #expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load(code_path+'/expert_trajectories.pth')))
     # Set up discriminator
     if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
       if args.imitation == 'AIRL':

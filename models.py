@@ -1,7 +1,9 @@
 import torch
 from torch import nn
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Normal
 from torch.nn import functional as F
+
+import numpy as np
 
 
 # Concatenates the state and one-hot version of an action
@@ -22,15 +24,23 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0, action_space_type='Continuous'):
     super().__init__()
     if dropout > 0:
       self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, action_size))
     else:
       self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
 
+    self.action_space_type = action_space_type
+    if self.action_space_type is 'Continuous':
+      log_std = -0.5 * np.ones(action_size, dtype=np.float32)
+      self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
   def forward(self, state):
-    policy = Categorical(logits=self.actor(state))
+    if self.action_space_type is 'Continuous':
+        std = torch.exp(self.log_std)
+        policy = Normal(self.actor(state), std)
+    else:
+        policy = Categorical(logits=self.actor(state))
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
