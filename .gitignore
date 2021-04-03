@@ -143,3 +143,9 @@ media
 static
 
 results/*
+
+# PyCharm IDE
+.idea/*
+
+# Hydra Output
+outputs/*
