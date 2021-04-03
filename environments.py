@@ -70,6 +70,8 @@ class D4RLEnv():
   def action_space(self):
     return self.env.action_space
 
+  def render(self):
+    return self.env.render()
   def get_dataset(self, dtype=torch.float):
     """ Also adds next_state in the dataset"""
     dataset = self.env.get_dataset()

@@ -4,18 +4,20 @@ from environments import CartPoleEnv
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(agent, episodes, return_trajectories=False, seed=1):
-  env = CartPoleEnv()
+def evaluate_agent(agent, episodes, return_trajectories=False, Env=CartPoleEnv(), seed=1, render=False):
+  env = Env
   env.seed(seed)
 
   returns, trajectories = [], []
+  if render:
+    env.render()
+    env.reset()
   for _ in range(episodes):
     states, actions, rewards = [], [], []
     state, terminal = env.reset(), False
     while not terminal:
       with torch.no_grad():
-        policy, _ = agent(state)
-        action = policy.logits.argmax(dim=-1)  # Pick action greedily
+        action = agent.greedy_action(state)  # take action greedily
         state, reward, terminal = env.step(action)
 
         if return_trajectories:

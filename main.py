@@ -159,20 +159,22 @@ def main(args: DictConfig) -> None:
     # Evaluate agent and plot metrics
     if step % args.evaluation_interval == 0:
       metrics['test_steps'].append(step)
-      metrics['test_returns'].append(evaluate_agent(agent, args.evaluation_episodes, seed=args.seed))
+      metrics['test_returns'].append(evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv(args.environment.env_name), seed=args.seed))
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
       if args.imitation != 'BC': lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
 
   if args.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, args.evaluation_episodes, return_trajectories=True, seed=args.seed)
-    torch.save(trajectories, os.path.join('results', 'trajectories.pth'))
+    _, trajectories = evaluate_agent(agent, args.evaluation_episodes, return_trajectories=True, Env=D4RLEnv(args.environment.env_name), seed=args.seed, render=args.render)
+    torch.save(trajectories, os.path.join('./results', 'trajectories.pth'))
 
   # Save agent and metrics
   torch.save(agent.state_dict(), os.path.join('results', 'agent.pth'))
   if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), os.path.join('results', 'discriminator.pth'))
   torch.save(metrics, os.path.join('results', 'metrics.pth'))
+
+
   env.close()
 
 if __name__ == '__main__':

@@ -15,7 +15,7 @@ entropy_loss_coeff: 0.5
 learning_rate: 0.001
 batch_size: 1024
 max_grad_nord: 1
-evaluation_interval: 10000
+evaluation_interval: 1000
 evaluation_episodes: 50
 save_trajectories: false
 imitation: '' #heres where BC/AIRL/GAIL etc is specified. should be changed to conf file
@@ -27,6 +27,7 @@ imitation_replay_size: 4
 r1_reg_coeff: 1.0
 pos_class_prior: 0.5
 nonnegative_margin: 0.0
+render: false
 
 # ax sweep setting
 hydra:
