@@ -18,7 +18,10 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 
 Requirements
 ------------
-The code runs on Python3. You can install most of the requirements by running `pip install -r requirements.txt`(to be added). Notable required packages are PyTorch, OpenAI gym, and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet)
+The code runs on Python3.7 (AX requires >3.7). You can install most of the requirements by running `pip install -r requirements.txt`(to be added). Notable required packages are PyTorch, OpenAI gym, and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet) if you fail to install d4rl-pybullet, install it with pip directly from git by using the command 
+```
+pip install git+https://github.com/takuseno/d4rl-pybullet
+```
 
 Run
 ---
