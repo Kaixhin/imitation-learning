@@ -4,7 +4,7 @@ defaults:
   - environment: hopper
 
 seed: 0
-steps: 10000
+steps: 100000
 hidden_size: 32
 discount: 0.99
 trace_decay: 0.95
