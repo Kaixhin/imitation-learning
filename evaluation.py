@@ -1,10 +1,10 @@
 import torch
 
-from environments import CartPoleEnv
+from environments import PendulumEnv
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(agent, episodes, return_trajectories=False, Env=CartPoleEnv(), seed=1, render=False):
+def evaluate_agent(agent, episodes, return_trajectories=False, Env=PendulumEnv, seed=1, render=False):
   env = Env
   env.seed(seed)
 

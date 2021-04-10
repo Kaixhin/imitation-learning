@@ -1,14 +1,15 @@
 import torch
 from torch import nn
-from torch.distributions import Categorical, Normal
+from torch.distributions import Categorical, Normal, Independent, TransformedDistribution
+from torch.distributions.transforms import AffineTransform, TanhTransform
 from torch.nn import functional as F
 
 import numpy as np
 
 
-# Concatenates the state and one-hot version of an action
+# Concatenates the state and action (previously one-hot discrete version)
 def _join_state_action(state, action, action_size):
-  return torch.cat([state, F.one_hot(action, action_size).to(dtype=torch.float32)], dim=1)
+    return torch.cat([state, action], dim=1)
 
 
 # Computes the squared distance between two sets of vectors
@@ -24,24 +25,25 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0, action_space_type='Continuous'):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0, action_scale = 1.0, action_loc = -1.0):
     super().__init__()
     if dropout > 0:
       self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, action_size))
     else:
       self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
 
-    self.action_space_type = action_space_type
-    if self.action_space_type is 'Continuous':
-      log_std = -0.5 * np.ones(action_size, dtype=np.float32)
-      self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
+    log_std = -0.5 * np.ones(action_size, dtype=np.float32)
+    self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
+    self.loc = action_loc
+    self.scale = action_scale
+
   def forward(self, state):
-    if self.action_space_type is 'Continuous':
-        std = torch.exp(self.log_std)
-        policy = Normal(self.actor(state), std)
-    else:
-        policy = Categorical(logits=self.actor(state))
-    return policy
+    std = torch.exp(self.log_std)
+    mu = self.actor(state)
+    normal = Independent(Normal(mu, std), 1)
+    #policy = TransformedDistribution(normal, [TanhTransform(), AffineTransform(loc=self.loc, scale=self.scale)])
+    return normal
+    #normal.entropy() # Needs double-check with Kai-san can we just take normals entropy term for this?
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
@@ -50,7 +52,7 @@ class Actor(nn.Module):
   def _get_action_uncertainty(self, state, action):
     ensemble_policies = []
     for _ in range(5):  # Perform Monte-Carlo dropout for an implicit ensemble
-      ensemble_policies.append(self.forward(state).log_prob(action).exp())
+      ensemble_policies.append(self.log_prob(state, action).exp())
     return torch.stack(ensemble_policies).var(dim=0)
 
   # Set uncertainty threshold at the 98th quantile of uncertainty costs calculated over the expert data
@@ -78,21 +80,18 @@ class Critic(nn.Module):
 
 
 class ActorCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, action_space_type='Continuous'):
+  def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0):
     super().__init__()
-    self.actor = Actor(state_size, action_size, hidden_size, action_space_type=action_space_type)
+    self.actor = Actor(state_size, action_size, hidden_size, action_scale=action_scale, action_loc=action_loc)
     self.critic = Critic(state_size, hidden_size)
-    self.action_space_type = action_space_type
 
   def forward(self, state):
     policy, value = self.actor(state), self.critic(state)
     return policy, value
+
   def greedy_action(self, state):
     policy = self.actor(state)
-    if self.action_space_type == 'Continuous':
-      return policy.loc
-    else:
-      return policy.logits.argmax(dim=-1)
+    return policy.mean
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
@@ -117,7 +116,7 @@ class GAILDiscriminator(nn.Module):
 
 
 class GMMILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, state_only=True):
+  def __init__(self, state_size, action_size, state_only=True, action_space='Contiuous'):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
     self.gamma_1, self.gamma_2 = None, None
@@ -136,7 +135,7 @@ class GMMILDiscriminator(nn.Module):
 
 
 class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, discount, state_only=False, ):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
     self.discount = discount
@@ -144,7 +143,10 @@ class AIRLDiscriminator(nn.Module):
     self.h = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))  # Shaping function Φ
 
   def reward(self, state, action):
-    return self.g(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
+    if self.state_only:
+      return self.g(state).squeeze(dim=1)
+    else:
+      return self.g(_join_state_action(state, action, self.action_size)).squeeze(dim=1)
 
   def value(self, state):
     return self.h(state).squeeze(dim=1)

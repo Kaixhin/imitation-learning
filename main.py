@@ -1,16 +1,16 @@
 import argparse
 from collections import deque
 import os
-
+import numpy as np
 import torch
 from torch import optim
 from tqdm import tqdm
 
-from environments import CartPoleEnv, D4RLEnv
+from environments import D4RLEnv, PendulumEnv
 from evaluation import evaluate_agent
 from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, indicate_absorbing, ppo_update, target_estimation_update
-from utils import flatten_list_dicts, lineplot
+from utils import flatten_list_dicts, lineplot, MetricSaver
 
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -47,34 +47,55 @@ parser.add_argument('--nonnegative-margin', type=float, default=0, metavar='β',
 """
 
 code_path = os.getcwd()
+allowed_algorithms = ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC']
 # Set up environment and models
 @hydra.main(config_path='conf', config_name='config')
 def main(args: DictConfig) -> None:
+  best_reward = -100000 # for ax. the mean reward from the BEST performing agent at eval time (based on mean, for now)
   os.makedirs('./results', exist_ok=True)
   print("Working directory for current run: " + os.getcwd())
   torch.manual_seed(args.seed)
-  env = D4RLEnv(args.environment.env_name)
-  env.seed(args.seed)
-  agent = ActorCritic(env.observation_space.shape[0], env.action_space.shape[0], args.hidden_size)
+  test_run = False
+  if args.environment.env_name in ['test', 'Pendulum']:
+    test_run = True
+    env = PendulumEnv()
+    env.seed(args.seed)
+    action_space = env.action_space.n
+    agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size)
+  else:
+    env = D4RLEnv(args.environment.env_name)
+    action_space = env.action_space.shape[0]
+    env.seed(args.seed)
+    max_action_range = env.action_space.high[0]
+    min_action_range = env.action_space.low[0]
+    action_scale = (max_action_range - min_action_range) / 2
+    action_loc = (max_action_range + min_action_range) / 2
+    agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, action_scale=action_scale, action_loc=action_loc)
   agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.learning_rate)
-  if args.imitation:
-    # Set up expert trajectories dataset
-    expert_trajectories = env.get_dataset()
-    #expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load(code_path+'/expert_trajectories.pth')))
-    # Set up discriminator
-    if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
-      if args.imitation == 'AIRL':
-        discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, args.discount, state_only=args.state_only)
-      elif args.imitation == 'DRIL':
-        discriminator = Actor(env.observation_space.shape[0], env.action_space.n, args.hidden_size, dropout=0.1)
-      elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
-        discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only, forward_kl=args.imitation == 'FAIRL')
-      elif args.imitation == 'GMMIL':
-        discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, state_only=args.state_only)
-      elif args.imitation == 'RED':
-        discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), env.action_space.n, args.hidden_size, state_only=args.state_only)
-      if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-        discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
+  if args.imitation not in allowed_algorithms:
+    raise ValueError('The imitation parameters from Hydra config needs to be one of: ' +str(allowed_algorithms))
+  print("Using Algorithm: " + args.imitation)
+
+  # Save results in one class
+  saver = MetricSaver(algorithm=args.imitation, env=args.environment.env_name)
+
+ # Set up expert trajectories dataset
+  expert_trajectories = env.get_dataset()
+  #expert_trajectories =TransitionDataset(flatten_list_dicts(torch.load(code_path+'/expert_trajectories.pth')))
+  # Set up discriminator
+  if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
+    if args.imitation == 'AIRL':
+      discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, args.hidden_size, args.discount, state_only=args.state_only)
+    elif args.imitation == 'DRIL':
+      discriminator = Actor(env.observation_space.shape[0], action_space, args.hidden_size, dropout=0.1)
+    elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
+      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, args.hidden_size, state_only=args.state_only, forward_kl=args.imitation == 'FAIRL')
+    elif args.imitation == 'GMMIL':
+      discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, state_only=args.state_only)
+    elif args.imitation == 'RED':
+      discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, args.hidden_size, state_only=args.state_only)
+    if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
+      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
 
@@ -101,7 +122,7 @@ def main(args: DictConfig) -> None:
     if args.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
       policy, value = agent(state)
-      action = policy.sample()
+      action = torch.clamp(policy.sample(), min=min_action_range, max=max_action_range) #To let normal work right now
       log_prob_action, entropy = policy.log_prob(action), policy.entropy()
       next_state, reward, terminal = env.step(action)
       episode_return += reward
@@ -110,6 +131,7 @@ def main(args: DictConfig) -> None:
 
       if terminal:
         # Store metrics and reset environment
+        saver.add_train_step(step, episode_return)
         metrics['train_steps'].append(step)
         metrics['train_returns'].append([episode_return])
         pbar.set_description('Step: %i | Return: %f' % (step, episode_return))
@@ -158,24 +180,34 @@ def main(args: DictConfig) -> None:
 
     # Evaluate agent and plot metrics
     if step % args.evaluation_interval == 0:
+      rewards = evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv(args.environment.env_name), seed=args.seed)
+      npr = np.array(rewards)
+      current_reward = npr.mean()
+      if current_reward > best_reward:
+        best_reward = current_reward
+      saver.add_test_step(step, rewards)
+      saver.store_model_checkpoint(agent, step)
       metrics['test_steps'].append(step)
-      metrics['test_returns'].append(evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv(args.environment.env_name), seed=args.seed))
+      metrics['test_returns'].append(rewards)
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
       if args.imitation != 'BC': lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
 
   if args.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, args.evaluation_episodes, return_trajectories=True, Env=D4RLEnv(args.environment.env_name), seed=args.seed, render=args.render)
+    _, trajectories = evaluate_agent(agent, args.evaluation_episodes, return_trajectories=True,
+                                     Env=D4RLEnv(args.environment.env_name),  seed=args.seed, render=args.render)
     torch.save(trajectories, os.path.join('./results', 'trajectories.pth'))
 
   # Save agent and metrics
   torch.save(agent.state_dict(), os.path.join('results', 'agent.pth'))
+  saver.save_data(os.path.join('./results', 'result_data.pth'))
   if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), os.path.join('results', 'discriminator.pth'))
   torch.save(metrics, os.path.join('results', 'metrics.pth'))
 
 
   env.close()
+  return best_reward
 
 if __name__ == '__main__':
   main()
