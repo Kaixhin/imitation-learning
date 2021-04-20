@@ -142,7 +142,6 @@ cython_debug/
 media
 static
 
-results/*
 
 # PyCharm IDE
 .idea/*

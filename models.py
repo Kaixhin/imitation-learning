@@ -25,14 +25,14 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0, action_scale = 1.0, action_loc = -1.0):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0, action_scale=1.0, action_loc=-1.0, log_std_init=-0.5, activation_function=nn.Tanh()):
     super().__init__()
     if dropout > 0:
-      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, action_size))
+      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Dropout(p=dropout), activation_function, nn.Linear(hidden_size, hidden_size), nn.Dropout(p=dropout), activation_function, nn.Linear(hidden_size, action_size))
     else:
-      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
+      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), activation_function, nn.Linear(hidden_size, hidden_size), activation_function, nn.Linear(hidden_size, action_size))
 
-    log_std = -0.5 * np.ones(action_size, dtype=np.float32)
+    log_std = log_std_init * np.ones(action_size, dtype=np.float32)
     self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
     self.loc = action_loc
     self.scale = action_scale
@@ -70,9 +70,9 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, hidden_size):
+  def __init__(self, state_size, hidden_size, activation_function=nn.Tanh()):
     super().__init__()
-    self.critic = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))
+    self.critic = nn.Sequential(nn.Linear(state_size, hidden_size), activation_function, nn.Linear(hidden_size, hidden_size),activation_function, nn.Linear(hidden_size, 1))
 
   def forward(self, state):
     value = self.critic(state).squeeze(dim=1)
@@ -80,10 +80,14 @@ class Critic(nn.Module):
 
 
 class ActorCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0):
+  def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0, log_std_init=-0.5, activation_fn='Tanh'):
     super().__init__()
-    self.actor = Actor(state_size, action_size, hidden_size, action_scale=action_scale, action_loc=action_loc)
-    self.critic = Critic(state_size, hidden_size)
+    self.activation_function = nn.Tanh()
+    if activation_fn is "ReLu":
+      self.activation_function = nn.ReLU()
+    if
+    self.actor = Actor(state_size, action_size, hidden_size, action_scale=action_scale, action_loc=action_loc, log_std_init=log_std_init, activation_function=self.activation_function)
+    self.critic = Critic(state_size, hidden_size, activation_function=self.activation_function)
 
   def forward(self, state):
     policy, value = self.actor(state), self.critic(state)
@@ -116,7 +120,7 @@ class GAILDiscriminator(nn.Module):
 
 
 class GMMILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, state_only=True, action_space='Contiuous'):
+  def __init__(self, state_size, action_size, state_only=True):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
     self.gamma_1, self.gamma_2 = None, None

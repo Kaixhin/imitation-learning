@@ -1,3 +1,30 @@
-# @package _group_
+# @package _global_
 env_type: hopper
 env_name: hopper-bullet-medium-v0
+
+
+# PPO hyperparams
+  normalize: true
+  n_envs: 16 # Stable baseline vectorizes the environment = at training, use 16 env and each action, state, reward, become extra 16 dims.
+  n_timesteps: !!float 2e6 # total_timesteps? <- yes used in .learn
+  policy: 'MlpPolicy'
+  batch_size: 128
+  n_steps: 512
+  gamma: 0.99
+  gae_lambda: 0.92
+  n_epochs: 20
+  ent_coef: 0.0
+  sde_sample_freq: 4 # with use_sde, related to the gSDE exploration scheme
+  max_grad_norm: 0.5 # related to the gradient clipping (clip_grad_norm_ )
+  vf_coef: 0.5 #coefficient in front of value(critic) loss update
+  learning_rate: !!float 3e-5 # Policy learning rate TODO: check if the learning rate is reduced over time.
+  use_sde: True
+  clip_range: lin_0.4 # PPO clip range
+  # Below args are used when creating the policy network. The important parts for us are
+  # the hidden network being [256, 256] and log_std_init=-2, activation_fn being nn.ReLU
+  # ortho_init specify if orthogonal initialization is used. (it is not)
+  policy_kwargs: "dict(log_std_init=-2,
+                       ortho_init=False,
+                       activation_fn=nn.ReLU,
+                       net_arch=[dict(pi=[256, 256], vf=[256, 256])]
+                       )"

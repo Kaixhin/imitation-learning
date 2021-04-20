@@ -9,23 +9,20 @@ import os
 args = parser.parse_args()
 
 
-class Analyzer():
-    def __init__(self, filename=None, save_result=False):
-        self.save_result = save_result
-        self.data_batch = dict()
-        self.data = None
-        self.data_batch_env = None
-        if filename:
-            self.data = MetricSaver(load_file=filename)
+def compare_sweeper_result(env_name, algo_name):
+    raise NotImplemented
 
-    def load_all_env_results(self, env='hopper', hydra_output_folder='./outputs/'):
-        self.data_batch_env = env
-        dirs = [name.startswith(env) for name in os.listdir(hydra_output_folder)]
-        if not dirs:
-            raise ValueError('No directories that starts with ' + env + 'in ' + hydra_output_folder)
 
-    def plot_all_env_results(self, result_folder=None):
-        raise NotImplemented()
+def plot_training_loss(env_name, algo_name):
+    raise NotImplemented
+
+
+def plot_evaluation_loss(env_name, algo_name):
+    raise NotImplemented
+
+
+def plot_IRL_loss(env_name, algo_name):
+    raise NotImplemented
 
 
 if __name__ == '__main__':

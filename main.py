@@ -1,10 +1,12 @@
-import argparse
-from collections import deque
 import os
+from collections import deque
 import numpy as np
 import torch
 from torch import optim
 from tqdm import tqdm
+
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 from environments import D4RLEnv, PendulumEnv
 from evaluation import evaluate_agent
@@ -12,10 +14,11 @@ from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMM
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot, MetricSaver
 
-import hydra
-from omegaconf import DictConfig, OmegaConf
 
-
+# TODO: Change ALL PPO params are non constant for different environment, add it to env config files
+# TODO: Set all PPO params based on existing papers model.
+# TODO: Hidden size should be enviornment specific from PPO, not AX sweep param
+# TODO: Add subsampling (set default 20) on the enviornment get_dataset()
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')
@@ -51,37 +54,35 @@ allowed_algorithms = ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED',
 # Set up environment and models
 @hydra.main(config_path='conf', config_name='config')
 def main(args: DictConfig) -> None:
-  best_reward = -100000 # for ax. the mean reward from the BEST performing agent at eval time (based on mean, for now)
+  recent_rewards = deque(maxlen=5) # Keeps track of the mean of recent rewards under training
   os.makedirs('./results', exist_ok=True)
   print("Working directory for current run: " + os.getcwd())
   torch.manual_seed(args.seed)
-  test_run = False
-  if args.environment.env_name in ['test', 'Pendulum']:
-    test_run = True
+  if args.env_name in ['test', 'Pendulum']:
     env = PendulumEnv()
     env.seed(args.seed)
     action_space = env.action_space.n
     agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size)
   else:
-    env = D4RLEnv(args.environment.env_name)
+    env = D4RLEnv(args.env_name)
     action_space = env.action_space.shape[0]
     env.seed(args.seed)
     max_action_range = env.action_space.high[0]
     min_action_range = env.action_space.low[0]
     action_scale = (max_action_range - min_action_range) / 2
     action_loc = (max_action_range + min_action_range) / 2
-    agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, action_scale=action_scale, action_loc=action_loc)
-  agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.learning_rate)
+    agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, action_scale=action_scale, action_loc=action_loc, log_std_init=args.log_std_init)
+  agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.ppo_learning_rate)
   if args.imitation not in allowed_algorithms:
     raise ValueError('The imitation parameters from Hydra config needs to be one of: ' +str(allowed_algorithms))
   print("Using Algorithm: " + args.imitation)
 
   # Save results in one class
-  saver = MetricSaver(algorithm=args.imitation, env=args.environment.env_name)
+  saver = MetricSaver(algorithm=args.imitation, env=args.env_name)
 
  # Set up expert trajectories dataset
   expert_trajectories = env.get_dataset()
-  #expert_trajectories =TransitionDataset(flatten_list_dicts(torch.load(code_path+'/expert_trajectories.pth')))
+  #expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load(code_path+'/expert_trajectories.pth')))
   # Set up discriminator
   if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if args.imitation == 'AIRL':
@@ -176,15 +177,14 @@ def main(args: DictConfig) -> None:
 
           # Perform PPO updates
           for epoch in tqdm(range(args.ppo_epochs), leave=False):
-            ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff)
+            ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm)
 
     # Evaluate agent and plot metrics
     if step % args.evaluation_interval == 0:
-      rewards = evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv(args.environment.env_name), seed=args.seed)
+      rewards = evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv(args.env_name), seed=args.seed)
       npr = np.array(rewards)
       current_reward = npr.mean()
-      if current_reward > best_reward:
-        best_reward = current_reward
+      recent_rewards.append(current_reward)
       saver.add_test_step(step, rewards)
       saver.store_model_checkpoint(agent, step)
       metrics['test_steps'].append(step)
@@ -207,6 +207,7 @@ def main(args: DictConfig) -> None:
 
 
   env.close()
+  best_reward = sum(recent_rewards)/float(len(recent_rewards))
   return best_reward
 
 if __name__ == '__main__':
