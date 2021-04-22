@@ -17,8 +17,7 @@ from utils import flatten_list_dicts, lineplot, MetricSaver
 
 # TODO: Change ALL PPO params are non constant for different environment, add it to env config files
 # TODO: Set all PPO params based on existing papers model.
-# TODO: Hidden size should be enviornment specific from PPO, not AX sweep param
-# TODO: Add subsampling (set default 20) on the enviornment get_dataset()
+# TODO: add Orthogonal initialization (check PPO/TRPO impl paper)
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')

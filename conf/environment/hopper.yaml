@@ -17,7 +17,7 @@ env_name: hopper-bullet-medium-v0
   sde_sample_freq: 4 # with use_sde, related to the gSDE exploration scheme
   max_grad_norm: 0.5 # related to the gradient clipping (clip_grad_norm_ )
   vf_coef: 0.5 #coefficient in front of value(critic) loss update
-  learning_rate: !!float 3e-5 # Policy learning rate TODO: check if the learning rate is reduced over time.
+  learning_rate: !!float 3e-5 # Policy learning rate TODO: check if the learning rate is reduced over time. yes it is.
   use_sde: True
   clip_range: lin_0.4 # PPO clip range
   # Below args are used when creating the policy network. The important parts for us are
