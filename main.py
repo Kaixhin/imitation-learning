@@ -17,6 +17,10 @@ from utils import flatten_list_dicts, lineplot, MetricSaver
 
 # TODO: Change ALL PPO params are non constant for different environment, add it to env config files
 # TODO: Set all PPO params based on existing papers model.
+# TODO: Add following from paper: ppo clip 0.25, gain on linear policy layer 0.01, trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
+# TODO: Tanh Distribution instead of normal dist, add entropy member func based onAppendix B8
+# TODO: recompute advantage between each ppo update
+# TODO: change rmsprop alpha to 0.9 from default 0.99,
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')

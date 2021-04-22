@@ -7,7 +7,7 @@ steps: 2000000
 batch_size: 512
 discount: 0.99
 trace_decay: 0.92
-ppo_epochs: 20
+ppo_epochs: 20 #maybe 10 or 3 if emp study
 entropy_loss_coeff: 0.0
 max_grad_norm: 0.5 # related to the gradient clipping (clip_grad_norm_ )
 value_loss_coeff: 0.5 #coefficient in front of value(critic) loss update
