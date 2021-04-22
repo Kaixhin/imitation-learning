@@ -1,10 +1,9 @@
 # @package _global_
 env_type: ant
 env_name: ant-bullet-medium-v0
-
-# PPO param from rl-baseline3-zoo
+# PPO param from rl-baseline3-zoo this one contains old naming commented out
 #n_timesteps: !!float 2e6
-steps: !!float 2e6
+steps: 2000000
 #batch_size: 128
 #n_steps: 512
 batch_size: 512
@@ -14,12 +13,10 @@ discount: 0.99
 trace_decay: 0.9
 ppo_epochs: 20
 entropy_loss_coeff: 0.0
-sde_sample_freq: 4
 max_grad_norm: 0.5
 value_loss_coeff: 0.5
 ppo_learning_rate: !!float 3e-5
 ppo_clip: 0.4
 log_std_init: -1
-activation_fn: ReLU
 hidden_size: 256
 

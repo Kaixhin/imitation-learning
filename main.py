@@ -17,7 +17,6 @@ from utils import flatten_list_dicts, lineplot, MetricSaver
 
 # TODO: Change ALL PPO params are non constant for different environment, add it to env config files
 # TODO: Set all PPO params based on existing papers model.
-# TODO: add Orthogonal initialization (check PPO/TRPO impl paper)
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')
@@ -57,20 +56,10 @@ def main(args: DictConfig) -> None:
   os.makedirs('./results', exist_ok=True)
   print("Working directory for current run: " + os.getcwd())
   torch.manual_seed(args.seed)
-  if args.env_name in ['test', 'Pendulum']:
-    env = PendulumEnv()
-    env.seed(args.seed)
-    action_space = env.action_space.n
-    agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size)
-  else:
-    env = D4RLEnv(args.env_name)
-    action_space = env.action_space.shape[0]
-    env.seed(args.seed)
-    max_action_range = env.action_space.high[0]
-    min_action_range = env.action_space.low[0]
-    action_scale = (max_action_range - min_action_range) / 2
-    action_loc = (max_action_range + min_action_range) / 2
-    agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, action_scale=action_scale, action_loc=action_loc, log_std_init=args.log_std_init)
+  env = D4RLEnv(args.env_name)
+  action_space = env.action_space.shape[0]
+  env.seed(args.seed)
+  agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, log_std_init=args.log_std_init)
   agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.ppo_learning_rate)
   if args.imitation not in allowed_algorithms:
     raise ValueError('The imitation parameters from Hydra config needs to be one of: ' +str(allowed_algorithms))
@@ -195,7 +184,7 @@ def main(args: DictConfig) -> None:
   if args.save_trajectories:
     # Store trajectories from agent after training
     _, trajectories = evaluate_agent(agent, args.evaluation_episodes, return_trajectories=True,
-                                     Env=D4RLEnv(args.environment.env_name),  seed=args.seed, render=args.render)
+                                     Env=D4RLEnv(args.env_name),  seed=args.seed, render=args.render)
     torch.save(trajectories, os.path.join('./results', 'trajectories.pth'))
 
   # Save agent and metrics

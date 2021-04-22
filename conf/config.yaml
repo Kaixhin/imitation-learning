@@ -1,7 +1,7 @@
 defaults:
   - hydra/sweeper: ax
   - algorithm: AIRL
-  - environment: hopper # Check environment/hopper.yaml for PPO hyperparameters
+  - environment: ant # Check environment/hopper.yaml for PPO hyperparameters
 
 seed: 0
 #steps: 100000
@@ -31,9 +31,9 @@ render: true
 # ax sweep setting
 hydra:
   run:
-    dir: ./outputs/${environment.env_type}_${algorithm.imitation}
+    dir: ./outputs/${env_type}_${algorithm.imitation}
   sweep:
-    dir: ./outputs/sweeper_${environment.env_type}_${algorithm.imitation}
+    dir: ./outputs/sweeper_${env_type}_${algorithm.imitation}
   sweeper:
     #ax configuration. Same across all algorithms
     ax_config:

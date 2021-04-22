@@ -4,28 +4,16 @@ env_name: walker2d-bullet-medium-v0
 
 
 # PPO hyperparams from rl-baseline3-zoo
-
-Walker2DBulletEnv-v0:
-  env_wrapper: sb3_contrib.common.wrappers.TimeFeatureWrapper
-  normalize: true
-  n_envs: 16
-  n_timesteps: !!float 2e6
-  policy: 'MlpPolicy'
-  batch_size: 128
-  n_steps: 512
-  gamma: 0.99
-  gae_lambda: 0.92
-  n_epochs: 20
-  ent_coef: 0.0
-  sde_sample_freq: 4
-  max_grad_norm: 0.5
-  vf_coef: 0.5
-  learning_rate: !!float 3e-5
-  use_sde: True
-  clip_range: lin_0.4
-  policy_kwargs: "dict(log_std_init=-2,
-                       ortho_init=False,
-                       activation_fn=nn.ReLU,
-                       net_arch=[dict(pi=[256, 256], vf=[256, 256])]
-                       )"
+steps: 2000000
+batch_size: 512
+discount: 0.99
+trace_decay: 0.92
+ppo_epochs: 20
+entropy_loss_coeff: 0.0
+max_grad_norm: 0.5
+value_loss__coeff: 0.5
+ppo_learning_rate: !!float 3e-5
+ppo_clip: 0.4
+log_std_init: -2
+hidden_size: 256
 

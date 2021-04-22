@@ -1,5 +1,4 @@
 defaults:
-  - hydra/sweeper: ax
   - algorithm: AIRL
   - environment: hopper
 

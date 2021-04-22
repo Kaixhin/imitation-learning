@@ -44,24 +44,17 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0, action_scale=1.0, action_loc=-1.0, log_std_init=-0.5, activation_function=nn.Tanh(), ortho_init=True):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0,log_std_init=-0.5, activation_function=nn.Tanh(), ortho_init=True):
     super().__init__()
-
     self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, ortho_init=ortho_init, dropout=dropout)
-
     log_std = log_std_init * np.ones(action_size, dtype=np.float32)
     self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
-    self.loc = action_loc
-    self.scale = action_scale
-    #_orthogonal_initialization(self)
 
   def forward(self, state):
     std = torch.exp(self.log_std)
     mu = self.actor(state)
     normal = Independent(Normal(mu, std), 1)
-    #policy = TransformedDistribution(normal, [TanhTransform(), AffineTransform(loc=self.loc, scale=self.scale)])
     return normal
-    #normal.entropy() # Needs double-check with Kai-san can we just take normals entropy term for this?
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
