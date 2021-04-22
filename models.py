@@ -100,7 +100,7 @@ class Critic(nn.Module):
 class ActorCritic(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0, log_std_init=-0.5, ortho_init=True):
     super().__init__()
-    self.activation_function = nn.ReLU()
+    self.activation_function = nn.Tanh()
     self.actor = Actor(state_size, action_size, hidden_size, action_scale=action_scale, action_loc=action_loc, log_std_init=log_std_init, activation_function=self.activation_function, ortho_init=ortho_init)
     self.critic = Critic(state_size, hidden_size, activation_function=self.activation_function, ortho_init=ortho_init)
 
