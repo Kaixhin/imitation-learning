@@ -7,7 +7,7 @@ from torch.nn import functional as F
 import numpy as np
 
 
-def create_fcnn_layer(state_size, hidden_size, output_size, activation_function, dropout=0, ortho_init=True):
+def create_fcnn_layer(state_size, hidden_size, output_size, activation_function, gain=1.0, dropout=0, ortho_init=True):
   network_dims = (state_size, hidden_size, hidden_size)
   network_layers = []
 
@@ -21,7 +21,7 @@ def create_fcnn_layer(state_size, hidden_size, output_size, activation_function,
     network_layers.append(activation_function)
   final_layer = nn.Linear(network_dims[-1], output_size)
   if ortho_init:
-    nn.init.orthogonal_(final_layer.weight, gain=nn.init.calculate_gain('linear'))
+    nn.init.orthogonal_(final_layer.weight, gain=gain)
   network_layers.append(final_layer)
   return nn.Sequential(*network_layers)
 
@@ -44,9 +44,9 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0,log_std_init=-0.5, activation_function=nn.Tanh(), ortho_init=True):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh(), ortho_init=True):
     super().__init__()
-    self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, ortho_init=ortho_init, dropout=dropout)
+    self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, gain=0.01, ortho_init=ortho_init, dropout=dropout)
     log_std = log_std_init * np.ones(action_size, dtype=np.float32)
     self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
 
