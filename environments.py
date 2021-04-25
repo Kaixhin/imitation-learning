@@ -51,13 +51,19 @@ class D4RLEnv():
     if envname not in d4rl_envnames:
       raise NameError("The given environment name is not part of D4RL Pybullet. use one of the following: \n" + str(d4rl_envnames))
     self.env = gym.make(envname)
+    self.min_action_range = self.env.action_space.low[0]
+    self.max_action_range = self.env.action_space.high[0]
+    self.action_scale = (self.max_action_range - self.min_action_range) / 2
+    self.action_loc = (self.max_action_range + self.min_action_range) / 2
 
   def reset(self):
     state = self.env.reset()
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
 
   def step(self, action):
-    state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
+    """Assumes action is between [-1, 1], and rescales it accordingly"""
+    scaled_action = self.action_scale * action[0].detach().numpy() + self.action_loc # Remove batch dimension from action
+    state, reward, terminal, _ = self.env.step(scaled_action)
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0), reward, terminal  # Add batch dimension to state
 
   def seed(self, seed):

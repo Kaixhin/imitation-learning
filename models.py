@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torch.distributions import Categorical, Normal, Independent, TransformedDistribution
+from torch.distributions import Categorical, Normal, Independent, TransformedDistribution, Distribution
 from torch.distributions.transforms import AffineTransform, TanhTransform
 from torch.nn import functional as F
 
@@ -42,9 +42,40 @@ def _squared_distance(x, y):
 def _gaussian_kernel(x, y, gamma=1):
   return torch.exp(-gamma * _squared_distance(x, y))
 
+class TanhNormal(Distribution):
+    """Copied from Kaixhi"""
+    def __init__(self, loc, scale):
+        super().__init__()
+        self.normal = Independent(Normal(loc, scale), 1)
+
+    def sample(self):
+        return torch.tanh(self.normal.sample())
+
+    # samples with re-parametrization trick (differentiable)
+    def rsample(self):
+        return torch.tanh(self.normal.rsample())
+
+    # Calculates log probability of value using the change-of-variables technique
+    # (uses log1p = log(1 + x) for extra numerical stability)
+    def log_prob(self, value):
+        #inv_value = TanhTransform().inv(value)
+        inv_value = (torch.log1p(value) - torch.log1p(-value)) / 2  # artanh(y)
+        # log p(f^-1(y)) + log |det(J(f^-1(y)))|
+        return self.normal.log_prob(inv_value) - torch.log1p(-inv_value.pow(2) + 1e-6).sum(dim=1)
+        #return self.normal.log_prob(inv_value) - torch.log1p(-value.pow(2) + 1e-6).sum(dim=1)
+
+    def entropy(self):
+        raise NotImplemented
+
+    @property
+    def mean(self):
+        return torch.tanh(self.normal.mean)
+
+    def get_std(self):
+        return self.normal.stddev
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh(), ortho_init=True):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh(), action_scale=1.0, action_loc=0, ortho_init=True):
     super().__init__()
     self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, gain=0.01, ortho_init=ortho_init, dropout=dropout)
     log_std = log_std_init * np.ones(action_size, dtype=np.float32)

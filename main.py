@@ -12,15 +12,15 @@ from environments import D4RLEnv, PendulumEnv
 from evaluation import evaluate_agent
 from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, indicate_absorbing, ppo_update, target_estimation_update
-from utils import flatten_list_dicts, lineplot, MetricSaver
-
+from utils import flatten_list_dicts, lineplot
 
 # TODO: Change ALL PPO params are non constant for different environment, add it to env config files
 # TODO: Set all PPO params based on existing papers model.
-# TODO: Add following from paper: ppo clip 0.25, gain on linear policy layer 0.01, trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
+# TODO: Add following from paper: ppo clip 0.25, gain on linear policy layer 0.01,
+# TODO: trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
 # TODO: Tanh Distribution instead of normal dist, add entropy member func based onAppendix B8
 # TODO: recompute advantage between each ppo update
-# TODO: change rmsprop alpha to 0.9 from default 0.99,
+# DONE: change rmsprop alpha to 0.9 from default 0.99,
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')
@@ -52,7 +52,7 @@ parser.add_argument('--nonnegative-margin', type=float, default=0, metavar='β',
 """
 
 code_path = os.getcwd()
-allowed_algorithms = ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC']
+allowed_algorithms = ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
 # Set up environment and models
 @hydra.main(config_path='conf', config_name='config')
 def main(args: DictConfig) -> None:
@@ -62,15 +62,18 @@ def main(args: DictConfig) -> None:
   torch.manual_seed(args.seed)
   env = D4RLEnv(args.env_name)
   action_space = env.action_space.shape[0]
+  min_action_range = env.action_space.low[0]
+  max_action_range = env.action_space.high[0]
+  action_scale = (max_action_range - min_action_range) / 2
+  action_loc = (max_action_range + min_action_range) / 2
   env.seed(args.seed)
   agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, log_std_init=args.log_std_init)
-  agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.ppo_learning_rate)
+  agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.ppo_learning_rate, alpha=0.9)
   if args.imitation not in allowed_algorithms:
     raise ValueError('The imitation parameters from Hydra config needs to be one of: ' +str(allowed_algorithms))
   print("Using Algorithm: " + args.imitation)
 
   # Save results in one class
-  saver = MetricSaver(algorithm=args.imitation, env=args.env_name)
 
  # Set up expert trajectories dataset
   expert_trajectories = env.get_dataset()
@@ -124,7 +127,6 @@ def main(args: DictConfig) -> None:
 
       if terminal:
         # Store metrics and reset environment
-        saver.add_train_step(step, episode_return)
         metrics['train_steps'].append(step)
         metrics['train_returns'].append([episode_return])
         pbar.set_description('Step: %i | Return: %f' % (step, episode_return))
@@ -177,8 +179,6 @@ def main(args: DictConfig) -> None:
       npr = np.array(rewards)
       current_reward = npr.mean()
       recent_rewards.append(current_reward)
-      saver.add_test_step(step, rewards)
-      saver.store_model_checkpoint(agent, step)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(rewards)
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
@@ -193,7 +193,6 @@ def main(args: DictConfig) -> None:
 
   # Save agent and metrics
   torch.save(agent.state_dict(), os.path.join('results', 'agent.pth'))
-  saver.save_data(os.path.join('./results', 'result_data.pth'))
   if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), os.path.join('results', 'discriminator.pth'))
   torch.save(metrics, os.path.join('results', 'metrics.pth'))
 
