@@ -58,19 +58,21 @@ def compute_advantages(trajectories, next_value, discount, trace_decay):
   trajectories['advantages'] = (trajectories['advantages'] - trajectories['advantages'].mean()) / (trajectories['advantages'].std() + 1e-8)
 
 # Performs one PPO update (assumes trajectories for first epoch are attached to agent)
-def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss_coeff=1, entropy_reg_coeff=1, max_grad_norm=1):
+def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss_coeff=1, entropy_reg_coeff=1, max_grad_norm=1, discount=0.99, trace_decay=0.9):
   # Recalculate outputs for subsequent iterations
   if epoch > 0:
     policy, trajectories['values'] = agent(trajectories['states'])
-    trajectories['log_prob_actions'], trajectories['entropies'] = policy.log_prob(trajectories['actions'].detach()), policy.entropy()
+    compute_advantages(trajectories, trajectories['values'], discount, trace_decay)
+    trajectories['log_prob_actions'] = policy.log_prob(trajectories['actions'].detach())
+    #trajectories['entropies'] = policy.entropy()
 
   policy_ratio = (trajectories['log_prob_actions'] - trajectories['old_log_prob_actions']).exp()
   policy_loss = -torch.min(policy_ratio * trajectories['advantages'], torch.clamp(policy_ratio, min=1 - ppo_clip, max=1 + ppo_clip) * trajectories['advantages']).mean()  # Update the policy by maximising the clipped PPO objective
   value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])  # Fit value function by regression on mean squared error
-  entropy_reg = -trajectories['entropies'].mean()  # Add entropy regularisation
+  #entropy_reg = -trajectories['entropies'].mean()  # Add entropy regularisation
   
   agent_optimiser.zero_grad(set_to_none=True)
-  (policy_loss + value_loss_coeff * value_loss + entropy_reg_coeff * entropy_reg).backward()
+  (policy_loss + value_loss_coeff * value_loss).backward() # + entropy_reg_coeff * entropy_reg
   clip_grad_norm_(agent.parameters(), max_grad_norm)  # Clamp norm of gradients
   agent_optimiser.step()
 

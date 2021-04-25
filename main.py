@@ -166,12 +166,10 @@ def main(args: DictConfig) -> None:
 
           # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
           compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)
-          # Normalise advantages
-          policy_trajectories['advantages'] = (policy_trajectories['advantages'] - policy_trajectories['advantages'].mean()) / (policy_trajectories['advantages'].std() + 1e-8)
 
           # Perform PPO updates
           for epoch in tqdm(range(args.ppo_epochs), leave=False):
-            ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm)
+            ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm, args.discount, args.trace_decay)
 
     # Evaluate agent and plot metrics
     if step % args.evaluation_interval == 0:
