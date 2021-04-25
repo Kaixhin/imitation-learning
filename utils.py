@@ -26,6 +26,3 @@ def lineplot(x, y, filename, xaxis='Steps', yaxis='Returns'):
   plt.ylabel(yaxis)
   plt.savefig(os.path.join('./results', filename + '.png'))
   plt.close()
-
-
-

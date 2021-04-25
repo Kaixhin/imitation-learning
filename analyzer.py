@@ -1,11 +1,15 @@
 import argparse
+import os
+
 import seaborn
+
 from utils import MetricSaver
+
+
 parser = argparse.ArgumentParser(description='IL')
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='Random seed')
 parser.add_argument('--save', action='store_true', default=False, help='Store the results of analytics rather than plottng it')
 parser.add_argument('--save-folder', type=str, default='./analytics_result/' )
-import os
 args = parser.parse_args()
 
 

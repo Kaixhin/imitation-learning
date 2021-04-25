@@ -20,6 +20,7 @@ from utils import flatten_list_dicts, lineplot
 # TODO: trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
 # TODO: Tanh Distribution instead of normal dist, add entropy member func based onAppendix B8
 # TODO: recompute advantage between each ppo update
+# TODO: Change confs to conf/agent/<agent>.conf structure with var parsing per env
 # DONE: change rmsprop alpha to 0.9 from default 0.99,
 # Setup
 """
@@ -61,13 +62,9 @@ def main(args: DictConfig) -> None:
   print("Working directory for current run: " + os.getcwd())
   torch.manual_seed(args.seed)
   env = D4RLEnv(args.env_name)
-  action_space = env.action_space.shape[0]
-  min_action_range = env.action_space.low[0]
-  max_action_range = env.action_space.high[0]
-  action_scale = (max_action_range - min_action_range) / 2
-  action_loc = (max_action_range + min_action_range) / 2
+  action_size = env.action_space.shape[0]
   env.seed(args.seed)
-  agent = ActorCritic(env.observation_space.shape[0], action_space, args.hidden_size, log_std_init=args.log_std_init)
+  agent = ActorCritic(env.observation_space.shape[0], action_size, args.hidden_size, log_std_init=args.log_std_init)
   agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.ppo_learning_rate, alpha=0.9)
   if args.imitation not in allowed_algorithms:
     raise ValueError('The imitation parameters from Hydra config needs to be one of: ' +str(allowed_algorithms))
@@ -81,15 +78,15 @@ def main(args: DictConfig) -> None:
   # Set up discriminator
   if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if args.imitation == 'AIRL':
-      discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, args.hidden_size, args.discount, state_only=args.state_only)
+      discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, args.hidden_size, args.discount, state_only=args.state_only)
     elif args.imitation == 'DRIL':
-      discriminator = Actor(env.observation_space.shape[0], action_space, args.hidden_size, dropout=0.1)
+      discriminator = Actor(env.observation_space.shape[0], action_size, args.hidden_size, dropout=0.1)
     elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, args.hidden_size, state_only=args.state_only, forward_kl=args.imitation == 'FAIRL')
+      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, args.hidden_size, state_only=args.state_only, forward_kl=args.imitation == 'FAIRL')
     elif args.imitation == 'GMMIL':
-      discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, state_only=args.state_only)
+      discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, state_only=args.state_only)
     elif args.imitation == 'RED':
-      discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_space, args.hidden_size, state_only=args.state_only)
+      discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, args.hidden_size, state_only=args.state_only)
     if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
       discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
   # Metrics

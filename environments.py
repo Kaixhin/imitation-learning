@@ -5,11 +5,11 @@ import torch
 import numpy as np
 import d4rl_pybullet
 from training import TransitionDataset
+
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
-#
 
-# Test environment for testing the code.
+# Test environment for testing the code
 class PendulumEnv():
   def __init__(self):
     self.env = gym.make('Pendulum-v0')
@@ -96,17 +96,10 @@ class D4RLEnv():
     dataset_out['actions'] = torch.as_tensor(dataset['actions'][:-1], dtype=dtype)
     dataset_out['terminals'] = torch.as_tensor(dataset['terminals'][:-1], dtype=dtype)
     if size > 0 and size < N:
-      dataset_out['rewards'] = dataset_out['rewards'][0:size]
-      dataset_out['states'] = dataset_out['states'][0:size]
-      dataset_out['next_states'] = dataset_out['next_states'][0:size]
-      dataset_out['actions'] = dataset_out['actions'][0:size]
-      dataset_out['terminals'] = dataset_out['terminals'][0:size]
+      for key in dataset_out.keys():
+        dataset_out[key] = dataset_out[key][0:size]
     if subsample > 0:
-      dataset_out['rewards'] = dataset_out['rewards'][0::subsample]
-      dataset_out['states'] = dataset_out['states'][0::subsample]
-      dataset_out['next_states'] = dataset_out['next_states'][0::subsample]
-      dataset_out['actions'] = dataset_out['actions'][0::subsample]
-      dataset_out['terminals'] = dataset_out['terminals'][0::subsample]
+      for key in dataset_out.keys():
+        dataset_out[key] = dataset_out[key][0::subsample]
 
     return TransitionDataset(dataset_out)
-
