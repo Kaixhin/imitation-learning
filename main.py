@@ -115,7 +115,7 @@ def main(args: DictConfig) -> None:
     if args.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
       policy, value = agent(state)
-      action = torch.clamp(policy.sample(), min=min_action_range, max=max_action_range) #To let normal work right now
+      action = policy.sample()
       log_prob_action, entropy = policy.log_prob(action), policy.entropy()
       next_state, reward, terminal = env.step(action)
       episode_return += reward
