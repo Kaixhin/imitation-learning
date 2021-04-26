@@ -1,8 +1,7 @@
 defaults:
   - hydra/sweeper: ax
-  - algorithm: AIRL
-  - environment: ant # Check environment/hopper.yaml for PPO hyperparameters
-
+  - algorithm: PPO #AIRL
+  - environment: hopper # Check environment/hopper.yaml for PPO hyperparameters
 seed: 0
 #steps: 100000
 #discount: 0.99
@@ -25,7 +24,7 @@ imitation_replay_size: 4
 r1_reg_coeff: 1.0
 pos_class_prior: 0.5
 nonnegative_margin: 0.0
-render: true
+render: false
 # PPO param from Stable baseline zoo
 
 # ax sweep setting

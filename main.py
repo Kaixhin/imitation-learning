@@ -132,44 +132,42 @@ def main(args: DictConfig) -> None:
         pbar.set_description('Step: %i | Return: %f' % (step, episode_return))
         state, episode_return = env.reset(), 0
 
-        if len(trajectories) >= args.batch_size:
-          policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
-          trajectories = []  # Clear the set of trajectories
+      if len(trajectories) >= args.batch_size:
+        policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
+        trajectories = []  # Clear the set of trajectories
 
-          if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
-            # Train discriminator and predict rewards
-            if args.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-              # Use a replay buffer of previous trajectories to prevent overfitting to current policy
-              policy_trajectory_replay_buffer.append(policy_trajectories)
-              policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
-              for _ in tqdm(range(args.imitation_epochs), leave=False):
-                adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size, args.absorbing, args.r1_reg_coeff, args.pos_class_prior, args.nonnegative_margin)
+        if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
+          # Train discriminator and predict rewards
+          if args.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
+            # Use a replay buffer of previous trajectories to prevent overfitting to current policy
+            policy_trajectory_replay_buffer.append(policy_trajectories)
+            policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
+            for _ in tqdm(range(args.imitation_epochs), leave=False):
+              adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size, args.absorbing, args.r1_reg_coeff, args.pos_class_prior, args.nonnegative_margin)
 
-            # Predict rewards
-            states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
-            if args.absorbing: states, actions, next_states = indicate_absorbing(states, actions, policy_trajectories['terminals'], next_states)
+          # Predict rewards
+          states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
+          if args.absorbing: states, actions, next_states = indicate_absorbing(states, actions, policy_trajectories['terminals'], next_states)
 
-            with torch.no_grad():
-              if args.imitation == 'AIRL':
-                policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'].exp(), terminals)
-              elif args.imitation == 'DRIL':
-                # Note that by default DRIL also includes behavioural cloning online
-                policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
-              elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
-                policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
-              elif args.imitation == 'GMMIL':
-                expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
-                if args.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
-                policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
-              elif args.imitation == 'RED':
-                policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
+          with torch.no_grad():
+            if args.imitation == 'AIRL':
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'].exp(), terminals)
+            elif args.imitation == 'DRIL':
+              # Note that by default DRIL also includes behavioural cloning online
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
+            elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
+            elif args.imitation == 'GMMIL':
+              expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
+              if args.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
+            elif args.imitation == 'RED':
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
 
-          # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-          compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)
-
-          # Perform PPO updates
-          for epoch in tqdm(range(args.ppo_epochs), leave=False):
-            ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm, args.discount, args.trace_decay)
+        # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
+        # Perform PPO updates
+        for epoch in tqdm(range(args.ppo_epochs), leave=False):
+          ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm, state, args.discount, args.trace_decay)
 
     # Evaluate agent and plot metrics
     if step % args.evaluation_interval == 0:
