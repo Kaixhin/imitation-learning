@@ -57,6 +57,7 @@ def compute_advantages(trajectories, next_value, discount, trace_decay):
   # Normalise the advantage
   trajectories['advantages'] = (trajectories['advantages'] - trajectories['advantages'].mean()) / (trajectories['advantages'].std() + 1e-8)
 
+
 # Performs one PPO update (assumes trajectories for first epoch are attached to agent)
 def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss_coeff=1, entropy_reg_coeff=1, max_grad_norm=1, last_state=0.0, discount=0.99, trace_decay=0.9):
   # Recalculate outputs for subsequent iterations

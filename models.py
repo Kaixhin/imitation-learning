@@ -7,21 +7,19 @@ from torch.nn import functional as F
 import numpy as np
 
 
-def create_fcnn_layer(state_size, hidden_size, output_size, activation_function, gain=1.0, dropout=0, ortho_init=True):
+def create_fcnn_layer(state_size, hidden_size, output_size, activation_function, gain=1.0, dropout=0):
   network_dims = (state_size, hidden_size, hidden_size)
   network_layers = []
 
   for n in range(len(network_dims) - 1):
     layer = nn.Linear(network_dims[n], network_dims[n + 1])
-    if ortho_init:
-      nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function._get_name().lower()))
+    nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function._get_name().lower()))
     network_layers.append(layer)
     if dropout > 0:
       network_layers.append(nn.Dropout(p=dropout))
     network_layers.append(activation_function)
   final_layer = nn.Linear(network_dims[-1], output_size)
-  if ortho_init:
-    nn.init.orthogonal_(final_layer.weight, gain=gain)
+  nn.init.orthogonal_(final_layer.weight, gain=gain)
   network_layers.append(final_layer)
   return nn.Sequential(*network_layers)
 
@@ -75,9 +73,9 @@ class TanhNormal(Distribution):
         return self.normal.stddev
 
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh(), action_scale=1.0, action_loc=0, ortho_init=True):
+  def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh()):
     super().__init__()
-    self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, gain=0.01, ortho_init=ortho_init, dropout=dropout)
+    self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, gain=0.01, dropout=dropout)
     log_std = log_std_init * np.ones(action_size, dtype=np.float32)
     self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
 
@@ -112,9 +110,9 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, hidden_size, activation_function=nn.Tanh(), ortho_init=True):
+  def __init__(self, state_size, hidden_size, activation_function=nn.Tanh()):
     super().__init__()
-    self.critic = create_fcnn_layer(state_size, hidden_size, output_size=1, activation_function=activation_function, ortho_init=ortho_init)
+    self.critic = create_fcnn_layer(state_size, hidden_size, output_size=1, activation_function=activation_function)
 
   def forward(self, state):
     value = self.critic(state).squeeze(dim=1)
@@ -122,11 +120,11 @@ class Critic(nn.Module):
 
 
 class ActorCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0, log_std_init=-0.5, ortho_init=True):
+  def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0, log_std_init=-0.5):
     super().__init__()
     self.activation_function = nn.Tanh()
-    self.actor = Actor(state_size, action_size, hidden_size, action_scale=action_scale, action_loc=action_loc, log_std_init=log_std_init, activation_function=self.activation_function, ortho_init=ortho_init)
-    self.critic = Critic(state_size, hidden_size, activation_function=self.activation_function, ortho_init=ortho_init)
+    self.actor = Actor(state_size, action_size, hidden_size, log_std_init=log_std_init, activation_function=self.activation_function)
+    self.critic = Critic(state_size, hidden_size, activation_function=self.activation_function)
 
   def forward(self, state):
     policy, value = self.actor(state), self.critic(state)
