@@ -3,8 +3,6 @@ import os
 
 import seaborn
 
-from utils import MetricSaver
-
 
 parser = argparse.ArgumentParser(description='IL')
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='Random seed')
