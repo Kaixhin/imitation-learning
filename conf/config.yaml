@@ -12,8 +12,8 @@ seed: 0
 #entropy_loss_coeff: 0.5
 learning_rate: 0.001
 #batch_size: 1024
-evaluation_interval: 1000
-evaluation_episodes: 50
+evaluation_interval: 20000
+evaluation_episodes: 30
 save_trajectories: false
 imitation: ${algorithm.imitation}
 state_only: false
