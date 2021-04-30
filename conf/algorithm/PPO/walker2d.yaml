@@ -12,7 +12,7 @@ trace_decay: 0.9
 ppo_epochs: 10
 entropy_loss_coeff: 0.0
 max_grad_norm: 0.5
-value_loss__coeff: 0.5
+value_loss_coeff: 0.5
 ppo_learning_rate: !!float 3e-5
 ppo_clip: 0.25
 log_std_init: -2
