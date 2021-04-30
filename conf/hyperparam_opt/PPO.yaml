@@ -1,0 +1,26 @@
+# @package _global_
+hydra:
+  sweeper:
+    _target_: hydra_plugins.hydra_ax_sweeper.ax_sweeper.AxSweeper
+    #ax configuration. Same across all algorithms
+    ax_config:
+      max_trials: 20
+
+      experiment:
+        minimize: false
+
+      early_stop:
+        max_epochs_without_improvement: 5
+
+      is_noisy: true
+
+      params:
+        batch_size:
+          type: choice
+          values: [ 256, 512, 1024, 2048 ]
+        ppo_learning_rate:
+          type: choice
+          values: [ 0.00003, 0.0003 ]
+        ppo_epochs:
+          type: choice
+          values: [5, 10, 20]

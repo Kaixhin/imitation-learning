@@ -1,6 +1,7 @@
 defaults:
-  - hydra/sweeper: ax
   - algorithm: PPO/hopper #AIRL
+  - hydra/sweeper: ax
+  - hyperparam_opt: PPO 
 seed: 0
 #steps: 100000
 #discount: 0.99
