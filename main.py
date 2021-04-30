@@ -90,9 +90,10 @@ def main(cfg: DictConfig) -> None:
 
 
   # Main training loop
-  state, terminal, episode_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
+  state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
+    # Perform initial training (if needed)
     if cfg.imitation in ['BC', 'DRIL', 'RED']:
       if step == 1:
         for _ in tqdm(range(cfg.imitation_epochs), leave=False):
@@ -113,24 +114,25 @@ def main(cfg: DictConfig) -> None:
       with torch.no_grad():
         policy, value = agent(state)
         action = policy.sample()
-        log_prob_action = policy.log_prob(action) #, policy.entropy()
+        log_prob_action = policy.log_prob(action)  # TODO: policy.entropy()?
         next_state, reward, terminal = env.step(action)
-        episode_return += reward
-        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value ))#, #entropies=entropy))
+        train_return += reward
+        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))#, #entropies=entropy))
         state = next_state
 
       if terminal:
         # Store metrics and reset environment
         metrics['train_steps'].append(step)
-        metrics['train_returns'].append([episode_return])
-        pbar.set_description('Step: %i | Return: %f' % (step, episode_return))
-        state, episode_return = env.reset(), 0
+        metrics['train_returns'].append([train_return])
+        pbar.set_description('Step: %i | Return: %f' % (step, train_return))
+        state, train_return = env.reset(), 0
 
+      # Update models
       if len(trajectories) >= cfg.batch_size:
         policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
 
         if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
-          # Train discriminator and predict rewards
+          # Train discriminator
           if cfg.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
             # Use a replay buffer of previous trajectories to prevent overfitting to current policy
             policy_trajectory_replay_buffer.append(policy_trajectories)
@@ -140,13 +142,12 @@ def main(cfg: DictConfig) -> None:
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
-          if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, policy_trajectories['terminals'], next_states)
-
+          if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
           with torch.no_grad():
             if cfg.imitation == 'AIRL':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'].exp(), terminals)
             elif cfg.imitation == 'DRIL':
-              # Note that by default DRIL also includes behavioural cloning online
+              # TODO: By default DRIL also includes behavioural cloning online?
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
             elif cfg.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
@@ -157,32 +158,27 @@ def main(cfg: DictConfig) -> None:
             elif cfg.imitation == 'RED':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
 
-        # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-        compute_advantages(policy_trajectories, agent(state)[1], cfg.discount, cfg.trace_decay)
         # Perform PPO updates
         for epoch in tqdm(range(cfg.ppo_epochs), leave=False):
-          ppo_update(agent, policy_trajectories, agent_optimiser, cfg.ppo_clip, epoch, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm, state, cfg.discount, cfg.trace_decay)
-        agent.zero_grad(set_to_none=True)
-        policy_trajectories = []
-        trajectories = []
+          compute_advantages(policy_trajectories, agent(next_state)[1], cfg.discount, cfg.trace_decay)  # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
+          ppo_update(agent, policy_trajectories, agent_optimiser, cfg.ppo_clip, epoch, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm, cfg.discount, cfg.trace_decay)
+        trajectories, policy_trajectories = [], None
+    
+    
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0:
-      rewards = evaluate_agent(agent, cfg.evaluation.episodes, Env=D4RLEnv, env_name=cfg.env_name, seed=cfg.seed)
-      npr = np.array(rewards)
-      current_reward = npr.mean()
-      recent_returns.append(current_reward)
+      test_returns = evaluate_agent(agent, cfg.evaluation.episodes, Env=D4RLEnv, env_name=cfg.env_name, seed=cfg.seed)
+      recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
-      metrics['test_returns'].append(rewards)
+      metrics['test_returns'].append(test_returns)
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
       if cfg.imitation != 'BC': lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, return_trajectories=True,
-                                     Env=D4RLEnv(cfg.env_name),  seed=cfg.seed, render=cfg.render)
+    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, return_trajectories=True, Env=PendulumEnv() if cfg.env_type == 'pendulum' else D4RLEnv(cfg.env_name), seed=cfg.seed, render=cfg.render)
     torch.save(trajectories, 'trajectories.pth')
-
   # Save agent and metrics
   torch.save(agent.state_dict(), 'agent.pth')
   if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
@@ -190,8 +186,7 @@ def main(cfg: DictConfig) -> None:
 
 
   env.close()
-  best_reward = sum(recent_returns) / float(cfg.evaluation.average_window)
-  return best_reward
+  return sum(recent_returns) / float(cfg.evaluation.average_window)
 
 if __name__ == '__main__':
   main()
