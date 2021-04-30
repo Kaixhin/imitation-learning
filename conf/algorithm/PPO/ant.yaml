@@ -1,4 +1,7 @@
 # @package _global_
+env_type: ant
+env_name: ant-bullet-medium-v0
+
 imitation: PPO
 # PPO param from rl-baseline3-zoo this one contains old naming commented out
 steps: 2000000
