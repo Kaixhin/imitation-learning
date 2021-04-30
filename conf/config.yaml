@@ -1,7 +1,7 @@
 defaults:
-  - hydra/sweeper: ax
-  - algorithm: PPO #AIRL
   - environment: hopper # Check environment/hopper.yaml for PPO hyperparameters
+  - hydra/sweeper: ax
+  - algorithm: PPO/${defaults.0.environment} #AIRL
 seed: 0
 #steps: 100000
 #discount: 0.99
@@ -15,7 +15,6 @@ learning_rate: 0.001
 evaluation_interval: 1000
 evaluation_episodes: 50
 save_trajectories: false
-imitation: ${algorithm.imitation}
 state_only: false
 absorbing: false
 imitation_epochs: 5
@@ -30,9 +29,9 @@ render: false
 # ax sweep setting
 hydra:
   run:
-    dir: ./outputs/${env_type}_${algorithm.imitation}
+    dir: ./outputs/${env_type}_${imitation}/${now:%m-%d-%H-%M}
   sweep:
-    dir: ./outputs/sweeper_${env_type}_${algorithm.imitation}
+    dir: ./outputs/sweeper_${env_type}_${imitation}/${now:%m-%d-%H-%M}
   sweeper:
     #ax configuration. Same across all algorithms
     ax_config:

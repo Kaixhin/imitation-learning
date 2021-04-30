@@ -1,16 +1,3 @@
 # @package _global_
 env_type: hopper
 env_name: hopper-bullet-medium-v0
-# PPO hyperparams
-steps: 2000000
-batch_size: 512
-discount: 0.99
-trace_decay: 0.9
-ppo_epochs: 10
-entropy_loss_coeff: 0.0
-max_grad_norm: 0.5 # related to the gradient clipping (clip_grad_norm_ )
-value_loss_coeff: 0.5 #coefficient in front of value(critic) loss update
-ppo_learning_rate: !!float 3e-5 # Policy learning rate
-ppo_clip: 0.25 # PPO clip range
-log_std_init: -2
-hidden_size: 256
