@@ -57,7 +57,8 @@ allowed_algorithms = ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED',
 # Set up environment and models
 @hydra.main(config_path='conf', config_name='config')
 def main(args: DictConfig) -> None:
-  recent_rewards = deque(maxlen=5) # Keeps track of the mean of recent rewards under training
+  window_size=5
+  recent_rewards = deque(maxlen=window_size) # Keeps track of the mean of recent rewards under training
   os.makedirs('./results', exist_ok=True)
   print("Working directory for current run: " + os.getcwd())
   torch.manual_seed(args.seed)
@@ -114,13 +115,14 @@ def main(args: DictConfig) -> None:
 
     if args.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
-      policy, value = agent(state)
-      action = policy.sample()
-      log_prob_action, entropy = policy.log_prob(action), policy.entropy()
-      next_state, reward, terminal = env.step(action)
-      episode_return += reward
-      trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value, entropies=entropy))
-      state = next_state
+      with torch.no_grad():
+        policy, value = agent(state)
+        action = policy.sample()
+        log_prob_action = policy.log_prob(action) #, policy.entropy()
+        next_state, reward, terminal = env.step(action)
+        episode_return += reward
+        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value ))#, #entropies=entropy))
+        state = next_state
 
       if terminal:
         # Store metrics and reset environment
@@ -131,7 +133,6 @@ def main(args: DictConfig) -> None:
 
       if len(trajectories) >= args.batch_size:
         policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
-        trajectories = []  # Clear the set of trajectories
 
         if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator and predict rewards
@@ -162,13 +163,16 @@ def main(args: DictConfig) -> None:
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
 
         # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
+        compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)
         # Perform PPO updates
         for epoch in tqdm(range(args.ppo_epochs), leave=False):
           ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm, state, args.discount, args.trace_decay)
-
+        agent.zero_grad(set_to_none=True)
+        policy_trajectories = []
+        trajectories = []
     # Evaluate agent and plot metrics
     if step % args.evaluation_interval == 0:
-      rewards = evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv(args.env_name), seed=args.seed)
+      rewards = evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv, env_name=args.env_name, seed=args.seed)
       npr = np.array(rewards)
       current_reward = npr.mean()
       recent_rewards.append(current_reward)
@@ -191,7 +195,7 @@ def main(args: DictConfig) -> None:
 
 
   env.close()
-  best_reward = sum(recent_rewards)/float(len(recent_rewards))
+  best_reward = sum(recent_rewards)/float(window_size)
   return best_reward
 
 if __name__ == '__main__':

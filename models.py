@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 from torch.distributions import Categorical, Normal, Independent, TransformedDistribution, Distribution
-from torch.distributions.transforms import AffineTransform, TanhTransform
+from torch.distributions.transforms import TanhTransform
 from torch.nn import functional as F
 
 import numpy as np
@@ -40,38 +40,6 @@ def _squared_distance(x, y):
 def _gaussian_kernel(x, y, gamma=1):
   return torch.exp(-gamma * _squared_distance(x, y))
 
-class TanhNormal(Distribution):
-    """Copied from Kaixhi"""
-    def __init__(self, loc, scale):
-        super().__init__()
-        self.normal = Independent(Normal(loc, scale), 1)
-
-    def sample(self):
-        return torch.tanh(self.normal.sample())
-
-    # samples with re-parametrization trick (differentiable)
-    def rsample(self):
-        return torch.tanh(self.normal.rsample())
-
-    # Calculates log probability of value using the change-of-variables technique
-    # (uses log1p = log(1 + x) for extra numerical stability)
-    def log_prob(self, value):
-        #inv_value = TanhTransform().inv(value)
-        inv_value = (torch.log1p(value) - torch.log1p(-value)) / 2  # artanh(y)
-        # log p(f^-1(y)) + log |det(J(f^-1(y)))|
-        return self.normal.log_prob(inv_value) - torch.log1p(-inv_value.pow(2) + 1e-6).sum(dim=1)
-        #return self.normal.log_prob(inv_value) - torch.log1p(-value.pow(2) + 1e-6).sum(dim=1)
-
-    def entropy(self):
-        raise NotImplemented
-
-    @property
-    def mean(self):
-        return torch.tanh(self.normal.mean)
-
-    def get_std(self):
-        return self.normal.stddev
-
 class Actor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh()):
     super().__init__()
@@ -79,10 +47,12 @@ class Actor(nn.Module):
     log_std = log_std_init * np.ones(action_size, dtype=np.float32)
     self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
 
-  def forward(self, state):
+  def forward(self, state, greedy=False):
     std = torch.exp(self.log_std)
     mu = self.actor(state)
-    normal = Independent(Normal(mu, std), 1)
+    if greedy:
+      return torch.tanh(mu)
+    normal = TransformedDistribution(Independent(Normal(mu, std), 1), TanhTransform())
     return normal
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
@@ -131,8 +101,8 @@ class ActorCritic(nn.Module):
     return policy, value
 
   def greedy_action(self, state):
-    policy = self.actor(state)
-    return policy.mean
+    policy_mean = self.actor(state, greedy=True)
+    return policy_mean
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
