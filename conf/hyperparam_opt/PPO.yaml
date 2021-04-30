@@ -1,7 +1,6 @@
 # @package _global_
 hydra:
   sweeper:
-    _target_: hydra_plugins.hydra_ax_sweeper.ax_sweeper.AxSweeper
     #ax configuration. Same across all algorithms
     ax_config:
       max_trials: 20
