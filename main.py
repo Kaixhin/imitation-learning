@@ -1,4 +1,3 @@
-import os
 from collections import deque
 import numpy as np
 import torch
@@ -6,7 +5,7 @@ from torch import optim
 from tqdm import tqdm
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from environments import D4RLEnv, PendulumEnv
 from evaluation import evaluate_agent
@@ -52,68 +51,64 @@ parser.add_argument('--nonnegative-margin', type=float, default=0, metavar='β',
 #args = parser.parse_args()
 """
 
-code_path = os.getcwd()
-allowed_algorithms = ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
-# Set up environment and models
 @hydra.main(config_path='conf', config_name='config')
-def main(args: DictConfig) -> None:
-  window_size=5
-  recent_rewards = deque(maxlen=window_size) # Keeps track of the mean of recent rewards under training
-  os.makedirs('./results', exist_ok=True)
-  print("Working directory for current run: " + os.getcwd())
-  torch.manual_seed(args.seed)
-  env = D4RLEnv(args.env_name)
-  action_size = env.action_space.shape[0]
-  env.seed(args.seed)
-  agent = ActorCritic(env.observation_space.shape[0], action_size, args.hidden_size, log_std_init=args.log_std_init)
-  agent_optimiser = optim.RMSprop(agent.parameters(), lr=args.ppo_learning_rate, alpha=0.9)
-  if args.imitation not in allowed_algorithms:
-    raise ValueError('The imitation parameters from Hydra config needs to be one of: ' +str(allowed_algorithms))
-  print("Using Algorithm: " + args.imitation)
+def main(cfg: DictConfig) -> None:
+  # Configuration check
+  assert cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
 
-  # Save results in one class
+  # General setup
+  np.random.seed(cfg.seed)
+  torch.manual_seed(cfg.seed)
 
- # Set up expert trajectories dataset
-  expert_trajectories = env.get_dataset()
-  #expert_trajectories = TransitionDataset(flatten_list_dicts(torch.load(code_path+'/expert_trajectories.pth')))
-  # Set up discriminator
-  if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
-    if args.imitation == 'AIRL':
-      discriminator = AIRLDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, args.hidden_size, args.discount, state_only=args.state_only)
-    elif args.imitation == 'DRIL':
-      discriminator = Actor(env.observation_space.shape[0], action_size, args.hidden_size, dropout=0.1)
-    elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, args.hidden_size, state_only=args.state_only, forward_kl=args.imitation == 'FAIRL')
-    elif args.imitation == 'GMMIL':
-      discriminator = GMMILDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, state_only=args.state_only)
-    elif args.imitation == 'RED':
-      discriminator = REDDiscriminator(env.observation_space.shape[0] + (1 if args.absorbing else 0), action_size, args.hidden_size, state_only=args.state_only)
-    if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=args.learning_rate)
+  # Set up environment
+  env = PendulumEnv() if cfg.env_type == 'pendulum' else D4RLEnv(cfg.env_name)
+  env.seed(cfg.seed)
+  expert_trajectories = env.get_dataset()  # Load expert trajectories dataset
+  state_size, action_size = env.state_space.shape[0], env.action_space.shape[0]
+  
+  # Set up agent
+  agent = ActorCritic(state_size, action_size, cfg.hidden_size, log_std_init=cfg.log_std_init)
+  agent_optimiser = optim.RMSprop(agent.parameters(), lr=cfg.ppo_learning_rate, alpha=0.9)  # TODO: agent_learning_rate
+  # Set up imitation learning components
+  if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
+    if cfg.imitation == 'AIRL':
+      discriminator = AIRLDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, cfg.discount, state_only=cfg.state_only)
+    elif cfg.imitation == 'DRIL':
+      discriminator = Actor(state_size, action_size, cfg.hidden_size, dropout=0.1)
+    elif cfg.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
+      discriminator = GAILDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, state_only=cfg.state_only, forward_kl=cfg.imitation == 'FAIRL')
+    elif cfg.imitation == 'GMMIL':
+      discriminator = GMMILDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, state_only=cfg.state_only)
+    elif cfg.imitation == 'RED':
+      discriminator = REDDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, state_only=cfg.state_only)
+    if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
+      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.learning_rate)  # TODO: il_learning_rate
+
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
+  recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
 
   # Main training loop
-  state, terminal, episode_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=args.imitation_replay_size)
-  pbar = tqdm(range(1, args.steps + 1), unit_scale=1, smoothing=0)
+  state, terminal, episode_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
+  pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
-    if args.imitation in ['BC', 'DRIL', 'RED']:
+    if cfg.imitation in ['BC', 'DRIL', 'RED']:
       if step == 1:
-        for _ in tqdm(range(args.imitation_epochs), leave=False):
-          if args.imitation == 'BC':
+        for _ in tqdm(range(cfg.imitation_epochs), leave=False):
+          if cfg.imitation == 'BC':
             # Perform behavioural cloning updates offline
-            behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, args.imitation_batch_size)
-          elif args.imitation == 'DRIL':
+            behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, cfg.imitation_batch_size)
+          elif cfg.imitation == 'DRIL':
             # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, args.imitation_batch_size)
+            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.imitation_batch_size)
             with torch.no_grad():
               discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
-          elif args.imitation == 'RED':
+          elif cfg.imitation == 'RED':
             # Train predictor network to match random target network
-            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, args.imitation_batch_size, args.absorbing)
+            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.imitation_batch_size, cfg.absorbing)
 
-    if args.imitation != 'BC':
+    if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
       with torch.no_grad():
         policy, value = agent(state)
@@ -131,71 +126,71 @@ def main(args: DictConfig) -> None:
         pbar.set_description('Step: %i | Return: %f' % (step, episode_return))
         state, episode_return = env.reset(), 0
 
-      if len(trajectories) >= args.batch_size:
+      if len(trajectories) >= cfg.batch_size:
         policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
 
-        if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
+        if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator and predict rewards
-          if args.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
+          if cfg.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
             # Use a replay buffer of previous trajectories to prevent overfitting to current policy
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
-            for _ in tqdm(range(args.imitation_epochs), leave=False):
-              adversarial_imitation_update(args.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, args.imitation_batch_size, args.absorbing, args.r1_reg_coeff, args.pos_class_prior, args.nonnegative_margin)
+            for _ in tqdm(range(cfg.imitation_epochs), leave=False):
+              adversarial_imitation_update(cfg.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.imitation_batch_size, cfg.absorbing, cfg.r1_reg_coeff, cfg.pos_class_prior, cfg.nonnegative_margin)
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
-          if args.absorbing: states, actions, next_states = indicate_absorbing(states, actions, policy_trajectories['terminals'], next_states)
+          if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, policy_trajectories['terminals'], next_states)
 
           with torch.no_grad():
-            if args.imitation == 'AIRL':
+            if cfg.imitation == 'AIRL':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'].exp(), terminals)
-            elif args.imitation == 'DRIL':
+            elif cfg.imitation == 'DRIL':
               # Note that by default DRIL also includes behavioural cloning online
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
-            elif args.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
+            elif cfg.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
-            elif args.imitation == 'GMMIL':
+            elif cfg.imitation == 'GMMIL':
               expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
-              if args.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
+              if cfg.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
-            elif args.imitation == 'RED':
+            elif cfg.imitation == 'RED':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
 
         # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-        compute_advantages(policy_trajectories, agent(state)[1], args.discount, args.trace_decay)
+        compute_advantages(policy_trajectories, agent(state)[1], cfg.discount, cfg.trace_decay)
         # Perform PPO updates
-        for epoch in tqdm(range(args.ppo_epochs), leave=False):
-          ppo_update(agent, policy_trajectories, agent_optimiser, args.ppo_clip, epoch, args.value_loss_coeff, args.entropy_loss_coeff, args.max_grad_norm, state, args.discount, args.trace_decay)
+        for epoch in tqdm(range(cfg.ppo_epochs), leave=False):
+          ppo_update(agent, policy_trajectories, agent_optimiser, cfg.ppo_clip, epoch, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm, state, cfg.discount, cfg.trace_decay)
         agent.zero_grad(set_to_none=True)
         policy_trajectories = []
         trajectories = []
     # Evaluate agent and plot metrics
-    if step % args.evaluation_interval == 0:
-      rewards = evaluate_agent(agent, args.evaluation_episodes, Env=D4RLEnv, env_name=args.env_name, seed=args.seed)
+    if step % cfg.evaluation.interval == 0:
+      rewards = evaluate_agent(agent, cfg.evaluation.episodes, Env=D4RLEnv, env_name=cfg.env_name, seed=cfg.seed)
       npr = np.array(rewards)
       current_reward = npr.mean()
-      recent_rewards.append(current_reward)
+      recent_returns.append(current_reward)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(rewards)
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
-      if args.imitation != 'BC': lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
+      if cfg.imitation != 'BC': lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
 
-  if args.save_trajectories:
+  if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, args.evaluation_episodes, return_trajectories=True,
-                                     Env=D4RLEnv(args.env_name),  seed=args.seed, render=args.render)
-    torch.save(trajectories, os.path.join('./results', 'trajectories.pth'))
+    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, return_trajectories=True,
+                                     Env=D4RLEnv(cfg.env_name),  seed=cfg.seed, render=cfg.render)
+    torch.save(trajectories, 'trajectories.pth')
 
   # Save agent and metrics
-  torch.save(agent.state_dict(), os.path.join('results', 'agent.pth'))
-  if args.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), os.path.join('results', 'discriminator.pth'))
-  torch.save(metrics, os.path.join('results', 'metrics.pth'))
+  torch.save(agent.state_dict(), 'agent.pth')
+  if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
+  torch.save(metrics, 'metrics.pth')
 
 
   env.close()
-  best_reward = sum(recent_rewards)/float(window_size)
+  best_reward = sum(recent_returns) / float(cfg.evaluation.average_window)
   return best_reward
 
 if __name__ == '__main__':
