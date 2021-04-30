@@ -3,3 +3,5 @@ env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
 
+
+imitation: GAIL

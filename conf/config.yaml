@@ -1,7 +1,6 @@
 defaults:
-  - environment: hopper # Check environment/hopper.yaml for PPO hyperparameters
   - hydra/sweeper: ax
-  - algorithm: PPO/${defaults.0.environment} #AIRL
+  - algorithm: PPO/hopper #AIRL
 seed: 0
 #steps: 100000
 #discount: 0.99

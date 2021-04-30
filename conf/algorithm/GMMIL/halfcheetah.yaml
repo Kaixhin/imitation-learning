@@ -2,3 +2,5 @@
 env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
+
+imitation: GMMIL
