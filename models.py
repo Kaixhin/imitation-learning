@@ -1,27 +1,11 @@
+import numpy as np
 import torch
 from torch import nn
-from torch.distributions import Categorical, Normal, Independent, TransformedDistribution, Distribution
+from torch.distributions import Categorical, Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import functional as F
 
-import numpy as np
-
-
-def create_fcnn_layer(state_size, hidden_size, output_size, activation_function, gain=1.0, dropout=0):
-  network_dims = (state_size, hidden_size, hidden_size)
-  network_layers = []
-
-  for n in range(len(network_dims) - 1):
-    layer = nn.Linear(network_dims[n], network_dims[n + 1])
-    nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function._get_name().lower()))
-    network_layers.append(layer)
-    if dropout > 0:
-      network_layers.append(nn.Dropout(p=dropout))
-    network_layers.append(activation_function)
-  final_layer = nn.Linear(network_dims[-1], output_size)
-  nn.init.orthogonal_(final_layer.weight, gain=gain)
-  network_layers.append(final_layer)
-  return nn.Sequential(*network_layers)
+ACTIVATION_FUNCTIONS = {'tanh': nn.Tanh, 'relu': nn.ReLU}
 
 
 # Concatenates the state and action (previously one-hot discrete version)
@@ -40,10 +24,32 @@ def _squared_distance(x, y):
 def _gaussian_kernel(x, y, gamma=1):
   return torch.exp(-gamma * _squared_distance(x, y))
 
+
+# TODO: Use for discriminators
+# Creates a sequential fully-connected network
+def _create_fcnn(state_size, hidden_size, output_size, activation_function, final_gain=1.0, dropout=0):
+  network_dims, layers = (state_size, hidden_size, hidden_size), []
+
+  for l in range(len(network_dims) - 1):
+    layer = nn.Linear(network_dims[l], network_dims[l + 1])
+    nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
+    nn.init.constant_(layer.bias, 0)
+    layers.append(layer)
+    if dropout > 0: layers.append(nn.Dropout(p=dropout))
+    layers.append(ACTIVATION_FUNCTIONS[activation_function]())
+
+  final_layer = nn.Linear(network_dims[-1], output_size)
+  nn.init.orthogonal_(final_layer.weight, gain=final_gain)
+  nn.init.constant_(final_layer.bias, 0)
+  layers.append(final_layer)
+
+  return nn.Sequential(*layers)
+
+
 class Actor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, dropout=0, log_std_init=-0.5, activation_function=nn.Tanh()):
     super().__init__()
-    self.actor = create_fcnn_layer(state_size, hidden_size, output_size=action_size, activation_function=activation_function, gain=0.01, dropout=dropout)
+    self.actor = _create_fcnn(state_size, hidden_size, output_size=action_size, activation_function=activation_function, final_gain=0.01, dropout=dropout)
     log_std = log_std_init * np.ones(action_size, dtype=np.float32)
     self.log_std = torch.nn.Parameter(torch.as_tensor(log_std))
 
@@ -82,7 +88,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
   def __init__(self, state_size, hidden_size, activation_function=nn.Tanh()):
     super().__init__()
-    self.critic = create_fcnn_layer(state_size, hidden_size, output_size=1, activation_function=activation_function)
+    self.critic = _create_fcnn(state_size, hidden_size, output_size=1, activation_function=activation_function)
 
   def forward(self, state):
     value = self.critic(state).squeeze(dim=1)
@@ -92,9 +98,8 @@ class Critic(nn.Module):
 class ActorCritic(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, action_scale=1.0, action_loc=0.0, log_std_init=-0.5):
     super().__init__()
-    self.activation_function = nn.Tanh()
-    self.actor = Actor(state_size, action_size, hidden_size, log_std_init=log_std_init, activation_function=self.activation_function)
-    self.critic = Critic(state_size, hidden_size, activation_function=self.activation_function)
+    self.actor = Actor(state_size, action_size, hidden_size, log_std_init=log_std_init, activation_function='tanh')
+    self.critic = Critic(state_size, hidden_size, activation_function='tanh')
 
   def forward(self, state):
     policy, value = self.actor(state), self.critic(state)

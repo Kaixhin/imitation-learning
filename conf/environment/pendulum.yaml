@@ -1,0 +1,16 @@
+# @package _global_
+env_type: pendulum
+env_name: pendulum-v0
+# PPO param from rl-baseline3-zoo this one contains old naming commented out
+steps: 20000
+batch_size: 512
+discount: 0.99
+trace_decay: 0.9
+ppo_epochs: 10
+entropy_loss_coeff: 0.0
+max_grad_norm: 0.5
+value_loss_coeff: 0.5
+ppo_learning_rate: !!float 3e-4
+ppo_clip: 0.25
+log_std_init: -1 # -2?
+hidden_size: 32

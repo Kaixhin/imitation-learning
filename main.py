@@ -64,7 +64,7 @@ def main(cfg: DictConfig) -> None:
   env = PendulumEnv() if cfg.env_type == 'pendulum' else D4RLEnv(cfg.env_name)
   env.seed(cfg.seed)
   expert_trajectories = env.get_dataset()  # Load expert trajectories dataset
-  state_size, action_size = env.state_space.shape[0], env.action_space.shape[0]
+  state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
   agent = ActorCritic(state_size, action_size, cfg.hidden_size, log_std_init=cfg.log_std_init)
@@ -124,7 +124,7 @@ def main(cfg: DictConfig) -> None:
         # Store metrics and reset environment
         metrics['train_steps'].append(step)
         metrics['train_returns'].append([train_return])
-        pbar.set_description('Step: %i | Return: %f' % (step, train_return))
+        pbar.set_description(f'Step: {step} | Return: {train_return}')
         state, train_return = env.reset(), 0
 
       # Update models
@@ -161,7 +161,7 @@ def main(cfg: DictConfig) -> None:
         # Perform PPO updates
         for epoch in tqdm(range(cfg.ppo_epochs), leave=False):
           compute_advantages(policy_trajectories, agent(next_state)[1], cfg.discount, cfg.trace_decay)  # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-          ppo_update(agent, policy_trajectories, agent_optimiser, cfg.ppo_clip, epoch, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm, cfg.discount, cfg.trace_decay)
+          ppo_update(agent, policy_trajectories, agent_optimiser, cfg.ppo_clip, epoch, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm)
         trajectories, policy_trajectories = [], None
     
     
