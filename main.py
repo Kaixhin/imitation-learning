@@ -10,7 +10,7 @@ from omegaconf import DictConfig
 from environments import D4RLEnv, PendulumEnv
 from evaluation import evaluate_agent
 from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
-from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, compute_advantages, indicate_absorbing, ppo_update, target_estimation_update
+from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
 # TODO: Change ALL PPO params are non constant for different environment, add it to env config files
@@ -158,10 +158,9 @@ def main(cfg: DictConfig) -> None:
             elif cfg.imitation == 'RED':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
 
-        # Perform PPO updates
-        for epoch in tqdm(range(cfg.ppo_epochs), leave=False):
-          compute_advantages(policy_trajectories, agent(next_state)[1], cfg.discount, cfg.trace_decay)  # Compute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-          ppo_update(agent, policy_trajectories, agent_optimiser, cfg.ppo_clip, epoch, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm)
+        # Perform PPO updates (includes GAE re-estimation with updated value function)
+        for _ in tqdm(range(cfg.ppo_epochs), leave=False):
+          ppo_update(agent, policy_trajectories, next_state, agent_optimiser, cfg.discount, cfg.trace_decay, cfg.ppo_clip, cfg.value_loss_coeff, cfg.entropy_loss_coeff, cfg.max_grad_norm)
         trajectories, policy_trajectories = [], None
     
     
