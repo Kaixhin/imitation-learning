@@ -84,12 +84,10 @@ class D4RLEnv():
   def get_dataset(self, size=0, subsample=20):
     dataset = self.env.get_dataset()
     N = dataset['rewards'].shape[0]
-    obs = dataset['observations']
-    next_obs = np.roll(obs, -1, axis=0)
-    dataset_out = {'states': torch.as_tensor(obs[:-1], dtype=torch.float32),
+    dataset_out = {'states': torch.as_tensor(dataset['observations'][:-1], dtype=torch.float32),
                    'actions': torch.as_tensor(dataset['actions'][:-1], dtype=torch.float32),
                    'rewards': torch.as_tensor(dataset['rewards'][:-1], dtype=torch.float32),
-                   'next_states': np.roll(next_obs[:-1], -1),  # TODO: Rolled twice?
+                   'next_states': torch.as_tensor(dataset['observations'][1:], dtype=torch.float32), 
                    'terminals': torch.as_tensor(dataset['terminals'][:-1], dtype=torch.float32)}
     # Postprocess
     if size > 0 and size < N:

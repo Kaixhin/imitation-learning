@@ -9,9 +9,7 @@ def evaluate_agent(agent, num_episodes, env_type=PendulumEnv, env_name='', seed=
   env.seed(seed)
 
   returns, trajectories = [], []
-  if render:
-    env.render()
-    env.reset()
+  if render: env.render()  # PyBullet requires creating render window before first env reset, and then updates without requiring first call
 
   with torch.no_grad():
     for _ in range(num_episodes):
