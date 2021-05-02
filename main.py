@@ -18,9 +18,7 @@ from utils import flatten_list_dicts, lineplot
 # TODO: Add following from paper: ppo clip 0.25, gain on linear policy layer 0.01,
 # TODO: trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
 # TODO: Tanh Distribution instead of normal dist, add entropy member func based onAppendix B8
-# TODO: recompute advantage between each ppo update
 # TODO: Change confs to conf/agent/<agent>.conf structure with var parsing per env
-# DONE: change rmsprop alpha to 0.9 from default 0.99,
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')
@@ -166,7 +164,7 @@ def main(cfg: DictConfig) -> None:
     
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0:
-      test_returns = evaluate_agent(agent, cfg.evaluation.episodes, Env=D4RLEnv, env_name=cfg.env_name, seed=cfg.seed)
+      test_returns = evaluate_agent(agent, cfg.evaluation.episodes, PendulumEnv if cfg.env_type == 'pendulum' else D4RLEnv, cfg.env_name, cfg.seed)
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
@@ -176,7 +174,7 @@ def main(cfg: DictConfig) -> None:
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, return_trajectories=True, Env=PendulumEnv() if cfg.env_type == 'pendulum' else D4RLEnv(cfg.env_name), seed=cfg.seed, render=cfg.render)
+    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, PendulumEnv if cfg.env_type == 'pendulum' else D4RLEnv, cfg.env_name, cfg.seed, return_trajectories=True, render=cfg.render)
     torch.save(trajectories, 'trajectories.pth')
   # Save agent and metrics
   torch.save(agent.state_dict(), 'agent.pth')
