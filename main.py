@@ -1,13 +1,13 @@
 from collections import deque
+
+import hydra
 import numpy as np
+from omegaconf import DictConfig
 import torch
 from torch import optim
 from tqdm import tqdm
 
-import hydra
-from omegaconf import DictConfig
-
-from environments import D4RLEnv, PendulumEnv
+from environments import ENVS
 from evaluation import evaluate_agent
 from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
@@ -52,6 +52,7 @@ parser.add_argument('--nonnegative-margin', type=float, default=0, metavar='β',
 @hydra.main(config_path='conf', config_name='config')
 def main(cfg: DictConfig) -> None:
   # Configuration check
+  assert cfg.env_type in ENVS.keys()
   assert cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
 
   # General setup
@@ -59,7 +60,7 @@ def main(cfg: DictConfig) -> None:
   torch.manual_seed(cfg.seed)
 
   # Set up environment
-  env = PendulumEnv() if cfg.env_type == 'pendulum' else D4RLEnv(cfg.env_name)
+  env = ENVS[cfg.env_type](cfg.env_name)
   env.seed(cfg.seed)
   expert_trajectories = env.get_dataset()  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
@@ -164,7 +165,7 @@ def main(cfg: DictConfig) -> None:
     
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0:
-      test_returns = evaluate_agent(agent, cfg.evaluation.episodes, PendulumEnv if cfg.env_type == 'pendulum' else D4RLEnv, cfg.env_name, cfg.seed)
+      test_returns = evaluate_agent(agent, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed)
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
@@ -174,7 +175,7 @@ def main(cfg: DictConfig) -> None:
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, PendulumEnv if cfg.env_type == 'pendulum' else D4RLEnv, cfg.env_name, cfg.seed, return_trajectories=True, render=cfg.render)
+    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed, return_trajectories=True, render=cfg.render)
     torch.save(trajectories, 'trajectories.pth')
   # Save agent and metrics
   torch.save(agent.state_dict(), 'agent.pth')
