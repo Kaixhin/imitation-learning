@@ -67,7 +67,7 @@ def main(cfg: DictConfig) -> None:
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
-  agent = ActorCritic(state_size, action_size, cfg.hidden_size, log_std_init=cfg.log_std_init)
+  agent = ActorCritic(state_size, action_size, cfg.hidden_size, log_std_dev_init=cfg.log_std_dev_init)
   agent_optimiser = optim.RMSprop(agent.parameters(), lr=cfg.ppo_learning_rate, alpha=0.9)  # TODO: agent_learning_rate
   # Set up imitation learning components
   if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:

@@ -17,7 +17,7 @@ def evaluate_agent(agent, episodes, return_trajectories=False, Env=PendulumEnv, 
     state, terminal = env.reset(), False
     while not terminal:
       with torch.no_grad():
-        action = agent.greedy_action(state)  # take action greedily
+        action = agent.get_greedy_action(state)  # Take greedy action
         state, reward, terminal = env.step(action)
         if return_trajectories:
           states.append(state)
