@@ -1,0 +1,5 @@
+# @package _global_
+env_type: ant
+env_name: ant-bullet-medium-v0
+
+imitation: GMMIL

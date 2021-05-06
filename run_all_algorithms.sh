@@ -8,6 +8,6 @@ for alg in ${algos[@]}; do
     python3 main.py algorithm=$alg | tee -a "$log_file"
   else
     echo "running python3 main.py -m algorithm=$alg environment=$1"
-    python3 main.py -m algorithm=$alg environment=$1
+    python3 main.py -m algorithm=$alg/$1
   fi
   done

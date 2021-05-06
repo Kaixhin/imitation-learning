@@ -1,6 +1,8 @@
 # @package _global_
 env_type: pendulum
 env_name: pendulum-v0
+
+imitation: PPO
 # PPO param from rl-baseline3-zoo this one contains old naming commented out
 steps: 20000
 batch_size: 512

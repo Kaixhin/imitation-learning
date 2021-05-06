@@ -1,5 +1,9 @@
 # @package _global_
-imitation: PPO
+env_type: hopper
+env_name: hopper-bullet-medium-v0
+
+imitation: AIRL
+
 hydra:
   sweeper:
     #ax configuration. Same across all algorithms
@@ -17,10 +21,7 @@ hydra:
       params:
         batch_size:
           type: choice
-          values: [ 256, 512, 1024, 2048 ]
-        ppo_learning_rate:
-          type: choice
-          values: [ 0.00003, 0.0003 ]
-        ppo_epochs:
-          type: choice
-          values: [5, 10, 20]
+          values: [ 512, 1024, 2048 ]
+        learning_rate:
+          type: range
+          bounds: [ 0.0001, 0.001 ]

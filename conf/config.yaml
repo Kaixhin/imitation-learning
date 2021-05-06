@@ -1,7 +1,7 @@
 defaults:
-  - hydra/sweeper: ax
-  - environment: hopper # Check environment/hopper.yaml for PPO hyperparameters
-  - algorithm: PPO #AIRL
+  - algorithm: PPO/hopper #AIRL
+  - hydra/sweeper: basic
+  - hyperparam_opt: empty
 seed: 0
 #steps: 100000
 #discount: 0.99
@@ -17,7 +17,6 @@ evaluation:
   episodes: 30
   average_window: 5
 save_trajectories: false
-#imitation: ${imitation}
 state_only: false
 absorbing: false
 imitation_epochs: 5
@@ -30,10 +29,8 @@ render: false
 # PPO param from Stable baseline zoo
 
 # ax sweep setting
-#hydra:
-#  run:
-#    dir: ./outputs/${env_type}_${imitation}/${now:%m-%d-%H-%M}
-#
-#  sweep:
-#    dir: ./outputs/sweeper_${env_type}_${imitation}/${now:%m-%d-%H-%M}
-#    #ax configuration is moved to algorithm/<>.yaml
+hydra:
+  run:
+    dir: ./outputs/${env_type}_${imitation}/${now:%m-%d-%H-%M}
+  sweep:
+    dir: ./outputs/sweeper_${env_type}_${imitation}/${now:%m-%d-%H-%M}

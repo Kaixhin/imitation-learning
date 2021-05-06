@@ -1,6 +1,4 @@
 # @package _global_
-imitation: AIRL
-
 hydra:
   sweeper:
     #ax configuration. Same across all algorithms
@@ -18,7 +16,10 @@ hydra:
       params:
         batch_size:
           type: choice
-          values: [ 512, 1024, 2048 ]
-        learning_rate:
-          type: range
-          bounds: [ 0.0001, 0.001 ]
+          values: [ 256, 512, 1024, 2048 ]
+        ppo_learning_rate:
+          type: choice
+          values: [ 0.00003, 0.0003 ]
+        ppo_epochs:
+          type: choice
+          values: [5, 10, 20]

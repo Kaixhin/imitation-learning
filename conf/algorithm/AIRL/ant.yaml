@@ -1,0 +1,27 @@
+# @package _global_
+env_type: ant
+env_name: ant-bullet-medium-v0
+
+imitation: AIRL
+
+hydra:
+  sweeper:
+    #ax configuration. Same across all algorithms
+    ax_config:
+      max_trials: 20
+
+      experiment:
+        minimize: false
+
+      early_stop:
+        max_epochs_without_improvement: 5
+
+      is_noisy: true
+
+      params:
+        batch_size:
+          type: choice
+          values: [ 512, 1024, 2048 ]
+        learning_rate:
+          type: range
+          bounds: [ 0.0001, 0.001 ]

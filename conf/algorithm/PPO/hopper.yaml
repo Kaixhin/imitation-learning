@@ -1,6 +1,8 @@
 # @package _global_
 env_type: hopper
 env_name: hopper-bullet-medium-v0
+
+imitation: PPO
 # PPO hyperparams
 steps: 2000000
 batch_size: 512
