@@ -43,34 +43,36 @@ class TransitionDataset(Dataset):
 
 
 # Computes and stores generalised advantage estimates ψ in the set of trajectories
-def compute_advantages(trajectories, next_value, discount, trace_decay):
+def compute_advantages_(trajectories, next_value, discount, trace_decay):
+  reward_to_go, advantage = torch.zeros(1), torch.zeros(1)
+  trajectories['rewards_to_go'], trajectories['advantages'] = torch.empty_like(trajectories['rewards']), torch.empty_like(trajectories['rewards'])
+  for t in reversed(range(trajectories['states'].size(0))):
+    reward_to_go = trajectories['rewards'][t] + (1 - trajectories['terminals'][t]) * (discount * reward_to_go)  # Reward-to-go/value R
+    trajectories['rewards_to_go'][t] = reward_to_go
+    td_error = trajectories['rewards'][t] + (1 - trajectories['terminals'][t]) * discount * next_value - trajectories['values'][t]  # TD-error δ
+    advantage = td_error + (1 - trajectories['terminals'][t]) * discount * trace_decay * advantage  # Generalised advantage estimate ψ
+    trajectories['advantages'][t] = advantage
+    next_value = trajectories['values'][t]
+  # Normalise the advantages
+  trajectories['advantages'] = (trajectories['advantages'] - trajectories['advantages'].mean()) / (trajectories['advantages'].std() + 1e-8)
+
+
+# Performs one PPO update (includes GAE re-estimation)
+def ppo_update(agent, trajectories, next_state, agent_optimiser, discount, trace_decay, ppo_clip, value_loss_coeff=1, entropy_reg_coeff=1, max_grad_norm=1):
+  policy, trajectories['values'] = agent(trajectories['states'])
+  trajectories['log_prob_actions'] = policy.log_prob(trajectories['actions'])
   with torch.no_grad():  # Do not differentiate through advantage calculation
-    reward_to_go, advantage = torch.tensor([0.]), torch.tensor([0.])
-    trajectories['rewards_to_go'], trajectories['advantages'] = torch.empty_like(trajectories['rewards']), torch.empty_like(trajectories['rewards'])
-    for t in reversed(range(trajectories['states'].size(0))):
-      reward_to_go = trajectories['rewards'][t] + (1 - trajectories['terminals'][t]) * (discount * reward_to_go)  # Reward-to-go/value R
-      trajectories['rewards_to_go'][t] = reward_to_go
-      td_error = trajectories['rewards'][t] + (1 - trajectories['terminals'][t]) * discount * next_value - trajectories['values'][t]  # TD-error δ
-      advantage = td_error + (1 - trajectories['terminals'][t]) * discount * trace_decay * advantage  # Generalised advantage estimate ψ
-      trajectories['advantages'][t] = advantage
-      next_value = trajectories['values'][t]
-
-
-# Performs one PPO update (assumes trajectories for first epoch are attached to agent)
-def ppo_update(agent, trajectories, agent_optimiser, ppo_clip, epoch, value_loss_coeff=1, entropy_reg_coeff=1):
-  # Recalculate outputs for subsequent iterations
-  if epoch > 0:
-    policy, trajectories['values'] = agent(trajectories['states'])
-    trajectories['log_prob_actions'], trajectories['entropies'] = policy.log_prob(trajectories['actions'].detach()), policy.entropy()
+    next_value = agent(next_state)[1]
+    compute_advantages_(trajectories, next_value, discount, trace_decay)  # Recompute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
 
   policy_ratio = (trajectories['log_prob_actions'] - trajectories['old_log_prob_actions']).exp()
   policy_loss = -torch.min(policy_ratio * trajectories['advantages'], torch.clamp(policy_ratio, min=1 - ppo_clip, max=1 + ppo_clip) * trajectories['advantages']).mean()  # Update the policy by maximising the clipped PPO objective
   value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])  # Fit value function by regression on mean squared error
-  entropy_reg = -trajectories['entropies'].mean()  # Add entropy regularisation
+  # entropy_reg = -trajectories['entropies'].mean()  # Add entropy regularisation
   
   agent_optimiser.zero_grad(set_to_none=True)
-  (policy_loss + value_loss_coeff * value_loss + entropy_reg_coeff * entropy_reg).backward()
-  clip_grad_norm_(agent.parameters(), 1)  # Clamp norm of gradients
+  (policy_loss + value_loss_coeff * value_loss).backward() # + entropy_reg_coeff * entropy_reg
+  clip_grad_norm_(agent.parameters(), max_grad_norm)  # Clamp norm of gradients
   agent_optimiser.step()
 
 

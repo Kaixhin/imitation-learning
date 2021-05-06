@@ -1,12 +1,16 @@
+import numpy as np
 import torch
 from torch import nn
-from torch.distributions import Categorical
-from torch.nn import functional as F
+from torch.distributions import Categorical, Independent, Normal, TransformedDistribution
+from torch.distributions.transforms import TanhTransform
+from torch.nn import Parameter, functional as F
+
+ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
 
-# Concatenates the state and one-hot version of an action
+# Concatenates the state and action (previously one-hot discrete version)
 def _join_state_action(state, action, action_size):
-  return torch.cat([state, F.one_hot(action, action_size).to(dtype=torch.float32)], dim=1)
+    return torch.cat([state, action], dim=1)
 
 
 # Computes the squared distance between two sets of vectors
@@ -21,16 +25,39 @@ def _gaussian_kernel(x, y, gamma=1):
   return torch.exp(-gamma * _squared_distance(x, y))
 
 
+# Creates a sequential fully-connected network
+def _create_fcnn(input_size, hidden_size, output_size, activation_function, final_activation_function=None, dropout=0, final_gain=1.0):
+  assert activation_function in ACTIVATION_FUNCTIONS.keys()
+  assert final_activation_function is None or final_activation_function in ACTIVATION_FUNCTIONS.keys()
+  
+  network_dims, layers = (input_size, hidden_size, hidden_size), []
+
+  for l in range(len(network_dims) - 1):
+    layer = nn.Linear(network_dims[l], network_dims[l + 1])
+    nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
+    nn.init.constant_(layer.bias, 0)
+    layers.append(layer)
+    if dropout > 0: layers.append(nn.Dropout(p=dropout))
+    layers.append(ACTIVATION_FUNCTIONS[activation_function]())
+
+  final_layer = nn.Linear(network_dims[-1], output_size)
+  nn.init.orthogonal_(final_layer.weight, gain=final_gain)
+  nn.init.constant_(final_layer.bias, 0)
+  layers.append(final_layer)
+  if final_activation_function is not None: layers.append(ACTIVATION_FUNCTIONS[final_activation_function]())
+
+  return nn.Sequential(*layers)
+
+
 class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, dropout=0):
+  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', log_std_dev_init=-0.5, dropout=0):
     super().__init__()
-    if dropout > 0:
-      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Dropout(p=dropout), nn.Tanh(), nn.Linear(hidden_size, action_size))
-    else:
-      self.actor = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, action_size))
+    self.actor = _create_fcnn(state_size, hidden_size, output_size=action_size, activation_function=activation_function, dropout=dropout, final_gain=0.01)
+    self.log_std_dev = Parameter(torch.full((action_size, ), log_std_dev_init, dtype=torch.float32))
 
   def forward(self, state):
-    policy = Categorical(logits=self.actor(state))
+    mean = self.actor(state)
+    policy = TransformedDistribution(Independent(Normal(mean, self.log_std_dev.exp()), 1), TanhTransform())
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
@@ -40,7 +67,7 @@ class Actor(nn.Module):
   def _get_action_uncertainty(self, state, action):
     ensemble_policies = []
     for _ in range(5):  # Perform Monte-Carlo dropout for an implicit ensemble
-      ensemble_policies.append(self.forward(state).log_prob(action).exp())
+      ensemble_policies.append(self.log_prob(state, action).exp())
     return torch.stack(ensemble_policies).var(dim=0)
 
   # Set uncertainty threshold at the 98th quantile of uncertainty costs calculated over the expert data
@@ -58,9 +85,9 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, hidden_size):
+  def __init__(self, state_size, hidden_size, activation_function='tanh'):
     super().__init__()
-    self.critic = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))
+    self.critic = _create_fcnn(state_size, hidden_size, output_size=1, activation_function=activation_function)
 
   def forward(self, state):
     value = self.critic(state).squeeze(dim=1)
@@ -68,14 +95,17 @@ class Critic(nn.Module):
 
 
 class ActorCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size):
+  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', log_std_dev_init=-0.5, dropout=0):
     super().__init__()
-    self.actor = Actor(state_size, action_size, hidden_size)
-    self.critic = Critic(state_size, hidden_size)
+    self.actor = Actor(state_size, action_size, hidden_size, activation_function=activation_function, log_std_dev_init=log_std_dev_init, dropout=dropout)
+    self.critic = Critic(state_size, hidden_size, activation_function=activation_function)
 
   def forward(self, state):
     policy, value = self.actor(state), self.critic(state)
     return policy, value
+
+  def get_greedy_action(self, state):
+    return torch.tanh(self.actor(state).base_dist.mean)
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
@@ -86,8 +116,7 @@ class GAILDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, state_only=False, forward_kl=False):
     super().__init__()
     self.action_size, self.state_only, self.forward_kl = action_size, state_only, forward_kl
-    input_layer = nn.Linear(state_size if state_only else state_size + action_size, hidden_size)
-    self.discriminator = nn.Sequential(input_layer, nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1), nn.Sigmoid())
+    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, 'tanh', final_activation_function='sigmoid', final_gain=nn.init.calculate_gain('sigmoid'))
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
@@ -119,15 +148,18 @@ class GMMILDiscriminator(nn.Module):
 
 
 class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, discount, state_only=False, ):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
     self.discount = discount
     self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    self.h = nn.Sequential(nn.Linear(state_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, 1))  # Shaping function Φ
+    self.h = _create_fcnn(state_size, hidden_size, 1, 'tanh')  # Shaping function Φ
 
   def reward(self, state, action):
-    return self.g(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
+    if self.state_only:
+      return self.g(state).squeeze(dim=1)
+    else:
+      return self.g(_join_state_action(state, action, self.action_size)).squeeze(dim=1)
 
   def value(self, state):
     return self.h(state).squeeze(dim=1)
@@ -145,7 +177,7 @@ class AIRLDiscriminator(nn.Module):
 class EmbeddingNetwork(nn.Module):
   def __init__(self, input_size, hidden_size):
     super().__init__()
-    self.embedding = nn.Sequential(nn.Linear(input_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, hidden_size), nn.Tanh(), nn.Linear(hidden_size, input_size))
+    self.embedding = _create_fcnn(input_size, hidden_size, input_size, 'tanh')
 
   def forward(self, input):
     return self.embedding(input)
