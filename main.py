@@ -13,12 +13,13 @@ from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMM
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
-# TODO: Change ALL PPO params are non constant for different environment, add it to env config files
-# TODO: Set all PPO params based on existing papers model.
-# TODO: Add following from paper: ppo clip 0.25, gain on linear policy layer 0.01,
-# TODO: trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
-# TODO: Tanh Distribution instead of normal dist, add entropy member func based onAppendix B8
-# TODO: Change confs to conf/agent/<agent>.conf structure with var parsing per env
+# TODO: Sweeper: Move PPO to a different subfolder (RL : PPO/env)
+# TODO: Sweeper: New strat: We sweep all the PPO parameters TOGETHER WITH IL algorithm, hence move hydra ax sweeper param in hydra opt to IL.yaml (for each algo)
+# TODO: Sweeper: Add all IL sweeper parameter to hyper_param_opt folder, AND REMOVE PPO AND MOVE IT IN TO THOSE
+# TODO: Add TanhDistribution Entropy (log(p)) in the policy
+# TODO: PPO: add entropy coeff sweeper [1e-2 1e-3 0] and ALL THE SWEEPER PARAM FROM APPENDIX PAPER
+# TODO: remove imitation_batch_size and replace it with batch_size
+# TODO: rename ppo_learning_rate to agent_learning_rate & learning_rate to imitation_learning_rate
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')
