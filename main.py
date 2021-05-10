@@ -14,12 +14,7 @@ from training import TransitionDataset, adversarial_imitation_update, behavioura
 from utils import flatten_list_dicts, lineplot
 
 # TODO: Change ALL PPO params are non constant for different environment, add it to env config files
-# TODO: Set all PPO params based on existing papers model.
-# TODO: Add following from paper: ppo clip 0.25, gain on linear policy layer 0.01,
-# TODO: trace decay 0.9, ppo learning rate 3e-5, ppo_epochs 10
-# TODO: Tanh Distribution instead of normal dist, add entropy member func based onAppendix B8
 # TODO: Change confs to conf/agent/<agent>.conf structure with var parsing per env
-# Setup
 """
 parser = argparse.ArgumentParser(description='IL')
 parser.add_argument('--seed', type=int, default=1, metavar='S', help='Random seed')
@@ -113,10 +108,10 @@ def main(cfg: DictConfig) -> None:
       with torch.no_grad():
         policy, value = agent(state)
         action = policy.sample()
-        log_prob_action = policy.log_prob(action)  # TODO: policy.entropy()?
+        log_prob_action = policy.log_prob(action)
         next_state, reward, terminal = env.step(action)
         train_return += reward
-        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))#, #entropies=entropy))
+        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))
         state = next_state
 
       if terminal:
