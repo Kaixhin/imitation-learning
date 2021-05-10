@@ -114,10 +114,10 @@ def main(cfg: DictConfig) -> None:
       with torch.no_grad():
         policy, value = agent(state)
         action = policy.sample()
-        log_prob_action = policy.log_prob(action)  # TODO: policy.entropy()?
+        log_prob_action = policy.log_prob(action)
         next_state, reward, terminal = env.step(action)
         train_return += reward
-        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))#, #entropies=entropy))
+        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))
         state = next_state
 
       if terminal:
