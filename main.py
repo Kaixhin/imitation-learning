@@ -13,13 +13,12 @@ from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMM
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
-# TODO: Sweeper: Move PPO to a different subfolder (RL : PPO/env)
 # TODO: Sweeper: New strat: We sweep all the PPO parameters TOGETHER WITH IL algorithm, hence move hydra ax sweeper param in hydra opt to IL.yaml (for each algo)
 # TODO: Sweeper: Add all IL sweeper parameter to hyper_param_opt folder, AND REMOVE PPO AND MOVE IT IN TO THOSE
 # TODO: Add TanhDistribution Entropy (log(p)) in the policy
 # TODO: PPO: add entropy coeff sweeper [1e-2 1e-3 0] and ALL THE SWEEPER PARAM FROM APPENDIX PAPER
 # TODO: remove imitation_batch_size and replace it with batch_size
-# TODO: rename ppo_learning_rate to agent_learning_rate & learning_rate to imitation_learning_rate
+# TODO: rename agent_learning_rate to agent_learning_rate & learning_rate to imitation_learning_rate
 # Setup
 """
 parser = argparse.ArgumentParser(description='IL')
@@ -68,7 +67,7 @@ def main(cfg: DictConfig) -> None:
   
   # Set up agent
   agent = ActorCritic(state_size, action_size, cfg.hidden_size, log_std_dev_init=cfg.log_std_dev_init)
-  agent_optimiser = optim.RMSprop(agent.parameters(), lr=cfg.ppo_learning_rate, alpha=0.9)  # TODO: agent_learning_rate
+  agent_optimiser = optim.RMSprop(agent.parameters(), lr=cfg.agent_learning_rate, alpha=0.9)
   # Set up imitation learning components
   if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if cfg.imitation == 'AIRL':
@@ -82,7 +81,7 @@ def main(cfg: DictConfig) -> None:
     elif cfg.imitation == 'RED':
       discriminator = REDDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, state_only=cfg.state_only)
     if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.learning_rate)  # TODO: il_learning_rate
+      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.il_learning_rate)  # TODO: il_learning_rate
 
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])

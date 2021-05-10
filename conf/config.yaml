@@ -3,14 +3,7 @@ defaults:
   - hydra/sweeper: basic
   - hyperparam_opt: empty
 seed: 0
-#steps: 100000
-#discount: 0.99
-#trace_decay: 0.95
-#ppo_clip: 0.2
-#ppo_epochs: 4
-#value_loss_coeff: 0.5
-#entropy_loss_coeff: 0.5
-learning_rate: 0.001
+il_learning_rate: 0.001
 #batch_size: 1024
 evaluation:
   interval: 20000
@@ -26,7 +19,15 @@ r1_reg_coeff: 1.0
 pos_class_prior: 0.5
 nonnegative_margin: 0.0
 render: false
-# PPO param from Stable baseline zoo
+# PPO constant parameters
+steps: 2000000
+discount: 0.99
+trace_decay: 0.9
+max_grad_norm: 0.5
+value_loss_coeff: 0.5
+ppo_clip: 0.25
+hidden_size: 256
+
 
 # ax sweep setting
 hydra:
