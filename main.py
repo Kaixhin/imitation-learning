@@ -98,7 +98,7 @@ def main(cfg: DictConfig) -> None:
             behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, cfg.batch_size)
           elif cfg.imitation == 'DRIL':
             # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg._batch_size)
+            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size)
             with torch.no_grad():
               discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
           elif cfg.imitation == 'RED':
