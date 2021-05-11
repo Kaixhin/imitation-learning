@@ -15,9 +15,6 @@ from utils import flatten_list_dicts, lineplot
 
 # TODO: Sweeper: New strat: We sweep all the PPO parameters TOGETHER WITH IL algorithm, hence move hydra ax sweeper param in hydra opt to IL.yaml (for each algo)
 # TODO: Sweeper: Add all IL sweeper parameter to hyper_param_opt folder, AND REMOVE PPO AND MOVE IT IN TO THOSE
-# TODO: Add TanhDistribution Entropy (log(p)) in the policy
-# TODO: PPO: add entropy coeff sweeper [1e-2 1e-3 0] and ALL THE SWEEPER PARAM FROM APPENDIX PAPER
-# TODO: remove imitation_batch_size and replace it with batch_size
 # TODO: rename agent_learning_rate to agent_learning_rate & learning_rate to imitation_learning_rate
 # Setup
 """
@@ -98,15 +95,15 @@ def main(cfg: DictConfig) -> None:
         for _ in tqdm(range(cfg.imitation_epochs), leave=False):
           if cfg.imitation == 'BC':
             # Perform behavioural cloning updates offline
-            behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, cfg.imitation_batch_size)
+            behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, cfg.batch_size)
           elif cfg.imitation == 'DRIL':
             # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.imitation_batch_size)
+            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg._batch_size)
             with torch.no_grad():
               discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
           elif cfg.imitation == 'RED':
             # Train predictor network to match random target network
-            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.imitation_batch_size, cfg.absorbing)
+            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
 
     if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
@@ -137,7 +134,7 @@ def main(cfg: DictConfig) -> None:
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
             for _ in tqdm(range(cfg.imitation_epochs), leave=False):
-              adversarial_imitation_update(cfg.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.imitation_batch_size, cfg.absorbing, cfg.r1_reg_coeff, cfg.pos_class_prior, cfg.nonnegative_margin)
+              adversarial_imitation_update(cfg.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.batch_size, cfg.absorbing, cfg.r1_reg_coeff, cfg.pos_class_prior, cfg.nonnegative_margin)
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']

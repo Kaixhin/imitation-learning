@@ -1,9 +1,8 @@
 defaults:
-  - algorithm: PPO/hopper #AIRL
-  - hydra/sweeper: basic
-  - hyperparam_opt: empty
+  - algorithm: AIRL/hopper #AIRL
+  - hydra/sweeper: ax
+  - hyperparam_opt: IL
 seed: 0
-il_learning_rate: 0.001
 #batch_size: 1024
 evaluation:
   interval: 20000
@@ -12,10 +11,7 @@ evaluation:
 save_trajectories: false
 state_only: false
 absorbing: false
-imitation_epochs: 5
-imitation_batch_size: 128
-imitation_replay_size: 4
-r1_reg_coeff: 1.0
+#imitation_batch_size: 128
 pos_class_prior: 0.5
 nonnegative_margin: 0.0
 render: false
@@ -27,6 +23,8 @@ max_grad_norm: 0.5
 value_loss_coeff: 0.5
 ppo_clip: 0.25
 hidden_size: 256
+log_std_dev_init: -2
+agent_learning_rate: ${ppo_learning_rate} # will fix later....
 
 
 # ax sweep setting

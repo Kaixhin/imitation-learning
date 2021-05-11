@@ -3,3 +3,13 @@ env_type: hopper
 env_name: hopper-bullet-medium-v0
 
 imitation: GAIL
+#IL param to be optimized
+imitation_epochs: 10
+il_learning_rate: 0.0003
+imitation_replay_size: 3
+r1_reg_coeff: 0.5
+# PPO param to be optimized
+batch_size: 512
+ppo_epochs: 10
+ppo_learning_rate: !!float 3e-5
+entropy_loss_coeff: 0.0
