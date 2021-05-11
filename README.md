@@ -18,23 +18,50 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 
 Requirements
 ------------
-The code runs on Python3.7 (AX requires >3.7). You can install most of the requirements by running `pip install -r requirements.txt`(to be added). Notable required packages are PyTorch, OpenAI gym, and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet) if you fail to install d4rl-pybullet, install it with pip directly from git by using the command 
+The code runs on Python3.7 (AX requires >3.7). You can install most of the requirements by running 
+```
+pip install -r requirements.txt
+```
+Notable required packages are PyTorch, OpenAI gym, Hydra with AX,  and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet).
+if you fail to install d4rl-pybullet, install it with pip directly from git by using the command 
 ```
 pip install git+https://github.com/takuseno/d4rl-pybullet
 ```
 
 Run
 ---
-
+The training of each imitation learning algorithm can be started with 
 ```
-python main.py --imitation [AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED]
+python main.py algorithm=ALG/ENV
+```
+`ALG` one of `[AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED]` and `ENV` to be one of `[ant|halfcheetah|hopper|walker2d]`.
+example:
+```
+python main.py algorithm=AIRL/hopper
+```
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG/ENV.yaml`, 
+with the latter containing algorithm & environment specific hyperparameter that was tuned with AX.
+
+The resulting model will saved in `repo_root/outputs/ENV_ALGO/m-d-H-M` with the last subfolder indicating current date (month-day-hour-minute).
+
+### Run hyperparameter optimization
+Hyper parameter optimization can be run by addimg the `-m` flag. 
+
+example:
+```
+python main.py -m algorithm=AIRL/hopper
+```
+### Run with seeds
+You can run each algorithm with different seeds with:
+```
+python main.py -m algorithm=AIRL/hopper seed=[1, 2, 3, 4, 5] hyperparam_opt=empty hydra/sweeper=base
 ```
 
-Options include:
+Options that can be modified in config include:
 
-- State-only imitation learning: `--state-only`
-- Absorbing state indicator [[12]](#references): `--absorbing`
-- R1 gradient regularisation [[13]](#references): `--r1-reg-coeff 1` (default)
+- State-only imitation learning: `state-only: true/false`
+- Absorbing state indicator [[12]](#references): `absorbing: true/false`
+- R1 gradient regularisation [[13]](#references): `r1-reg-coeff: 0.5` (in each algorithm subfolder)
 
 Results
 -------
@@ -105,7 +132,7 @@ If you find this work useful and would like to cite it, the following would be a
 
 ```
 @misc{arulkumaran2020pragmatic,
-  author = {Arulkumaran, Kai},
+  author = {Arulkumaran, Ogawa Lillrank},
   title = {A Pragmatic Look at Deep Imitation Learning},
   url = {https://github.com/Kaixhin/imitation-learning},
   year = {2020}
