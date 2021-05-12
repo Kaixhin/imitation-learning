@@ -111,7 +111,7 @@ def main(cfg: DictConfig) -> None:
           if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
           with torch.no_grad():
             if cfg.imitation == 'AIRL':
-              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'].exp(), terminals)
+              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'], terminals)
             elif cfg.imitation == 'DRIL':
               # TODO: By default DRIL also includes behavioural cloning online?
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)

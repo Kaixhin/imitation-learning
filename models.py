@@ -164,13 +164,13 @@ class AIRLDiscriminator(nn.Module):
   def value(self, state):
     return self.h(state).squeeze(dim=1)
 
-  def forward(self, state, action, next_state, policy, terminal):
+  def forward(self, state, action, next_state, log_policy, terminal):
     f = self.reward(state, action) + (1 - terminal) * (self.discount * self.value(next_state) - self.value(state))
     f_exp = f.exp()
-    return f_exp / (f_exp + policy)
+    return f_exp / (f_exp + log_policy.exp())
 
-  def predict_reward(self, state, action, next_state, policy, terminal):
-    D = self.forward(state, action, next_state, policy, terminal)
+  def predict_reward(self, state, action, next_state, log_policy, terminal):
+    D = self.forward(state, action, next_state, log_policy, terminal)
     return torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
 
 
