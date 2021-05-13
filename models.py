@@ -57,7 +57,7 @@ class Actor(nn.Module):
 
   def forward(self, state):
     mean = self.actor(state)
-    policy = TransformedDistribution(Independent(Normal(mean, self.log_std_dev.exp()), 1), TanhTransform())
+    policy = TransformedDistribution(Independent(Normal(mean, self.log_std_dev.exp()), 1), TanhTransform(cache_size=1))
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
