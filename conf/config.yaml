@@ -24,7 +24,6 @@ value_loss_coeff: 0.5
 ppo_clip: 0.25
 hidden_size: 256
 log_std_dev_init: -2
-agent_learning_rate: ${ppo_learning_rate} # will fix later....
 
 
 # ax sweep setting

@@ -78,7 +78,7 @@ def main(cfg: DictConfig) -> None:
     elif cfg.imitation == 'RED':
       discriminator = REDDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, state_only=cfg.state_only)
     if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.il_learning_rate)  # TODO: il_learning_rate
+      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.il_learning_rate)
 
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
