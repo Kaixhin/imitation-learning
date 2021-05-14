@@ -45,12 +45,13 @@ with the latter containing algorithm & environment specific hyperparameter that 
 The resulting model will saved in `repo_root/outputs/ENV_ALGO/m-d-H-M` with the last subfolder indicating current date (month-day-hour-minute).
 
 ### Run hyperparameter optimization
-Hyper parameter optimization can be run by addimg the `-m` flag. 
+Hyper parameter optimization can be run by adding the `-m` flag. 
 
 example:
 ```
-python main.py -m algorithm=AIRL/hopper
+python main.py -m algorithm=AIRL/hopper hyperparam_opt=AIRL
 ```
+The last argument specifies *which* parameters to optimize. (Default is IL and contains all parameters).
 ### Run with seeds
 You can run each algorithm with different seeds with:
 ```
