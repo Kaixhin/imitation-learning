@@ -1,0 +1,37 @@
+# @package _global_
+hydra:
+  sweeper:
+    #ax configuration. Same across all algorithms
+    ax_config:
+      max_trials: 30
+
+      experiment:
+        minimize: false
+
+      early_stop:
+        max_epochs_without_improvement: 5
+
+      is_noisy: true
+
+      params:
+        imitation_epochs: # IL params
+          type: choice
+          values: [5, 10, 25]
+          value_type: 'int'
+        il_learning_rate: #keep
+          type: choice
+          values: [ 0.00003, 0.0003 ]
+          value_type: 'float'
+        # PPO hyper params
+        batch_size: #keep
+          type: choice
+          values: [512, 1024, 2048 ]
+          value_type: 'int'
+        agent_learning_rate:
+          type: choice
+          values: [ 0.00003, 0.0003 ]
+          value_type: 'float'
+        ppo_epochs:
+          type: choice
+          values: [5, 10, 20]
+          value_type: 'int'
