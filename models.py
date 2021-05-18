@@ -124,7 +124,7 @@ class GAILDiscriminator(nn.Module):
   
   def predict_reward(self, state, action):
     D = self.forward(state, action)
-    h = torch.log(D) - torch.log1p(-D)
+    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
     return torch.exp(h * -h) if self.forward_kl else h
 
 
@@ -171,7 +171,7 @@ class AIRLDiscriminator(nn.Module):
 
   def predict_reward(self, state, action, next_state, policy, terminal):
     D = self.forward(state, action, next_state, policy, terminal)
-    return torch.log(D) - torch.log1p(-D)
+    return torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
 
 
 class EmbeddingNetwork(nn.Module):
