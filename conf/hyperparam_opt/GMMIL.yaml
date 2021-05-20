@@ -13,6 +13,10 @@ hydra:
 
       is_noisy: true
       params:
+        self_similarity: # IL params
+          type: choice
+          values: [true, false]
+          value_type: 'bool'
         # PPO hyper params
         batch_size:
           type: choice

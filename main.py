@@ -42,7 +42,7 @@ def main(cfg: DictConfig) -> None:
     elif cfg.imitation in ['FAIRL', 'GAIL', 'PUGAIL']:
       discriminator = GAILDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, state_only=cfg.state_only, forward_kl=cfg.imitation == 'FAIRL')
     elif cfg.imitation == 'GMMIL':
-      discriminator = GMMILDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, state_only=cfg.state_only)
+      discriminator = GMMILDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, self_similarity=cfg.self_similarity, state_only=cfg.state_only)
     elif cfg.imitation == 'RED':
       discriminator = REDDiscriminator(state_size + (1 if cfg.absorbing else 0), action_size, cfg.hidden_size, state_only=cfg.state_only)
     if cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
