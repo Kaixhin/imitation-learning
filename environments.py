@@ -22,6 +22,7 @@ class PendulumEnv():
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
 
   def step(self, action):
+    action = action.clamp(min=self.env.action_space.low[0], max=self.env.action_space.high[0])  # Clamp actions TODO: Per-dim clamping
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0), reward, terminal  # Add batch dimension to state
 
@@ -52,16 +53,14 @@ class D4RLEnv():
     assert env_name in D4RL_ENV_NAMES
     
     self.env = gym.make(env_name)
-    min_action_range, max_action_range = self.env.action_space.low[0], self.env.action_space.high[0]
-    self.action_scale, self.action_loc = (max_action_range - min_action_range) / 2, (max_action_range + min_action_range) / 2
 
   def reset(self):
     state = self.env.reset()
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
 
   def step(self, action):
-    scaled_action = self.action_scale * action[0].detach().numpy() + self.action_loc # Assumes action is in (-1, 1) and rescales it accordingly; remove batch dimension from action
-    state, reward, terminal, _ = self.env.step(scaled_action)
+    action = action.clamp(min=self.env.action_space.low[0], max=self.env.action_space.high[0])  # Clamp actions TODO: Per-dim clamping
+    state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0), reward, terminal  # Add batch dimension to state
 
   def seed(self, seed):

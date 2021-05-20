@@ -1,8 +1,7 @@
 import numpy as np
 import torch
 from torch import nn
-from torch.distributions import Categorical, Independent, Normal, TransformedDistribution
-from torch.distributions.transforms import TanhTransform
+from torch.distributions import Independent, Normal
 from torch.nn import Parameter, functional as F
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
@@ -57,7 +56,7 @@ class Actor(nn.Module):
 
   def forward(self, state):
     mean = self.actor(state)
-    policy = TransformedDistribution(Independent(Normal(mean, self.log_std_dev.exp()), 1), TanhTransform(cache_size=1))
+    policy = Independent(Normal(mean, self.log_std_dev.exp()), 1)
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
@@ -105,7 +104,7 @@ class ActorCritic(nn.Module):
     return policy, value
 
   def get_greedy_action(self, state):
-    return torch.tanh(self.actor(state).base_dist.mean)
+    return self.actor(state).mean
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):

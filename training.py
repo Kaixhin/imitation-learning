@@ -68,7 +68,7 @@ def ppo_update(agent, trajectories, next_state, agent_optimiser, discount, trace
   policy_ratio = (trajectories['log_prob_actions'] - trajectories['old_log_prob_actions']).exp()
   policy_loss = -torch.min(policy_ratio * trajectories['advantages'], torch.clamp(policy_ratio, min=1 - ppo_clip, max=1 + ppo_clip) * trajectories['advantages']).mean()  # Update the policy by maximising the clipped PPO objective
   value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])  # Fit value function by regression on mean squared error
-  entropy_loss = trajectories['log_prob_actions'].mean()  # Add (empirical) entropy regularisation (maximise -p.log(p) with p already sampled)
+  entropy_loss = -policy.entropy().mean()  # Add entropy regularisation
   
   agent_optimiser.zero_grad(set_to_none=True)
   (policy_loss + value_loss_coeff * value_loss + entropy_loss_coeff * entropy_loss).backward()
