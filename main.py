@@ -13,38 +13,6 @@ from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMM
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
-# TODO: Sweeper: New strat: We sweep all the PPO parameters TOGETHER WITH IL algorithm, hence move hydra ax sweeper param in hydra opt to IL.yaml (for each algo)
-# TODO: Sweeper: Add all IL sweeper parameter to hyper_param_opt folder, AND REMOVE PPO AND MOVE IT IN TO THOSE
-# TODO: rename agent_learning_rate to agent_learning_rate & learning_rate to imitation_learning_rate
-# Setup
-"""
-parser = argparse.ArgumentParser(description='IL')
-parser.add_argument('--seed', type=int, default=1, metavar='S', help='Random seed')
-parser.add_argument('--steps', type=int, default=100000, metavar='T', help='Number of environment steps')
-parser.add_argument('--hidden-size', type=int, default=32, metavar='H', help='Hidden size')
-parser.add_argument('--discount', type=float, default=0.99, metavar='γ', help='Discount')
-parser.add_argument('--trace-decay', type=float, default=0.95, metavar='λ', help='GAE trace decay')
-parser.add_argument('--ppo-clip', type=float, default=0.2, metavar='ε', help='PPO clip ratio')
-parser.add_argument('--ppo-epochs', type=int, default=4, metavar='K', help='PPO epochs')
-parser.add_argument('--value-loss-coeff', type=float, default=0.5, metavar='c1', help='Value loss coefficient')
-parser.add_argument('--entropy-loss-coeff', type=float, default=0, metavar='c2', help='Entropy regularisation coefficient')
-parser.add_argument('--learning-rate', type=float, default=0.001, metavar='η', help='Learning rate')
-parser.add_argument('--batch-size', type=int, default=2048, metavar='B', help='Minibatch size')
-parser.add_argument('--max-grad-norm', type=float, default=1, metavar='N', help='Maximum gradient L2 norm')
-parser.add_argument('--evaluation-interval', type=int, default=10000, metavar='EI', help='Evaluation interval')
-parser.add_argument('--evaluation-episodes', type=int, default=50, metavar='EE', help='Evaluation episodes')
-parser.add_argument('--save-trajectories', action='store_true', default=False, help='Store trajectories from agent after training')
-parser.add_argument('--imitation', type=str, default='', choices=['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED'], metavar='I', help='Imitation learning algorithm')
-parser.add_argument('--state-only', action='store_true', default=False, help='State-only imitation learning')
-parser.add_argument('--absorbing', action='store_true', default=False, help='Indicate absorbing states')
-parser.add_argument('--imitation-epochs', type=int, default=5, metavar='IE', help='Imitation learning epochs')
-parser.add_argument('--imitation-batch-size', type=int, default=128, metavar='IB', help='Imitation learning minibatch size')
-parser.add_argument('--imitation-replay-size', type=int, default=4, metavar='IRS', help='Imitation learning trajectory replay size')
-parser.add_argument('--r1-reg-coeff', type=float, default=1, metavar='γ', help='R1 gradient regularisation coefficient')
-parser.add_argument('--pos-class-prior', type=float, default=0.5, metavar='η', help='Positive class prior')
-parser.add_argument('--nonnegative-margin', type=float, default=0, metavar='β', help='Non-negative margin')
-#args = parser.parse_args()
-"""
 
 @hydra.main(config_path='conf', config_name='config')
 def main(cfg: DictConfig) -> None:
