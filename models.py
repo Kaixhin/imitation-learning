@@ -186,7 +186,7 @@ class REDDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, state_only=False):
     super().__init__()
     self.action_size, self.state_only = action_size, state_only
-    self.gamma = None
+    self.sigma_1 = None
     self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
     self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
     for param in self.target.parameters():
@@ -197,6 +197,11 @@ class REDDiscriminator(nn.Module):
     prediction, target = self.predictor(state_action), self.target(state_action)
     return prediction, target
 
-  def predict_reward(self, state, action, sigma=1):  # TODO: Set sigma based such that r(s, a) from expert demonstrations ≈ 1
+  # Originally, sets σ based such that r(s, a) from expert demonstrations ≈ 1; instead this uses kernel median heuristic (same as GMMIL)
+  def set_sigma(self, expert_state, expert_action):
+    prediction, target = self.forward(expert_state, expert_action)
+    self.sigma_1 = 1 / _squared_distance(prediction.transpose(0, 1), target.transpose(0, 1)).median().item()
+
+  def predict_reward(self, state, action):
     prediction, target = self.forward(state, action)
-    return _gaussian_kernel(prediction, target, gamma=sigma).mean(dim=1)
+    return _gaussian_kernel(prediction, target, gamma=self.sigma_1).mean(dim=1)

@@ -72,6 +72,8 @@ def main(cfg: DictConfig) -> None:
           elif cfg.imitation == 'RED':
             # Train predictor network to match random target network
             target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
+            with torch.no_grad():
+              discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
 
     if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
