@@ -16,7 +16,7 @@ hydra:
       params:
         imitation_epochs: # IL params
           type: choice
-          values: [5, 10, 25]
+          values: [5, 15, 25]
           value_type: 'int'
         il_learning_rate: #keep
           type: choice
@@ -35,3 +35,7 @@ hydra:
           type: choice
           values: [5, 10, 20]
           value_type: 'int'
+        entropy_loss_coeff:
+          type: choice
+          values: [ 0, 0.01, 0.001 ]
+          value_type: 'float'

@@ -16,7 +16,7 @@ hydra:
       params:
         imitation_epochs: # IL params
           type: choice
-          values: [5, 10, 25] #TODO: ask Kai if we should increase
+          values: [5, 15, 25] #TODO: ask Kai if we should increase
           value_type: 'int'
         # PPO hyper params
         batch_size:
