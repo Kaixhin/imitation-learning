@@ -21,7 +21,7 @@ hydra:
         # PPO hyper params
         batch_size:
           type: choice
-          values: [512, 1024, 2048 ]
+          values: [1024, 2048, 4096 ]
           value_type: 'int'
         agent_learning_rate:
           type: choice
