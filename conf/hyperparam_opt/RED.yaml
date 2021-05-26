@@ -3,7 +3,7 @@ hydra:
   sweeper:
     #ax configuration. Same across all algorithms
     ax_config:
-      max_trials: 30
+      max_trials: 20
 
       experiment:
         minimize: false
