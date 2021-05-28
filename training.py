@@ -128,14 +128,14 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
  
     # Binary logistic regression
     discriminator_optimiser.zero_grad(set_to_none=True)
-    expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
+    expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy_with_logits(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
     autograd.backward(expert_loss, create_graph=True)
     r1_reg = 0
     for param in discriminator.parameters():
       r1_reg += param.grad.norm()  # R1 gradient penalty
     if algorithm == 'PUGAIL':
-      policy_loss = torch.clamp(F.binary_cross_entropy(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
+      policy_loss = torch.clamp(F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
     else:
-      policy_loss = F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
+      policy_loss = F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
     (policy_loss + r1_reg_coeff * r1_reg).backward()
     discriminator_optimiser.step()

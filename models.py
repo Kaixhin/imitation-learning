@@ -25,9 +25,8 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, output_size, activation_function, final_activation_function=None, dropout=0, final_gain=1.0):
+def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1.0):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
-  assert final_activation_function is None or final_activation_function in ACTIVATION_FUNCTIONS.keys()
   
   network_dims, layers = (input_size, hidden_size, hidden_size), []
 
@@ -43,7 +42,6 @@ def _create_fcnn(input_size, hidden_size, output_size, activation_function, fina
   nn.init.orthogonal_(final_layer.weight, gain=final_gain)
   nn.init.constant_(final_layer.bias, 0)
   layers.append(final_layer)
-  if final_activation_function is not None: layers.append(ACTIVATION_FUNCTIONS[final_activation_function]())
 
   return nn.Sequential(*layers)
 
@@ -115,15 +113,15 @@ class GAILDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, state_only=False, forward_kl=False):
     super().__init__()
     self.action_size, self.state_only, self.forward_kl = action_size, state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, 'tanh', final_activation_function='sigmoid', final_gain=nn.init.calculate_gain('sigmoid'))
+    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, 'tanh')
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
     return D
   
   def predict_reward(self, state, action):
-    D = self.forward(state, action)
-    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
+    D = torch.sigmoid(self.forward(state, action))
+    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6)  # Add epsilon to improve numerical stability given limited floating point precision
     return torch.exp(h * -h) if self.forward_kl else h
 
 
@@ -166,11 +164,10 @@ class AIRLDiscriminator(nn.Module):
 
   def forward(self, state, action, next_state, log_policy, terminal):
     f = self.reward(state, action) + (1 - terminal) * (self.discount * self.value(next_state) - self.value(state))
-    f_exp = f.exp()
-    return f_exp / (f_exp + log_policy.exp())
+    return f - log_policy  # Note that this is equivalent to sigmoid^-1(e^f / (e^f + π))
 
   def predict_reward(self, state, action, next_state, log_policy, terminal):
-    D = self.forward(state, action, next_state, log_policy, terminal)
+    D = torch.sigmoid(self.forward(state, action, next_state, log_policy, terminal))
     return torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
 
 
