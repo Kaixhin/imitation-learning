@@ -124,7 +124,7 @@ class GAILDiscriminator(nn.Module):
   def predict_reward(self, state, action):
     D = self.forward(state, action)
     h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
-    return torch.exp(h * -h) if self.forward_kl else h
+    return torch.exp(h) * -h if self.forward_kl else h
 
 
 class GMMILDiscriminator(nn.Module):
