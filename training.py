@@ -120,22 +120,22 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
       D_policy = discriminator(policy_state, policy_action)
     elif algorithm == 'AIRL':
       with torch.no_grad():
-        expert_data_policy = agent.log_prob(expert_state, expert_action).exp()
-        policy_data_policy = agent.log_prob(policy_state, policy_action).exp()
+        expert_data_log_policy = agent.log_prob(expert_state, expert_action)
+        policy_data_log_policy = agent.log_prob(policy_state, policy_action)
       if absorbing: expert_state, expert_action, expert_next_state, policy_state, policy_action, policy_next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(policy_state, policy_action, policy_terminal, policy_next_state)
-      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_policy, expert_terminal)
-      D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_policy, policy_terminal)
+      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_log_policy, expert_terminal)
+      D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_log_policy, policy_terminal)
  
     # Binary logistic regression
     discriminator_optimiser.zero_grad(set_to_none=True)
-    expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
+    expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy_with_logits(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
     autograd.backward(expert_loss, create_graph=True)
     r1_reg = 0
     for param in discriminator.parameters():
       r1_reg += param.grad.norm()  # R1 gradient penalty
     if algorithm == 'PUGAIL':
-      policy_loss = torch.clamp(F.binary_cross_entropy(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
+      policy_loss = torch.clamp(F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
     else:
-      policy_loss = F.binary_cross_entropy(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
+      policy_loss = F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
     (policy_loss + r1_reg_coeff * r1_reg).backward()
     discriminator_optimiser.step()
