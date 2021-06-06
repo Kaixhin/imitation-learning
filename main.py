@@ -137,7 +137,11 @@ def main(cfg: DictConfig) -> None:
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
-      if cfg.imitation != 'BC': lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
+      if cfg.imitation == 'BC':
+        lineplot(range(cfg.evaluation.interval, cfg.steps + 1, cfg.evaluation.interval), metrics['test_returns'] * (cfg.steps // cfg.evaluation.interval), 'test_returns')
+        break
+      else:
+        lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
 
   if cfg.save_trajectories:
@@ -151,7 +155,7 @@ def main(cfg: DictConfig) -> None:
 
 
   env.close()
-  return sum(recent_returns) / float(cfg.evaluation.average_window)
+  return sum(recent_returns) / float(1 if cfg.imitation == 'BC' else cfg.evaluation.average_window)
 
 if __name__ == '__main__':
   main()
