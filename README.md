@@ -11,8 +11,6 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - FAIRL [[6]](#references)
 - GAIL [[7]](#references)
 - GMMIL [[8]](#references)
-- nn-PUGAIL [[9]](#references)
-- ~~PWIL [[10]](#references)~~
 - RED [[11]](#references)
 
 
@@ -27,6 +25,10 @@ if you fail to install d4rl-pybullet, install it with pip directly from git by u
 ```
 pip install git+https://github.com/takuseno/d4rl-pybullet
 ```
+### Note:
+For hyperparameter optimization, [Hydra and AX](https://hydra.cc/docs/next/plugins/ax_sweeper/) is used. Ax requires a specific version of PyTorch, 
+and therefore might upgrade/downgrade the PyTorch if you install it on existing environment.
+
 
 Run
 ---
@@ -55,8 +57,13 @@ The last argument specifies *which* parameters to optimize. (Default is IL and c
 ### Run with seeds
 You can run each algorithm with different seeds with:
 ```
-python main.py -m algorithm=AIRL/hopper seed=[1, 2, 3, 4, 5] hyperparam_opt=empty hydra/sweeper=base
+python main.py -m algorithm=AIRL/hopper seed=1, 2, 3, 4, 5 hyperparam_opt=empty hydra/sweeper=base
 ```
+or use the existing bash script
+```bash
+./run_seed_experiments.sh ALG ENV
+```
+The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note: running this code twice will overwrite the previous result).
 
 Options that can be modified in config include:
 
@@ -64,6 +71,8 @@ Options that can be modified in config include:
 - Absorbing state indicator [[12]](#references): `absorbing: true/false`
 - R1 gradient regularisation [[13]](#references): `r1-reg-coeff: 0.5` (in each algorithm subfolder)
 
+The state only & absorbing is not used in the result.
+ 
 Results
 -------
 
