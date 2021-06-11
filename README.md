@@ -75,6 +75,9 @@ The state only & absorbing is not used in the result.
  
 Results
 -------
+**ALL**
+![all_training_result](figures/result_fig.png) 
+
 
 **PPO**
 

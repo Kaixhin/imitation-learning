@@ -98,7 +98,7 @@ def create_all_plots(subplots=True):
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
     plt.xlabel("Steps")
     plt.ylabel("Mean reward")
-    fig.show()
+    plt.show()
 
 if __name__ == '__main__':
     create_all_plots()
