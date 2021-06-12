@@ -75,63 +75,8 @@ The state only & absorbing is not used in the result.
  
 Results
 -------
-**ALL**
+
 ![all_training_result](figures/result_fig.png) 
-
-
-**PPO**
-
-Train | Test
-:----:|:---:
-![ppo_train_returns](figures/ppo_train_returns.png) | ![ppo_test_returns](figures/ppo_test_returns.png)
-
-**AIRL**
-
-Train | Test
-:----:|:---:
-![airl_train_returns](figures/airl_train_returns.png) | ![airl_test_returns](figures/airl_test_returns.png)
-
-**BC**
-
-Train | Test
-:----:|:---:
-![bc_test_returns](figures/bc_test_returns.png) | ![bc_test_returns](figures/bc_test_returns.png)
-
-**DRIL**
-
-Train | Test
-:----:|:---:
-![dril_train_returns](figures/dril_train_returns.png) | ![dril_test_returns](figures/dril_test_returns.png)
-
-**FAIRL**
-
-Train | Test
-:----:|:---:
-![fairl_train_returns](figures/fairl_train_returns.png) | ![fairl_test_returns](figures/fairl_test_returns.png)
-
-**GAIL**
-
-Train | Test
-:----:|:---:
-![gail_train_returns](figures/gail_train_returns.png) | ![gail_test_returns](figures/gail_test_returns.png)
-
-**GMMIL**
-
-Train | Test
-:----:|:---:
-![gmmil_train_returns](figures/gmmil_train_returns.png) | ![gmmil_test_returns](figures/gmmil_test_returns.png)
-
-**nn-PUGAIL**
-
-Train | Test
-:----:|:---:
-![pugail_train_returns](figures/pugail_train_returns.png) | ![pugail_test_returns](figures/pugail_test_returns.png)
-
-**RED**
-
-Train | Test
-:----:|:---:
-![red_train_returns](figures/red_train_returns.png) | ![red_test_returns](figures/red_test_returns.png)
 
 Acknowledgements
 ----------------
@@ -145,7 +90,7 @@ If you find this work useful and would like to cite it, the following would be a
 
 ```
 @misc{arulkumaran2020pragmatic,
-  author = {Arulkumaran, Ogawa Lillrank},
+  author = {Arulkumaran, Kai and Ogawa Lillrank, Dan},
   title = {A Pragmatic Look at Deep Imitation Learning},
   url = {https://github.com/Kaixhin/imitation-learning},
   year = {2020}
