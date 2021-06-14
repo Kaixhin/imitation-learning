@@ -24,7 +24,8 @@ value_loss_coeff: 0.5
 ppo_clip: 0.25
 hidden_size: 256
 log_std_dev_init: -2
-
+check_memory_usage: false
+check_time_usage: false
 
 # ax sweep setting
 hydra:
