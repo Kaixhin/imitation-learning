@@ -2,6 +2,7 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
+# resuling optimal parameters from 20 hyper parameter optimization run (best sweep 579)
 imitation: GAIL
 # Best IL hyperparam optimization value (reward: 579)
 imitation_epochs: 5
