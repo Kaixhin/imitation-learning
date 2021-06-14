@@ -70,17 +70,6 @@ def main(cfg: DictConfig) -> None:
           if cfg.imitation == 'BC':
             # Perform behavioural cloning updates offline
             behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, cfg.batch_size)
-            if cfg.check_time_usage:
-              training_time = time.time() - start_time
-              with open('./training_time.txt', 'w') as time_file:
-                time_file.write(str(training_time))
-              break
-            if cfg.check_memory_usage:
-              _, peak_mem = tracemalloc.get_traced_memory()
-              mem_usage = "Memory usage: " + str(peak_mem/10**6) + "MB"
-              with open('./memory_usage.txt', 'w') as mem_file:
-                mem_file.write(mem_usage)
-              break
           elif cfg.imitation == 'DRIL':
             # Perform behavioural cloning updates offline on policy ensemble (dropout version)
             behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size)
@@ -91,6 +80,18 @@ def main(cfg: DictConfig) -> None:
             target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
             with torch.no_grad():
               discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
+        if cfg.imitation == 'BC':
+          if cfg.check_time_usage:
+            training_time = time.time() - start_time
+            with open('./training_time.txt', 'w') as time_file:
+              time_file.write(str(training_time))
+            break
+          if cfg.check_memory_usage:
+            _, peak_mem = tracemalloc.get_traced_memory()
+            mem_usage = "Memory usage: " + str(peak_mem/10**6) + "MB"
+            with open('./memory_usage.txt', 'w') as mem_file:
+              mem_file.write(mem_usage)
+            break
 
     if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
