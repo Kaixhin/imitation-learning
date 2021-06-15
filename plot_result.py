@@ -77,8 +77,6 @@ def plot_environment_result(data, ax, env):
     for alg, col in zip(algorithms, colors):
         try:
             metric = data[alg]
-            if alg is "BC":
-                print(alg)
             x, mean, std_err = process_test_data(metric)
             if alg is "BC":
                 x = np.multiply(x, np.linspace(0.0, 100.0, num=100))
