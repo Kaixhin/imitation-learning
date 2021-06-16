@@ -19,7 +19,6 @@ def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.env_type in ENVS.keys()
   assert cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
-
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -80,17 +79,20 @@ def main(cfg: DictConfig) -> None:
             target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
             with torch.no_grad():
               discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
-        if cfg.imitation == 'BC':
-          if cfg.check_time_usage:
-            training_time = time.time() - start_time
-            with open('./training_time.txt', 'w') as time_file:
-              time_file.write(str(training_time))
+        if cfg.check_time_usage:
+          pre_training_time = time.time() - start_time
+          with open('./pre_training_time.txt', 'w') as time_file:
+            time_file.write(str(pre_training_time))
+          new_start_time = time.time()
+          if cfg.imitation == 'BC':
             break
-          if cfg.check_memory_usage:
-            _, peak_mem = tracemalloc.get_traced_memory()
-            mem_usage = "Memory usage: " + str(peak_mem/10**6) + "MB"
-            with open('./memory_usage.txt', 'w') as mem_file:
-              mem_file.write(mem_usage)
+        if cfg.check_memory_usage:
+          _, peak_mem = tracemalloc.get_traced_memory()
+          pre_mem_usage = "Memory usage: " + str(peak_mem) + " B"
+          print(pre_mem_usage)
+          with open('./pre_training_memory_usage.txt', 'w') as mem_file:
+            mem_file.write(pre_mem_usage)
+          if cfg.imitation == 'BC':
             break
 
     if cfg.imitation != 'BC':
@@ -163,12 +165,13 @@ def main(cfg: DictConfig) -> None:
         lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
   if cfg.check_time_usage:
-    training_time = time.time() - start_time
+    training_time = time.time() - new_start_time
     with open('./training_time.txt', 'w') as time_file:
       time_file.write(str(training_time))
   if cfg.check_memory_usage:
     _, peak_mem = tracemalloc.get_traced_memory()
-    mem_usage = "Memory usage: " + str(peak_mem / 10 ** 6) + "MB"
+    mem_usage = "Memory usage: " + str(peak_mem ) + " B"
+    print(mem_usage)
     with open('./memory_usage.txt', 'w') as mem_file:
       mem_file.write(mem_usage)
 
