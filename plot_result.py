@@ -13,7 +13,10 @@ sns.set(style='white')
 algorithms = ['BC', 'GAIL', 'AIRL', 'FAIRL', 'DRIL', 'RED', 'GMMIL']
 envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 colors = ['b', 'g', 'k', 'c', 'm', 'y', 'r']
-
+# Baseline results
+BASELINE = dict()  # [mean, std]
+BASELINE['ant'] = [570.80, 104.82]; BASELINE['halfcheetah'] = [787.35, 104.31]
+BASELINE['hopper'] = [1078.36, 325.52]; BASELINE['walker2d'] = [1106.68, 417.79]
 ENV_NAMES = dict()
 for env, d4rlname in zip(envs, D4RL_ENV_NAMES):
     ENV_NAMES[env] = d4rlname
@@ -72,6 +75,16 @@ def process_test_data(data):
     std_err = std_of_means / np.sqrt(n_seed)
     return np.array(x), mean_of_means, std_err
 
+def plot_env_baseline(ax, env):
+    x = np.linspace(0.0, 2* 10**6, num=100)
+    mean, std = BASELINE[env]
+    std_err = std / np.sqrt(5) # Hardcoded I know
+    mean = np.repeat(mean, 100)
+    std_err = np.repeat(std_err, 100)
+    ax.plot(x, mean, 'k', label='baseline')
+    ax.fill_between(x, mean - std_err, mean + std_err, color='k', alpha=0.1)
+
+
 def plot_environment_result(data, ax, env):
     ax.set_title(ENV_NAMES[env])
     for alg, col in zip(algorithms, colors):
@@ -86,6 +99,7 @@ def plot_environment_result(data, ax, env):
             ax.fill_between(x, mean - std_err, mean + std_err, color=col, alpha=0.3)
         except Exception as e:
             print('\t no ' + alg +' data for env:' + env)
+    plot_env_baseline(ax, env)
     ax.legend()
 
 
@@ -99,6 +113,8 @@ def create_all_plots(subplots=True):
         env_data = data[env]
         if env_data: #Empty if data couldn't be loaded
             plot_environment_result(env_data, axis, env)
+    # Plot the Baseline results
+
     fig.add_subplot(111, frameon=False)
     # hide tick and tick label of the big axis
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
