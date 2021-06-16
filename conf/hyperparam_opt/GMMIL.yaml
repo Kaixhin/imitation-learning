@@ -15,7 +15,7 @@ hydra:
       params:
         self_similarity: # IL params
           type: choice
-          values: [true, false]
+          values: [false, true]
           value_type: 'bool'
         # PPO hyper params
         batch_size:
@@ -32,5 +32,5 @@ hydra:
           value_type: 'int'
         entropy_loss_coeff:
           type: choice
-          values: [ 0, 0.01, 0.001 ]
+          values: [ 0, 0.001, 0.01 ]
           value_type: 'float'
