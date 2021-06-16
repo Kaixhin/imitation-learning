@@ -78,7 +78,7 @@ def plot_environment_result(data, ax, env):
         try:
             metric = data[alg]
             x, mean, std_err = process_test_data(metric)
-            if alg is "BC":
+            if alg == "BC":
                 x = np.multiply(x, np.linspace(0.0, 100.0, num=100))
                 mean = np.repeat(mean, 100)
                 std_err = np.repeat(std_err, 100)
@@ -202,7 +202,7 @@ def create_alg_hyperparam_plot():
     for i, alg in enumerate(algorithms):
         alg_ax = ax[i]
         plot_hyperparam_alg(alg_ax, alg)
-        if alg is "BC":
+        if alg == "BC":
             alg_ax.legend()
     ax[-1].axis('off')
     plt.show()
