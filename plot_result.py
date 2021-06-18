@@ -5,14 +5,15 @@ import seaborn as sns
 import torch
 import os
 import yaml
+import math
 
 from environments import D4RL_ENV_NAMES
 """A simple plotting script. Change the global variable depending on setting"""
 sns.set(style='white')
 
-algorithms = ['BC', 'GAIL', 'AIRL', 'FAIRL', 'DRIL', 'RED', 'GMMIL']
+algorithms = ['BC', 'GAIL', 'AIRL', 'FAIRL', 'GMMIL', 'RED', 'DRIL']
 envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
-colors = ['tab:olive', 'tab:blue', 'tab:cyan', 'tab:brown', 'tab:pink', 'tab:red', 'tab:green']
+colors = ['tab:olive', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
 output_folder = './outputs/' # Folder with all the seed sweeper results
 seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
 
@@ -78,19 +79,20 @@ def process_test_data(data):
     return np.array(x), mean_of_means, std_err, std_of_means
 
 def plot_env_baseline(ax, env):
-    x = np.linspace(0.0, 2* 10**6, num=100)
+    x = np.linspace(0.0, 2.0 , num=100)
     mean, std = BASELINE[env]
     std_err = std / np.sqrt(5) # Hardcoded I know
     mean = np.repeat(mean, 100)
     std_err = np.repeat(std_err, 100)
-    ax.plot(x, mean, 'k', label='baseline')
+    ax.plot(x, mean, 'k', label='Dataset')
     ax.fill_between(x, mean - std_err, mean + std_err, color='k', alpha=0.1)
 
 
 def plot_environment_result(data, ax, env):
-    ax.set_title(ENV_NAMES[env])
+    ax.set_title(env)
     pre_print = "For env: " + env
     print(pre_print)
+    plot_env_baseline(ax, env)
     for alg, col in zip(algorithms, colors):
         try:
             metric = data[alg]
@@ -100,13 +102,17 @@ def plot_environment_result(data, ax, env):
                 mean = np.repeat(mean, 100)
                 std_err = np.repeat(std_err, 100)
                 std = np.repeat(std, 100)
+
+            x_pow = math.floor(math.log(x[-1], 10))
+            x = x / 10**x_pow
             ax.plot(x, mean, col, label=alg)
             ax.fill_between(x, mean - std_err, mean + std_err, color=col, alpha=0.3)
             result = ' ' * len(pre_print) + alg + ", Result: " + "{:.2f}".format(mean[-1]) + " +/- " + "{:.2f}".format(std[-1])
             print(result)
         except Exception as e:
             print('\t no ' + alg +' data for env:' + env)
-    plot_env_baseline(ax, env)
+    plt.setp(ax.xaxis.get_majorticklabels(), rotation=30)
+    plt.setp(ax.yaxis.get_majorticklabels(), rotation=40)
 
 
 
@@ -115,7 +121,7 @@ def create_all_plots(x, y):
     fig, ax = plt.subplots(x, y, sharex=True)
     ax = ax.reshape(-1)
     #fig.tight_layout()
-    fig.set_size_inches(11.69, 8.27) # A4 paper size apparently. INCHES, UGH
+    fig.set_size_inches((11, 8.5), forward=False) # A4 paper size apparently. INCHES, UGH
     data = load_all_data()
     for env, axis in zip(envs, ax):
         env_data = data[env]
@@ -123,12 +129,13 @@ def create_all_plots(x, y):
             plot_environment_result(env_data, axis, env)
     # Plot the Baseline results
     handles, labels = ax[-1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper right')
+    fig.legend(handles, labels, loc='lower center', ncol=len(algorithms)+1)
     fig.add_subplot(111, frameon=False)
     # hide tick and tick label of the big axis
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-    plt.xlabel("Steps")
+    plt.xlabel(r"Steps (x $10^6$)")
     plt.ylabel("Mean reward")
+    fig.savefig('./figures/result_fig.png', dpi=500, bbox_inches='tight')
     plt.show()
 
 # Below are hyper param plotting code
