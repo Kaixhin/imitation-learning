@@ -1,7 +1,7 @@
 #!/bin/bash
 
 envs=('ant' 'halfcheetah' 'hopper' 'walker2d')
-algos=("BC" "AIRL" "DRIL" "FAIRL" "GAIL" "GMMIL" "PUGAIL" "RED")
+algos=("BC" "AIRL" "DRIL" "FAIRL" "GAIL" "GMMIL" "PPO" "PUGAIL" "RED")
 [[ " ${algos[@]} " =~ " $1 " ]] && echo "algorithm=$1" || { echo "invalid input, first input must be one of ${algos[*]} "; exit 1; }
 
 if [[ $# -eq 2 ]]; then
