@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from matplotlib import pyplot as plt
 import numpy as np
 import seaborn as sns
@@ -9,10 +10,13 @@ from environments import D4RL_ENV_NAMES
 """A simple plotting script. Change the global variable depending on setting"""
 sns.set(style='white')
 
-#algorithms = ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'RED']
 algorithms = ['BC', 'GAIL', 'AIRL', 'FAIRL', 'DRIL', 'RED', 'GMMIL']
 envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
-colors = ['b', 'g', 'k', 'c', 'm', 'y', 'r']
+colors = ['tab:olive', 'tab:blue', 'tab:cyan', 'tab:brown', 'tab:pink', 'tab:red', 'tab:green']
+output_folder = './outputs/' # Folder with all the seed sweeper results
+seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
+
+
 # Baseline results
 BASELINE = dict()  # [mean, std]
 BASELINE['ant'] = [570.80, 104.82]; BASELINE['halfcheetah'] = [787.35, 104.31]
@@ -21,8 +25,6 @@ ENV_NAMES = dict()
 for env, d4rlname in zip(envs, D4RL_ENV_NAMES):
     ENV_NAMES[env] = d4rlname
 
-output_folder = './outputs/' # Folder with all the seed sweeper results
-seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
 
 def crease_plots(subplots=True):
     if subplots:
@@ -73,7 +75,7 @@ def process_test_data(data):
     mean_of_means = means.mean(axis=0)
     std_of_means = means.std(axis=0)
     std_err = std_of_means / np.sqrt(n_seed)
-    return np.array(x), mean_of_means, std_err
+    return np.array(x), mean_of_means, std_err, std_of_means
 
 def plot_env_baseline(ax, env):
     x = np.linspace(0.0, 2* 10**6, num=100)
@@ -87,34 +89,41 @@ def plot_env_baseline(ax, env):
 
 def plot_environment_result(data, ax, env):
     ax.set_title(ENV_NAMES[env])
+    pre_print = "For env: " + env
+    print(pre_print)
     for alg, col in zip(algorithms, colors):
         try:
             metric = data[alg]
-            x, mean, std_err = process_test_data(metric)
+            x, mean, std_err, std = process_test_data(metric)
             if alg == "BC":
                 x = np.multiply(x, np.linspace(0.0, 100.0, num=100))
                 mean = np.repeat(mean, 100)
                 std_err = np.repeat(std_err, 100)
+                std = np.repeat(std, 100)
             ax.plot(x, mean, col, label=alg)
             ax.fill_between(x, mean - std_err, mean + std_err, color=col, alpha=0.3)
+            result = ' ' * len(pre_print) + alg + ", Result: " + "{:.2f}".format(mean[-1]) + " +/- " + "{:.2f}".format(std[-1])
+            print(result)
         except Exception as e:
             print('\t no ' + alg +' data for env:' + env)
     plot_env_baseline(ax, env)
-    ax.legend()
 
 
 
 
-def create_all_plots(subplots=True):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex=True)
-    ax = [ax1, ax2, ax3, ax4]
+def create_all_plots(x, y):
+    fig, ax = plt.subplots(x, y, sharex=True)
+    ax = ax.reshape(-1)
+    #fig.tight_layout()
+    fig.set_size_inches(11.69, 8.27) # A4 paper size apparently. INCHES, UGH
     data = load_all_data()
     for env, axis in zip(envs, ax):
         env_data = data[env]
         if env_data: #Empty if data couldn't be loaded
             plot_environment_result(env_data, axis, env)
     # Plot the Baseline results
-
+    handles, labels = ax[-1].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='upper right')
     fig.add_subplot(111, frameon=False)
     # hide tick and tick label of the big axis
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
@@ -254,7 +263,7 @@ PARAM_TITLE['agent_learning_rate'] = "Agent learning rate"
 PARAM_TITLE['ppo_epochs'] = "PPO iterations"
 PARAM_TITLE['entropy_loss_coeff'] = r"Entropy loss coeff $c_2$"
 
-def create_hyperparam_plot():
+def create_hyperparam_plot(x, y):
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 8) #,figsize=(7.5, 15))
     ax = [ax1, ax2, ax3, ax4, ax5, ax6, ax7]
     fig.tight_layout(w_pad=0.0, h_pad=0.1)
@@ -288,10 +297,13 @@ def create_hyperparam_plot():
 
 
 if __name__ == '__main__':
-    import sys
-    argv = sys.argv
-    alg_dict = get_relevant_param()
-    if len(argv) > 1:
-        create_hyperparam_plot()
+    import argparse
+    parser = argparse.ArgumentParser(description='DCNNAE_for_selfdetection')
+    parser.add_argument('--n-col', type=int, default=1)
+    parser.add_argument('--n-row', type=int, default=4)
+    parser.add_argument('--plot-hyperparam', action='store_true', default=False)
+    args = parser.parse_args()
+    if args.plot_hyperparam:
+        create_hyperparam_plot(args.n_row, args.n_col)
     else:
-        create_all_plots()
+        create_all_plots(args.n_row, args.n_col)
