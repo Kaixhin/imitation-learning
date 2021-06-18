@@ -55,6 +55,7 @@ def main(cfg: DictConfig) -> None:
   if cfg.check_time_usage:
     import time
     start_time = time.time()
+    new_start_time = time.time()
   if cfg.check_memory_usage:
     import tracemalloc
     tracemalloc.start()
