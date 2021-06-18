@@ -5,13 +5,13 @@ env_name: hopper-bullet-medium-v0
 # Resuling optimal parameters from 20 Hyper parameter optimization run (best sweep 1209)
 imitation: GMMIL
 #IL param to be optimized
-imitation_epochs: 10 # Not used
+imitation_epochs: 10 # Not used Benchmark
 il_learning_rate: 0.0003 # Not used
-imitation_replay_size: 3 # Not used
+imitation_replay_size: 3 # Not used Benchmark
 r1_reg_coeff: 0.5 # Not used
 self_similarity: true
 # PPO param to be optimized
-batch_size: 1024
+batch_size: 2048 #Benchmark
 ppo_epochs: 10
 agent_learning_rate: 0.0003
 entropy_loss_coeff: 0.01
