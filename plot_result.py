@@ -117,7 +117,7 @@ def plot_environment_result(data, ax, env):
 
 
 
-def create_all_plots(x, y):
+def create_all_plots(x, y, save_fig=False):
     fig, ax = plt.subplots(x, y, sharex=True)
     ax = ax.reshape(-1)
     #fig.tight_layout()
@@ -135,7 +135,8 @@ def create_all_plots(x, y):
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
     plt.xlabel(r"Steps (x $10^6$)")
     plt.ylabel("Mean reward")
-    fig.savefig('./figures/result_fig.png', dpi=500, bbox_inches='tight')
+    if save_fig:
+        fig.savefig('./figures/result_fig.png', dpi=500, bbox_inches='tight')
     plt.show()
 
 # Below are hyper param plotting code
@@ -270,7 +271,7 @@ PARAM_TITLE['agent_learning_rate'] = "Agent learning rate"
 PARAM_TITLE['ppo_epochs'] = "PPO iterations"
 PARAM_TITLE['entropy_loss_coeff'] = r"Entropy loss coeff $c_2$"
 
-def create_hyperparam_plot(x, y):
+def create_hyperparam_plot(x, y, save_fig=False):
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 8) #,figsize=(7.5, 15))
     ax = [ax1, ax2, ax3, ax4, ax5, ax6, ax7]
     fig.tight_layout(w_pad=0.0, h_pad=0.1)
@@ -306,11 +307,12 @@ def create_hyperparam_plot(x, y):
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='DCNNAE_for_selfdetection')
-    parser.add_argument('--n-col', type=int, default=1)
-    parser.add_argument('--n-row', type=int, default=4)
+    parser.add_argument('--n-col', type=int, default=2)
+    parser.add_argument('--n-row', type=int, default=2)
     parser.add_argument('--plot-hyperparam', action='store_true', default=False)
+    parser.add_argument('--save-fig', action='store_true', default=False)
     args = parser.parse_args()
     if args.plot_hyperparam:
-        create_hyperparam_plot(args.n_row, args.n_col)
+        create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
     else:
-        create_all_plots(args.n_row, args.n_col)
+        create_all_plots(args.n_row, args.n_col, args.save_fig)
