@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys, os
 import glob
 import numpy as np
