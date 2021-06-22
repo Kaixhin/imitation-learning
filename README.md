@@ -11,6 +11,7 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 - FAIRL [[6]](#references)
 - GAIL [[7]](#references)
 - GMMIL [[8]](#references)
+- ~~nn-PUGAIL [[9]](#references)~~
 - RED [[11]](#references)
 
 
