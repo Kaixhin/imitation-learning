@@ -23,20 +23,8 @@ BASELINE = dict()  # [mean, std]
 BASELINE['ant'] = [570.80, 104.82]; BASELINE['halfcheetah'] = [787.35, 104.31]
 BASELINE['hopper'] = [1078.36, 325.52]; BASELINE['walker2d'] = [1106.68, 417.79]
 ENV_NAMES = dict()
-for env, d4rlname in zip(envs, D4RL_ENV_NAMES):
-    ENV_NAMES[env] = d4rlname
-
-
-def crease_plots(subplots=True):
-    if subplots:
-        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
-        ax = [ax1, ax2, ax3, ax4]
-    plot_dict =  dict()
-    plot_dict['fig'] = fig
-    for e, a in zip(envs, ax):
-        plot_dict[e] = a
-    return plot_dict
-
+ENV_NAMES['ant'] = 'Ant'; ENV_NAMES['halfcheetah'] = 'HalfCheetah';
+ENV_NAMES['hopper'] = 'Hopper'; ENV_NAMES['walker2d'] = "Walker2D"
 
 def load_data(env, alg):
     seed_folder_name = seed_prefix + env + '_' + alg
@@ -89,7 +77,7 @@ def plot_env_baseline(ax, env):
 
 
 def plot_environment_result(data, ax, env):
-    ax.set_title(env)
+    ax.set_title(ENV_NAMES[env])
     pre_print = "For env: " + env
     print(pre_print)
     plot_env_baseline(ax, env)
@@ -111,7 +99,6 @@ def plot_environment_result(data, ax, env):
             print(result)
         except Exception as e:
             print('\t no ' + alg +' data for env:' + env)
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=30)
     plt.setp(ax.yaxis.get_majorticklabels(), rotation=40)
 
 
@@ -121,7 +108,8 @@ def create_all_plots(x, y, save_fig=False):
     fig, ax = plt.subplots(x, y, sharex=True)
     ax = ax.reshape(-1)
     #fig.tight_layout()
-    fig.set_size_inches((11, 8.5), forward=False) # A4 paper size apparently. INCHES, UGH
+    #fig.set_size_inches((11, 8.5), forward=False) # A4 paper size apparently. INCHES, UGH
+    fig.set_size_inches((14, 6), forward=False) # A4 paper size apparently. INCHES, UGH
     data = load_all_data()
     for env, axis in zip(envs, ax):
         env_data = data[env]
@@ -133,7 +121,7 @@ def create_all_plots(x, y, save_fig=False):
     fig.add_subplot(111, frameon=False)
     # hide tick and tick label of the big axis
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-    plt.xlabel(r"Steps (x $10^6$)")
+    plt.xlabel("Steps (x $10^6$)")
     plt.ylabel("Mean reward")
     if save_fig:
         fig.savefig('./figures/result_fig.png', dpi=500, bbox_inches='tight')
