@@ -5,7 +5,10 @@ import numpy as np
 
 def process_memory_data():
     res = ""
-    for name in glob.glob('./*_memory_usage.txt'):
+    data_files = glob.glob('./*hopper_time.txt')
+    print(data_files)
+    for name in data_files:
+        alg_name = name.split('_')[0].split('/')[-1]
         with open(name, 'r') as file:
             data = file.read()
             data_list = data.split('\n')
@@ -18,7 +21,7 @@ def process_memory_data():
                     continue
             npdata = np.array(float_data)
             mean, std = npdata.mean(), npdata.std()
-            txt = "For " + name + " result: " + str(mean) + " +/- " + str(std)
+            txt = "For " + alg_name + " result: " + "{:.2f}".format(mean) + " +/- " + "{:.2f}".format(std)
             print(txt)
             res = res + txt + '\n'
     with open('memory_performance_result.txt', 'w') as file:
@@ -51,7 +54,7 @@ def process_time_data(result_folder='./outputs', folder_prefix='seed_sweeper_hop
         if train:
             np_t = np.array(train)
             t_mean, t_std  = np_t.mean(), np_t.std()
-        txt = "For " + algo_name + " Pretraining: " + str(pt_mean) + " +/- " + str(pt_std) + ".  Training: " + str(t_mean) + " +/- " + str(t_std)
+        txt = "For " + algo_name + " Pretraining: " + "{:.2f}".format(pt_mean) + " +/- " + "{:.2f}".format(pt_std) + ".  Training: " + "{:.2f}".format(t_mean) + " +/- " + "{:.2f}".format(t_std)
         print(txt)
         result_text += txt + '\n'
     with open('timing_performance_result.txt', 'w') as file:
@@ -59,9 +62,11 @@ def process_time_data(result_folder='./outputs', folder_prefix='seed_sweeper_hop
 
 
 if __name__ == "__main__":
-    argv = sys.argv()
+    argv = sys.argv
     if len(argv) > 1:
-        if "memory" in argv[1]:
+        print(argv)
+        if "mem" in argv[1]:
+            print('hello')
             process_memory_data()
         elif "time" in argv[1]:
             process_time_data()
