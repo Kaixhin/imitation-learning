@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 from matplotlib import pyplot as plt
 import numpy as np
-import seaborn as sns
 import torch
 import os
 import yaml
 import math
+#import seaborn as sns
 
-from environments import D4RL_ENV_NAMES
 """A simple plotting script. Change the global variable depending on setting"""
-sns.set(style='white')
+#sns.set(style='white')
 
-algorithms = ['BC', 'GAIL', 'AIRL', 'FAIRL', 'GMMIL', 'RED', 'DRIL']
+algorithms = ['PPO', 'BC', 'GAIL', 'AIRL', 'FAIRL', 'GMMIL', 'RED', 'DRIL']
 envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
-colors = ['tab:olive', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
+colors = ['green', 'tab:olive', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
 output_folder = './outputs/' # Folder with all the seed sweeper results
 seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
 
@@ -100,7 +99,7 @@ def plot_environment_result(data, ax, env):
         except Exception as e:
             print('\t no ' + alg +' data for env:' + env)
     plt.setp(ax.yaxis.get_majorticklabels(), rotation=40)
-
+    ax.margins(x=0.0, tight=True)
 
 
 
@@ -258,12 +257,12 @@ PARAM_TITLE['batch_size'] = 'Rollout buffer size'
 PARAM_TITLE['agent_learning_rate'] = "Agent learning rate"
 PARAM_TITLE['ppo_epochs'] = "PPO iterations"
 PARAM_TITLE['entropy_loss_coeff'] = r"Entropy loss coeff $c_2$"
+PARAM_TITLE['self_similarity'] = "Self-similarity"
 
 def create_hyperparam_plot(x, y, save_fig=False):
-    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7) = plt.subplots(7, 8) #,figsize=(7.5, 15))
-    ax = [ax1, ax2, ax3, ax4, ax5, ax6, ax7]
+    fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8) = plt.subplots(8, 8)
+    ax = [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8]
     fig.tight_layout(w_pad=0.0, h_pad=0.1)
-    #fig.set_size_inches(11.69, 8.27) # A4 paper size apparently. INCHES, UGH
     l = list(relevant_param('AIRL').keys())
     # Reordered algorithms in less hyperparam order
     #algorithms = ['BC', 'GMMIL', 'RED', 'DRIL', 'AIRL', 'FAIRL', 'GAIL'][::-1]
@@ -276,7 +275,7 @@ def create_hyperparam_plot(x, y, save_fig=False):
                 set_legend = False
                 barlist = plot_hyperparam(alg_ax[j], alg, param)
                 if not j and not i:
-                    fig.legend(barlist, envs, loc=(0.9, 0.3))
+                    fig.legend(barlist, envs, loc='lower center', ncol=len(envs))
             if param not in relevant_dict.keys():
                 alg_ax[j].axis('off')
                 #alg_ax[j].get_xaxis().set_ticks([])
@@ -286,9 +285,12 @@ def create_hyperparam_plot(x, y, save_fig=False):
         if alg == "GMMIL":
             alg_ax[-1].axis('on')
             plot_hyperparam(alg_ax[-1], alg, 'self_similarity')
-            alg_ax[-1].set_title('self_similarity')
+            alg_ax[-1].set_title(PARAM_TITLE['self_similarity'])
 
         alg_ax[0].set_ylabel(alg)
+    if save_fig:
+        fig.set_size_inches((8.5, 11), forward=False)
+        fig.savefig('./figures/hyperparam.png', dpi=500, bbox_inches='tight')
     plt.show()
 
 
