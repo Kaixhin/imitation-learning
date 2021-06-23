@@ -56,9 +56,6 @@ def main(cfg: DictConfig) -> None:
     import time
     start_time = time.time()
     new_start_time = time.time()
-  if cfg.check_memory_usage:
-    import tracemalloc
-    tracemalloc.start()
   # Main training loop
   state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
@@ -85,14 +82,6 @@ def main(cfg: DictConfig) -> None:
           with open('./pre_training_time.txt', 'w') as time_file:
             time_file.write(str(pre_training_time))
           new_start_time = time.time()
-          if cfg.imitation == 'BC':
-            break
-        if cfg.check_memory_usage:
-          _, peak_mem = tracemalloc.get_traced_memory()
-          pre_mem_usage = "Memory usage: " + str(peak_mem) + " B"
-          print(pre_mem_usage)
-          with open('./pre_training_memory_usage.txt', 'w') as mem_file:
-            mem_file.write(pre_mem_usage)
           if cfg.imitation == 'BC':
             break
 
@@ -152,8 +141,7 @@ def main(cfg: DictConfig) -> None:
     
     
     # Evaluate agent and plot metrics
-    checking = cfg.check_time_usage or cfg.check_memory_usage
-    if step % cfg.evaluation.interval == 0 and not checking:
+    if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
       test_returns = evaluate_agent(agent, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed)
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
@@ -169,12 +157,6 @@ def main(cfg: DictConfig) -> None:
     training_time = time.time() - new_start_time
     with open('./training_time.txt', 'w') as time_file:
       time_file.write(str(training_time))
-  if cfg.check_memory_usage:
-    _, peak_mem = tracemalloc.get_traced_memory()
-    mem_usage = "Memory usage: " + str(peak_mem ) + " B"
-    print(mem_usage)
-    with open('./memory_usage.txt', 'w') as mem_file:
-      mem_file.write(mem_usage)
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
