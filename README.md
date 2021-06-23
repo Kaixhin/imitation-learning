@@ -21,14 +21,17 @@ The code runs on Python3.7 (AX requires >3.7). You can install most of the requi
 ```
 pip install -r requirements.txt
 ```
-Notable required packages are PyTorch, OpenAI gym, Hydra with AX,  and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet).
+Notable required packages are [PyTorch 1.9](https://pytorch.org/), [OpenAI gym](https://gym.openai.com/), [Hydra](https://hydra.cc/) with [AX](https://ax.dev/),  and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet).
 if you fail to install d4rl-pybullet, install it with pip directly from git by using the command 
 ```
 pip install git+https://github.com/takuseno/d4rl-pybullet
 ```
 ### Note:
-For hyperparameter optimization, [Hydra and AX](https://hydra.cc/docs/next/plugins/ax_sweeper/) is used. Ax requires a specific version of PyTorch, 
-and therefore might upgrade/downgrade the PyTorch if you install it on existing environment.
+For hyperparameter optimization, [Hydra and AX](https://hydra.cc/docs/next/plugins/ax_sweeper/) is used. This is not included in the `requirement.txt` Ax requires a specific version of PyTorch, 
+and therefore might upgrade/downgrade the PyTorch if you install it on existing environment. Ax sweeper can be installed with:
+```
+pip install  hydra-ax-sweeper --upgrade
+```
 
 
 Run
@@ -45,24 +48,25 @@ python main.py algorithm=AIRL/hopper
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG/ENV.yaml`, 
 with the latter containing algorithm & environment specific hyperparameter that was tuned with AX.
 
-The resulting model will saved in `repo_root/outputs/ENV_ALGO/m-d-H-M` with the last subfolder indicating current date (month-day-hour-minute).
+The resulting model will saved in `./outputs/ENV_ALGO/m-d-H-M` with the last subfolder indicating current date (month-day-hour-minute).
 
 ### Run hyperparameter optimization
 Hyper parameter optimization can be run by adding the `-m` flag. 
 
 example:
 ```
-python main.py -m algorithm=AIRL/hopper hyperparam_opt=AIRL
+python main.py -m algorithm=AIRL/hopper hyperparam_opt=AIRL hydra/sweeper=ax
 ```
-The last argument specifies *which* parameters to optimize. (Default is IL and contains all parameters).
+The `hyperparam_opt` specifies *which* parameters to optimize. (Default is IL and contains all parameters).
+Note that you need AX-sweeper installed for the above code to work. (See Requirement section)
 ### Run with seeds
 You can run each algorithm with different seeds with:
 ```
-python main.py -m algorithm=AIRL/hopper seed=1, 2, 3, 4, 5 hyperparam_opt=empty hydra/sweeper=base
+python main.py -m algorithm=AIRL/hopper seed=1, 2, 3, 4, 5 
 ```
 or use the existing bash script
 ```bash
-./run_seed_experiments.sh ALG ENV
+./scripts/run_seed_experiments.sh ALG ENV
 ```
 The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note: running this code twice will overwrite the previous result).
 
