@@ -3,7 +3,20 @@ defaults:
   - hydra/sweeper: basic
   - hyperparam_opt: empty
 seed: 0
-#batch_size: 1024
+# Below Parameters are overwritten from the conf/algorithm/env.yaml
+# --------Overwritten params ------------
+imitation_epochs: 25
+il_learning_rate: !!float 3e-5
+imitation_replay_size: 3
+r1_reg_coeff: 1.0
+# PPO param to be optimized
+batch_size: 4096
+ppo_epochs: 10
+agent_learning_rate: !!float 3e-5
+entropy_loss_coeff: 0.01
+self_similarity: false
+# ---------------------------------------
+
 evaluation:
   interval: 20000
   episodes: 30
