@@ -1,7 +1,7 @@
 defaults:
   - algorithm: AIRL/hopper #AIRL
-  - hydra/sweeper: ax
-  - hyperparam_opt: IL
+  - hydra/sweeper: basic
+  - hyperparam_opt: empty
 seed: 0
 #batch_size: 1024
 evaluation:

@@ -16,13 +16,14 @@ D4RL_ENV_NAMES = ['ant-bullet-medium-v0', 'halfcheetah-bullet-medium-v0', 'hoppe
 class PendulumEnv():
   def __init__(self, env_name=''):
     self.env = gym.make('Pendulum-v0')
+    self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
   def reset(self):
     state = self.env.reset()
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
 
   def step(self, action):
-    action = action.clamp(min=self.env.action_space.low[0], max=self.env.action_space.high[0])  # Clamp actions TODO: Per-dim clamping
+    action = action.clamp(min=self.env.action_space.low, max=self.env.action_space.high)  # Clip actions
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0), reward, terminal  # Add batch dimension to state
 
@@ -53,13 +54,14 @@ class D4RLEnv():
     assert env_name in D4RL_ENV_NAMES
     
     self.env = gym.make(env_name)
+    self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
   def reset(self):
     state = self.env.reset()
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
 
   def step(self, action):
-    action = action.clamp(min=self.env.action_space.low[0], max=self.env.action_space.high[0])  # Clamp actions TODO: Per-dim clamping
+    action = action.clamp(min=self.env.action_space.low, max=self.env.action_space.high)  # Clip actions
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     return torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0), reward, terminal  # Add batch dimension to state
 
