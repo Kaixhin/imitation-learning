@@ -47,14 +47,14 @@ def process_time_data(result_folder='./outputs', folder_prefix='seed_sweeper_hop
                 with open(train_data, 'r') as file:
                     data = float(file.read())
                     train.append(data)
-        pt_mean, pt_std, t_mean, t_std = "-", "", "-", ""
+        pt_mean, pt_std, t_mean, t_std = 0.0, 0.0, 0.0, 0.0 
         if pretrain:
             np_pt = np.array(pretrain)
             pt_mean, pt_std = np_pt.mean(), np_pt.std()
         if train:
             np_t = np.array(train)
             t_mean, t_std  = np_t.mean(), np_t.std()
-        txt = "For " + algo_name + " Pretraining: " + "{:.2f}".format(pt_mean) + " +/- " + "{:.2f}".format(pt_std) + ".  Training: " + "{:.2f}".format(t_mean) + " +/- " + "{:.2f}".format(t_std)
+        txt = "For " + algo_name + " Pretraining: " + "{:.2f}".format(pt_mean) + " +/- " + "{:.2f}".format(pt_std) + " .  Training: " + "{:.2f}".format(t_mean) + " +/- " + "{:.2f}".format(t_std)
         print(txt)
         result_text += txt + '\n'
     with open('timing_performance_result.txt', 'w') as file:
