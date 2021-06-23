@@ -73,12 +73,12 @@ def main(cfg: DictConfig) -> None:
           elif cfg.imitation == 'DRIL':
             # Perform behavioural cloning updates offline on policy ensemble (dropout version)
             behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size)
-            with torch.no_grad():
+            with torch.no_grad():  # TODO: Check why inference mode fails?
               discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
           elif cfg.imitation == 'RED':
             # Train predictor network to match random target network
             target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
-            with torch.no_grad():
+            with torch.inference_mode():
               discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
         if cfg.check_time_usage:
           pre_training_time = time.time() - start_time
@@ -98,7 +98,7 @@ def main(cfg: DictConfig) -> None:
 
     if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
-      with torch.no_grad():
+      with torch.inference_mode():
         policy, value = agent(state)
         action = policy.sample()
         log_prob_action = policy.log_prob(action)
@@ -130,7 +130,7 @@ def main(cfg: DictConfig) -> None:
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
           if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
-          with torch.no_grad():
+          with torch.inference_mode():
             if cfg.imitation == 'AIRL':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'], terminals)
             elif cfg.imitation == 'DRIL':

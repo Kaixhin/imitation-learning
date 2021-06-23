@@ -7,8 +7,6 @@ imitation: DRIL
 #IL param to be optimized
 imitation_epochs: 15
 il_learning_rate: 0.0003
-imitation_replay_size: 3 #NOT USED
-r1_reg_coeff: 0.5 #NOT USED
 # PPO param to be optimized
 batch_size:  2048
 ppo_epochs: 5

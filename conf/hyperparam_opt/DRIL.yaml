@@ -37,5 +37,5 @@ hydra:
           value_type: 'int'
         entropy_loss_coeff:
           type: choice
-          values: [ 0, 0.01, 0.001 ]
+          values: [ 0, 0.001, 0.01 ]
           value_type: 'float'
