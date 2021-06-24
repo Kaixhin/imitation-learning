@@ -241,11 +241,13 @@ def plot_hyperparam(ax, alg, param):
     for i, c in enumerate(['r', 'g', 'b', 'm']):
         barlist[i].set_color(c)
     plt.setp(ax.yaxis.get_majorticklabels(), rotation=30)
+    ax.yaxis.set_tick_params(pad=0)
     ax.set_xticklabels([])
     ax.set_yticks(range(len(hyperparam_range)+1))
     if 'learning_rate' in param:
         hyperparam_range = ['3e-5', '3e-4']
-    ax.set_yticklabels(['', *hyperparam_range])
+    ax.set_yticklabels(['', *hyperparam_range] )
+    ax.margins(x=0.0, y=0.0, tight=True)
     return barlist
 
 PARAM_TITLE = dict()
@@ -262,7 +264,8 @@ PARAM_TITLE['self_similarity'] = "Self-similarity"
 def create_hyperparam_plot(x, y, save_fig=False):
     fig, (ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8) = plt.subplots(8, 8)
     ax = [ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8]
-    fig.tight_layout(w_pad=0.0, h_pad=0.1)
+    fig.tight_layout(pad=0.5, w_pad=0.1, h_pad=0.1)
+    #fig.tight_layout()
     l = list(relevant_param('AIRL').keys())
     # Reordered algorithms in less hyperparam order
     #algorithms = ['BC', 'GMMIL', 'RED', 'DRIL', 'AIRL', 'FAIRL', 'GAIL'][::-1]
@@ -275,7 +278,8 @@ def create_hyperparam_plot(x, y, save_fig=False):
                 set_legend = False
                 barlist = plot_hyperparam(alg_ax[j], alg, param)
                 if not j and not i:
-                    fig.legend(barlist, envs, loc='lower center', ncol=len(envs))
+                    ENV = [ENV_NAMES[env] for env in envs]
+                    fig.legend(barlist, ENV, loc='lower center', ncol=len(envs))
             if param not in relevant_dict.keys():
                 alg_ax[j].axis('off')
                 #alg_ax[j].get_xaxis().set_ticks([])
@@ -291,6 +295,7 @@ def create_hyperparam_plot(x, y, save_fig=False):
     if save_fig:
         fig.set_size_inches((8.5, 11), forward=False)
         fig.savefig('./figures/hyperparam.png', dpi=500, bbox_inches='tight')
+    #plt.subplot_tool() #Uncomment when you want to play with the margins between subplots
     plt.show()
 
 
