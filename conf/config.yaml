@@ -1,7 +1,8 @@
 defaults:
-  - algorithm: AIRL/hopper #AIRL
-  - hydra/sweeper: basic
+  - _self_
+  - algorithm: AIRL/hopper
   - hyperparam_opt: empty
+  - override hydra/sweeper: basic
 seed: 0
 # Below Parameters are overwritten from the conf/algorithm/env.yaml
 # --------Overwritten params ------------
