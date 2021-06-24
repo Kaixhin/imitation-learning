@@ -21,16 +21,15 @@ The code runs on Python3.7 (AX requires >3.7). You can install most of the requi
 ```
 pip install -r requirements.txt
 ```
-Notable required packages are [PyTorch 1.9](https://pytorch.org/), [OpenAI gym](https://gym.openai.com/), [Hydra](https://hydra.cc/) with [AX](https://ax.dev/),  and [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet).
+Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet), [Hydra](https://hydra.cc/) and [Ax](https://ax.dev/).
 if you fail to install d4rl-pybullet, install it with pip directly from git by using the command 
 ```
 pip install git+https://github.com/takuseno/d4rl-pybullet
 ```
 ### Note:
-For hyperparameter optimization, [Hydra and AX](https://hydra.cc/docs/next/plugins/ax_sweeper/) is used. This is not included in the `requirement.txt` Ax requires a specific version of PyTorch, 
-and therefore might upgrade/downgrade the PyTorch if you install it on existing environment. Ax sweeper can be installed with:
+For hyperparameter optimization, the code uses the [Hydra AX sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/). This is not included in the `requirements.txt`. Ax requires a specific version of PyTorch, and therefore might upgrade/downgrade the PyTorch if you install it on existing environment. Ax sweeper can be installed with:
 ```
-pip install  hydra-ax-sweeper --upgrade
+pip install hydra-ax-sweeper --upgrade
 ```
 
 

@@ -45,7 +45,7 @@ class PendulumEnv():
     return self.env.action_space
 
   def get_dataset(self, size=0, dtype=torch.float):
-    raise NotImplemented()
+    return []
 
 
 
