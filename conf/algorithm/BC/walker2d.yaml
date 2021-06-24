@@ -2,10 +2,9 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
-# Resuling optimal parameters from 20 Hyper parameter optimization run (best sweep 234)
 imitation: BC
-#IL param to be optimized
-imitation_epochs: 5
-# PPO param to be optimized
+# PPO hyperparameters
 batch_size: 4096
-agent_learning_rate: !!float 3e-5
+agent_learning_rate: 0.00003
+# IL hyperparameters
+imitation_epochs: 5
