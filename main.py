@@ -19,7 +19,6 @@ def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.env_type in ENVS.keys()
   assert cfg.imitation in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
-
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -52,7 +51,11 @@ def main(cfg: DictConfig) -> None:
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
-
+  # Performance tracker
+  if cfg.check_time_usage:
+    import time
+    start_time = time.time()
+    new_start_time = time.time()
   # Main training loop
   state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
@@ -74,6 +77,13 @@ def main(cfg: DictConfig) -> None:
             target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
             with torch.inference_mode():
               discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
+        if cfg.check_time_usage:
+          pre_training_time = time.time() - start_time
+          with open('./pre_training_time.txt', 'w') as time_file:
+            time_file.write(str(pre_training_time))
+          new_start_time = time.time()
+          if cfg.imitation == 'BC':
+            break
 
     if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
@@ -131,7 +141,7 @@ def main(cfg: DictConfig) -> None:
     
     
     # Evaluate agent and plot metrics
-    if step % cfg.evaluation.interval == 0:
+    if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
       test_returns = evaluate_agent(agent, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed)
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
@@ -143,6 +153,10 @@ def main(cfg: DictConfig) -> None:
       else:
         lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
 
+  if cfg.check_time_usage:
+    training_time = time.time() - new_start_time
+    with open('./training_time.txt', 'w') as time_file:
+      time_file.write(str(training_time))
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
