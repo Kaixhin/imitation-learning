@@ -30,7 +30,7 @@ pos_class_prior: 0.5
 nonnegative_margin: 0.0
 render: false
 # PPO constant parameters
-steps: 2000000
+steps: 2000000 
 discount: 0.99
 trace_decay: 0.9
 max_grad_norm: 0.5
@@ -38,7 +38,7 @@ value_loss_coeff: 0.5
 ppo_clip: 0.25
 hidden_size: 256
 log_std_dev_init: -2
-
+check_time_usage: false
 
 # ax sweep setting
 hydra:
