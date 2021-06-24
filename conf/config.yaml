@@ -1,21 +1,22 @@
 defaults:
   - _self_
-  - algorithm: AIRL/hopper
+  - algorithm: PPO/pendulum
   - hyperparam_opt: empty
   - override hydra/sweeper: basic
+
 seed: 0
 # Below Parameters are overwritten from the conf/algorithm/env.yaml
 # --------Overwritten params ------------
-imitation_epochs: 25
-il_learning_rate: !!float 3e-5
-imitation_replay_size: 3
-r1_reg_coeff: 1.0
+#imitation_epochs: 25
+#il_learning_rate: !!float 3e-5
+#imitation_replay_size: 3
+#r1_reg_coeff: 1.0
 # PPO param to be optimized
-batch_size: 4096
-ppo_epochs: 10
-agent_learning_rate: !!float 3e-5
-entropy_loss_coeff: 0.01
-self_similarity: false
+#batch_size: 4096
+#ppo_epochs: 10
+#agent_learning_rate: !!float 3e-5
+#entropy_loss_coeff: 0.01
+#self_similarity: false
 # ---------------------------------------
 
 evaluation:
@@ -26,8 +27,8 @@ save_trajectories: false
 state_only: false
 absorbing: false
 #imitation_batch_size: 128
-pos_class_prior: 0.5
-nonnegative_margin: 0.0
+#pos_class_prior: 0.5
+#nonnegative_margin: 0.0
 render: false
 # PPO constant parameters
 steps: 2000000 
@@ -43,6 +44,6 @@ check_time_usage: false
 # ax sweep setting
 hydra:
   run:
-    dir: ./outputs/${env_type}_${imitation}/${now:%m-%d-%H-%M}
+    dir: ./outputs/${env_type}_${imitation}/${now:%m-%d_%H-%M-%S}
   sweep:
-    dir: ./outputs/sweeper_${env_type}_${imitation}/${now:%m-%d-%H-%M}
+    dir: ./outputs/sweeper_${env_type}_${imitation}/${now:%m-%d_%H-%M-%S}

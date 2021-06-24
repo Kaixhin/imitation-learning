@@ -53,7 +53,8 @@ def main(cfg: DictConfig) -> None:
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   # Main training loop
-  state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
+  state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, []
+  if cfg.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']: deque(maxlen=cfg.imitation_replay_size)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   for step in pbar:
