@@ -11,11 +11,12 @@ import math
 #sns.set(style='white')
 
 algorithms = ['PPO', 'BC', 'GAIL', 'AIRL', 'FAIRL', 'GMMIL', 'RED', 'DRIL']
+#algorithms = ['PPO']
 envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 colors = ['green', 'tab:olive', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
 output_folder = './outputs/' # Folder with all the seed sweeper results
 seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
-
+fontsize=14
 
 # Baseline results
 BASELINE = dict()  # [mean, std]
@@ -76,7 +77,7 @@ def plot_env_baseline(ax, env):
 
 
 def plot_environment_result(data, ax, env):
-    ax.set_title(ENV_NAMES[env])
+    ax.set_title(ENV_NAMES[env], fontsize=fontsize)
     pre_print = "For env: " + env
     print(pre_print)
     plot_env_baseline(ax, env)
@@ -116,14 +117,15 @@ def create_all_plots(x, y, save_fig=False):
             plot_environment_result(env_data, axis, env)
     # Plot the Baseline results
     handles, labels = ax[-1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', ncol=len(algorithms)+1)
+    fig.legend(handles, labels, loc='lower center', ncol=len(algorithms)+1, fontsize=fontsize)
     fig.add_subplot(111, frameon=False)
     # hide tick and tick label of the big axis
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
-    plt.xlabel("Steps (x $10^6$)")
-    plt.ylabel("Mean reward")
+    plt.xlabel("Steps (x $10^6$)", fontsize=fontsize)
+    plt.ylabel("Mean reward", fontsize=fontsize, labelpad=12)
     if save_fig:
         fig.savefig('./figures/result_fig.png', dpi=500, bbox_inches='tight')
+    plt.subplot_tool() #Uncomment when you want to play with the margins between subplots
     plt.show()
 
 # Below are hyper param plotting code
