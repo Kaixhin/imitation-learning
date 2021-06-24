@@ -3,9 +3,8 @@ env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
 imitation: PPO
-#IL param
-# PPO param to be optimized
+# PPO hyperparameters
 batch_size: 2048
+agent_learning_rate: 0.0003
 ppo_epochs: 5
-agent_learning_rate: !!float 3e-4
 entropy_loss_coeff: 0.01
