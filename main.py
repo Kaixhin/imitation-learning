@@ -1,4 +1,5 @@
 from collections import deque
+import time
 
 import hydra
 import numpy as np
@@ -51,14 +52,10 @@ def main(cfg: DictConfig) -> None:
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
-  # Performance tracker
-  if cfg.check_time_usage:
-    import time
-    start_time = time.time()
-    new_start_time = time.time()
   # Main training loop
   state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, [], deque(maxlen=cfg.imitation_replay_size)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
+  if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   for step in pbar:
     # Perform initial training (if needed)
     if cfg.imitation in ['BC', 'DRIL', 'RED']:
@@ -77,13 +74,10 @@ def main(cfg: DictConfig) -> None:
             target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
             with torch.inference_mode():
               discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
+
         if cfg.check_time_usage:
-          pre_training_time = time.time() - start_time
-          with open('./pre_training_time.txt', 'w') as time_file:
-            time_file.write(str(pre_training_time))
-          new_start_time = time.time()
-          if cfg.imitation == 'BC':
-            break
+          metrics['pre_training_time'] = time.time() - start_time
+          start_time = time.time()
 
     if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
@@ -152,11 +146,10 @@ def main(cfg: DictConfig) -> None:
         break
       else:
         lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
+    elif cfg.imitation == 'BC' and cfg.check_time_usage: break
 
   if cfg.check_time_usage:
-    training_time = time.time() - new_start_time
-    with open('./training_time.txt', 'w') as time_file:
-      time_file.write(str(training_time))
+    metrics['training_time'] = time.time() - start_time
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
