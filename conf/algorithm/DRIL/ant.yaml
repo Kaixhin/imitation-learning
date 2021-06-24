@@ -2,13 +2,12 @@
 env_type: ant
 env_name: ant-bullet-medium-v0
 
-# Resuling optimal parameters from 20 Hyper parameter optimization run (best sweep 664)
 imitation: DRIL
-#IL param to be optimized
+# PPO hyperparameters
+batch_size: 2048
+agent_learning_rate: 0.0003
+ppo_epochs: 5
+entropy_loss_coeff: 0.0
+# IL hyperparameters
 imitation_epochs: 15
 il_learning_rate: 0.0003
-# PPO param to be optimized
-batch_size:  2048
-ppo_epochs: 5
-agent_learning_rate: 0.0003
-entropy_loss_coeff: 0.0
