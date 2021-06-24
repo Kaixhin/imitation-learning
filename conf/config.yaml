@@ -30,7 +30,7 @@ pos_class_prior: 0.5
 nonnegative_margin: 0.0
 render: false
 # PPO constant parameters
-steps: 200000 
+steps: 2000000 
 discount: 0.99
 trace_decay: 0.9
 max_grad_norm: 0.5
