@@ -53,8 +53,8 @@ def main(cfg: DictConfig) -> None:
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   # Main training loop
-  state, terminal, train_return, trajectories, policy_trajectory_replay_buffer = env.reset(), False, 0, []
-  if cfg.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']: deque(maxlen=cfg.imitation_replay_size)
+  state, terminal, train_return, trajectories = env.reset(), False, 0, []
+  if cfg.imitation in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']: policy_trajectory_replay_buffer = deque(maxlen=cfg.imitation_replay_size)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   for step in pbar:
@@ -109,7 +109,7 @@ def main(cfg: DictConfig) -> None:
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
             for _ in tqdm(range(cfg.imitation_epochs), leave=False):
-              adversarial_imitation_update(cfg.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.batch_size, cfg.absorbing, cfg.r1_reg_coeff, cfg.pos_class_prior, cfg.nonnegative_margin)
+              adversarial_imitation_update(cfg.imitation, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.batch_size, cfg.absorbing, cfg.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
