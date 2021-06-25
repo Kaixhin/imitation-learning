@@ -10,7 +10,7 @@ kiwisolver==1.3.1
 matplotlib==3.4.1
 numpy==1.20.2
 omegaconf==2.0.6
-Pillow==7.2.0
+Pillow==8.2.0
 pybullet==3.1.5
 pyglet==1.5.0
 pyparsing==2.4.7
