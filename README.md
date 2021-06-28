@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-Imitation learning algorithms (with PPO [[1]](#references)):
+Imitation learning algorithms (with SAC [[1]](#references)):
 
 - AIRL [[2]](#references)
 - BC [[3]](#references)
@@ -86,7 +86,7 @@ If you find this work useful and would like to cite it, the following would be a
 
 ## References
 
-[1] [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)  
+[1] [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)  
 [2] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
 [3] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
 [4] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  

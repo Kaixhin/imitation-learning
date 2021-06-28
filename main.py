@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from environments import ENVS
 from evaluation import evaluate_agent
-from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
+from models import AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network
 from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
@@ -19,7 +19,7 @@ from utils import flatten_list_dicts, lineplot
 def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.env_type in ENVS.keys()
-  assert cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'BC', 'PPO']
+  assert cfg.imitation in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC']
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -31,8 +31,11 @@ def main(cfg: DictConfig) -> None:
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
-  agent = ActorCritic(state_size, action_size, cfg.model.hidden_size, log_std_dev_init=cfg.model.log_std_dev_init)
-  agent_optimiser = optim.RMSprop(agent.parameters(), lr=cfg.reinforcement.learning_rate, alpha=0.9)
+  actor, critic = SoftActor(state_size, action_size, cfg.hidden_size), TwinCritic(state_size, action_size, cfg.hidden_size)
+  target_critic = create_target_network(critic)
+  actor_optimiser, critic_optimiser = optim.RMSprop(actor.parameters(), lr=cfg.agent_learning_rate, alpha=0.9), optim.RMSprop(twin_critic.parameters(), lr=cfg.agent_learning_rate, alpha=0.9)  # TODO: actor_learning_rate, critic_learning_rate
+  memory = deque(maxlen=1e6)
+
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if cfg.algorithm == 'AIRL':
@@ -53,8 +56,7 @@ def main(cfg: DictConfig) -> None:
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   # Main training loop
-  state, terminal, train_return, trajectories = env.reset(), False, 0, []
-  if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']: policy_trajectory_replay_buffer = deque(maxlen=cfg.imitation.replay_size)
+  state, terminal, train_return = env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   for step in pbar:
@@ -64,7 +66,7 @@ def main(cfg: DictConfig) -> None:
         for _ in tqdm(range(cfg.imitation.epochs), leave=False):
           if cfg.algorithm == 'BC':
             # Perform behavioural cloning updates offline
-            behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, cfg.training.batch_size)
+            behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size)
           elif cfg.algorithm == 'DRIL':
             # Perform behavioural cloning updates offline on policy ensemble (dropout version)
             behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)
@@ -83,12 +85,11 @@ def main(cfg: DictConfig) -> None:
     if cfg.algorithm != 'BC':
       # Collect set of trajectories by running policy π in the environment
       with torch.inference_mode():
-        policy, value = agent(state)
+        policy = actor(state)
         action = policy.sample()
-        log_prob_action = policy.log_prob(action)
         next_state, reward, terminal = env.step(action)
         train_return += reward
-        trajectories.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), terminals=torch.tensor([terminal], dtype=torch.float32), log_prob_actions=log_prob_action, old_log_prob_actions=log_prob_action.detach(), values=value))
+        memory.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), next_states=next_state, terminals=torch.tensor([terminal], dtype=torch.float32)))
         state = next_state
 
       if terminal:
@@ -105,11 +106,8 @@ def main(cfg: DictConfig) -> None:
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-            # Use a replay buffer of previous trajectories to prevent overfitting to current policy
-            policy_trajectory_replay_buffer.append(policy_trajectories)
-            policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
             for _ in tqdm(range(cfg.imitation.epochs), leave=False):
-              adversarial_imitation_update(cfg.algorithm, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
+              adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
@@ -131,13 +129,13 @@ def main(cfg: DictConfig) -> None:
 
         # Perform PPO updates (includes GAE re-estimation with updated value function)
         for _ in tqdm(range(cfg.reinforcement.ppo_epochs), leave=False):
-          ppo_update(agent, policy_trajectories, next_state, agent_optimiser, cfg.reinforcement.discount, cfg.reinforcement.trace_decay, cfg.reinforcement.ppo_clip, cfg.reinforcement.value_loss_coeff, cfg.reinforcement.entropy_loss_coeff, cfg.reinforcement.max_grad_norm)
+          ppo_update(actor, policy_trajectories, next_state, actor_optimiser, cfg.reinforcement.discount, cfg.reinforcement.trace_decay, cfg.reinforcement.ppo_clip, cfg.reinforcement.value_loss_coeff, cfg.reinforcement.entropy_loss_coeff, cfg.reinforcement.max_grad_norm)
         trajectories, policy_trajectories = [], None
     
     
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
-      test_returns = evaluate_agent(agent, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed)
+      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed)
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
@@ -154,10 +152,10 @@ def main(cfg: DictConfig) -> None:
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(agent, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed, return_trajectories=True, render=cfg.render)
+    _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed, return_trajectories=True, render=cfg.render)
     torch.save(trajectories, 'trajectories.pth')
   # Save agent and metrics
-  torch.save(agent.state_dict(), 'agent.pth')
+  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict()), 'agent.pth')
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
   torch.save(metrics, 'metrics.pth')
 

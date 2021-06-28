@@ -4,7 +4,7 @@ from environments import PendulumEnv, D4RLEnv
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(agent, num_episodes, env_type=PendulumEnv, env_name='', seed=1, return_trajectories=False, render=False):
+def evaluate_agent(actor, num_episodes, env_type=PendulumEnv, env_name='', seed=1, return_trajectories=False, render=False):
   env = env_type(env_name)
   env.seed(seed)
 
@@ -16,7 +16,7 @@ def evaluate_agent(agent, num_episodes, env_type=PendulumEnv, env_name='', seed=
       states, actions, rewards = [], [], []
       state, terminal = env.reset(), False
       while not terminal:
-          action = agent.get_greedy_action(state)  # Take greedy action
+          action = actor.get_greedy_action(state)  # Take greedy action
           state, reward, terminal = env.step(action)
 
           if return_trajectories:
