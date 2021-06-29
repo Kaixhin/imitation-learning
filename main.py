@@ -11,7 +11,7 @@ from tqdm import tqdm
 from environments import ENVS
 from evaluation import evaluate_agent
 from models import AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network
-from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
+from training import ReplayMemory, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, sac_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
 
@@ -33,8 +33,8 @@ def main(cfg: DictConfig) -> None:
   # Set up agent
   actor, critic = SoftActor(state_size, action_size, cfg.hidden_size), TwinCritic(state_size, action_size, cfg.hidden_size)
   target_critic = create_target_network(critic)
-  actor_optimiser, critic_optimiser = optim.RMSprop(actor.parameters(), lr=cfg.agent_learning_rate, alpha=0.9), optim.RMSprop(twin_critic.parameters(), lr=cfg.agent_learning_rate, alpha=0.9)  # TODO: actor_learning_rate, critic_learning_rate
-  memory = deque(maxlen=1e6)
+  actor_optimiser, critic_optimiser = optim.RMSprop(actor.parameters(), lr=cfg.agent_learning_rate, alpha=0.9), optim.RMSprop(critic.parameters(), lr=cfg.agent_learning_rate, alpha=0.9)  # TODO: actor_learning_rate, critic_learning_rate
+  memory = ReplayMemory(int(1e6), state_size, action_size)  # TODO: Make replay size hyperparameter
 
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
@@ -107,7 +107,7 @@ def main(cfg: DictConfig) -> None:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
             for _ in tqdm(range(cfg.imitation.epochs), leave=False):
-              adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
+              adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_trajectories, ReplayMemory(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']

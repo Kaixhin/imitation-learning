@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch import autograd
 from torch.nn import functional as F
@@ -20,11 +21,17 @@ def indicate_absorbing(states, actions, terminals, next_states=None):
     return abs_states, abs_actions
 
 
-# Dataset that returns transition tuples of the form (s, a, r, s', terminal)
-class TransitionDataset(Dataset):
-  def __init__(self, transitions):
+# Replay memory returns transition tuples of the form (s, a, r, s', terminal)
+class ReplayMemory(Dataset):
+  def __init__(self, size=0, state_size=0, action_size=0, transitions=None):
     super().__init__()
-    self.states, self.actions, self.rewards, self.terminals = transitions['states'], transitions['actions'].detach(), transitions['rewards'], transitions['terminals']  # Detach actions
+    self.idx = 0
+    if transitions is not None:
+      self.size, self.full = transitions['states'].size(0), True
+      self.states, self.actions, self.rewards, self.terminals = transitions['states'], transitions['actions'], transitions['rewards'], transitions['terminals']
+    else:
+      self.size, self.full = size, False
+      self.states, self.actions, self.rewards, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size)
 
   # Allows string-based access for entire data of one type, or int-based access for single transition
   def __getitem__(self, idx):
@@ -40,6 +47,24 @@ class TransitionDataset(Dataset):
 
   def __len__(self):
     return self.terminals.size(0) - 1  # Need to return state and next state
+
+  def append(self, state, action, reward, terminal):
+    self.states[idx], self.actions[idx], self.rewards[idx], self.terminals[idx] = state, action, reward, terminal
+    self.idx = (self.idx + 1) % self.size
+    self.full = self.full or self.idx == 0
+
+  # Returns a uniformly sampled valid transition index
+  def _sample_idx(self):
+    valid_idx = False
+    while not valid_idx:
+      idx = np.random.randint(0, self.size if self.full else self.idx - 1)
+      valid_idx = idx != (self.idx - 1) % self.size  # Make sure data does not cross the memory index
+    return idx
+
+  def sample(self, n):
+    idxs = [self._sample_idx() for _ in range(n)]
+    transitions = [self[idx] for idx in idxs]
+    return dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))
 
 
 # Performs one SAC update
@@ -69,6 +94,7 @@ def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batc
 
   for expert_transition in expert_dataloader:
     expert_state, expert_action = expert_transition['states'], expert_transition['actions']
+    expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
 
     agent_optimiser.zero_grad(set_to_none=True)
     behavioural_cloning_loss = -agent.log_prob(expert_state, expert_action).mean()  # Maximum likelihood objective

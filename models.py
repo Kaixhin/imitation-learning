@@ -64,13 +64,13 @@ def update_target_network(network, target_network, polyak_factor):
 class SoftActor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', dropout=0):
     super().__init__()
-    self.log_std_min, self.log_std_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
+    self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
     self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout, final_gain=0.01)
 
   def forward(self, state):
     mean, log_std_dev = self.actor(state).chunk(2, dim=1)
-    log_std = torch.clamp(log_std, min=self.log_std_min, max=self.log_std_max)
-    policy = TransformedDistribution(Independent(Normal(mean, self.log_std_dev.exp()), 1), TanhTransform(cache_size=1))  # Restrict action range to (-1, 1)
+    log_std_dev = torch.clamp(log_std_dev, min=self.log_std_dev_min, max=self.log_std_dev_max)
+    policy = TransformedDistribution(Independent(Normal(mean, log_std_dev.exp()), 1), TanhTransform(cache_size=1))  # Restrict action range to (-1, 1)
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s

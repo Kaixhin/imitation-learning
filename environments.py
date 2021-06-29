@@ -5,7 +5,7 @@ import gym
 import numpy as np
 import torch
 
-from training import TransitionDataset
+from training import ReplayMemory
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
@@ -98,7 +98,7 @@ class D4RLEnv():
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][0::subsample]
 
-    return TransitionDataset(dataset_out)
+    return ReplayMemory(transitions=dataset_out)
 
 
 ENVS = {'ant': D4RLEnv, 'halfcheetah': D4RLEnv, 'hopper': D4RLEnv, 'pendulum': PendulumEnv, 'walker2d': D4RLEnv}
