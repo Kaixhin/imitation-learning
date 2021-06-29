@@ -82,15 +82,16 @@ def main(cfg: DictConfig) -> None:
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
     if cfg.imitation != 'BC':
-      # Collect set of trajectories by running policy π in the environment
+      # Collect set of transitions by running policy π in the environment
       with torch.inference_mode():
         policy = actor(state)
         action = policy.sample()
         next_state, reward, terminal = env.step(action)
         train_return += reward
-        memory.append(dict(states=state, actions=action, rewards=torch.tensor([reward], dtype=torch.float32), next_states=next_state, terminals=torch.tensor([terminal], dtype=torch.float32)))
+        memory.append(state, action, reward, terminal)
         state = next_state
 
+      # Reset environment and track metrics on episode termination
       if terminal:
         # Store metrics and reset environment
         metrics['train_steps'].append(step)
@@ -98,15 +99,16 @@ def main(cfg: DictConfig) -> None:
         pbar.set_description(f'Step: {step} | Return: {train_return}')
         state, train_return = env.reset(), 0
 
-      # Update models
-      if len(trajectories) >= cfg.training.batch_size:
-        policy_trajectories = flatten_list_dicts(trajectories)  # Flatten policy trajectories (into a single batch for efficiency; valid for feedforward networks)
+      # Train agent and imitation learning component
+      if step >= 1e4:  # TODO: Make training start hyperparameter
+        # Sample a batch of transitions
+        transitions, expert_transitions = memory.sample(cfg.batch_size), expert_trajectories.sample(cfg.batch_size)
 
+        # Train imitation learning component
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator
-          if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-            for _ in tqdm(range(cfg.imitation.epochs), leave=False):
-              adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_trajectories, ReplayMemory(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
+          if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:  # TODO: Remove cfg.imitation_epochs?
+            adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']

@@ -49,7 +49,7 @@ class ReplayMemory(Dataset):
     return self.terminals.size(0) - 1  # Need to return state and next state
 
   def append(self, state, action, reward, terminal):
-    self.states[idx], self.actions[idx], self.rewards[idx], self.terminals[idx] = state, action, reward, terminal
+    self.states[self.idx], self.actions[self.idx], self.rewards[self.idx], self.terminals[self.idx] = state, action, reward, terminal
     self.idx = (self.idx + 1) % self.size
     self.full = self.full or self.idx == 0
 
@@ -118,37 +118,32 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, agent, discriminator, expert_trajectories, policy_trajectories, discriminator_optimiser, batch_size, absorbing=False, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
-  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
-  policy_dataloader = DataLoader(policy_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
+def adversarial_imitation_update(algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, absorbing=False, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
+  expert_state, expert_action, expert_next_state, expert_terminal = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals']
+  state, action, next_state, terminal = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
 
-  # Iterate over mininum of expert and policy data
-  for expert_transition, policy_transition in zip(expert_dataloader, policy_dataloader):
-    expert_state, expert_action, expert_next_state, expert_terminal = expert_transition['states'], expert_transition['actions'], expert_transition['next_states'], expert_transition['terminals']
-    policy_state, policy_action, policy_next_state, policy_terminal = policy_transition['states'], policy_transition['actions'], policy_transition['next_states'], policy_transition['terminals']
+  if algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
+    if absorbing: expert_state, expert_action, state, action = *indicate_absorbing(expert_state, expert_action, expert_terminal), *indicate_absorbing(state, action, terminal)
+    D_expert = discriminator(expert_state, expert_action)
+    D_policy = discriminator(state, action)
+  elif algorithm == 'AIRL':
+    with torch.no_grad():
+      expert_data_log_policy = actor.log_prob(expert_state, expert_action)
+      log_policy = actor.log_prob(state, action)
+    if absorbing: expert_state, expert_action, expert_next_state, state, action, next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(state, action, terminal, next_state)
+    D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_log_policy, expert_terminal)
+    D_policy = discriminator(state, action, next_state, log_policy, terminal)
 
-    if algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-      if absorbing: expert_state, expert_action, policy_state, policy_action = *indicate_absorbing(expert_state, expert_action, expert_terminal), *indicate_absorbing(policy_state, policy_action, policy_terminal)
-      D_expert = discriminator(expert_state, expert_action)
-      D_policy = discriminator(policy_state, policy_action)
-    elif algorithm == 'AIRL':
-      with torch.no_grad():
-        expert_data_log_policy = agent.log_prob(expert_state, expert_action)
-        policy_data_log_policy = agent.log_prob(policy_state, policy_action)
-      if absorbing: expert_state, expert_action, expert_next_state, policy_state, policy_action, policy_next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(policy_state, policy_action, policy_terminal, policy_next_state)
-      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_log_policy, expert_terminal)
-      D_policy = discriminator(policy_state, policy_action, policy_next_state, policy_data_log_policy, policy_terminal)
- 
-    # Binary logistic regression
-    discriminator_optimiser.zero_grad(set_to_none=True)
-    expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy_with_logits(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
-    autograd.backward(expert_loss, create_graph=True)
-    r1_reg = 0
-    for param in discriminator.parameters():
-      r1_reg += param.grad.norm()  # R1 gradient penalty
-    if algorithm == 'PUGAIL':
-      policy_loss = torch.clamp(F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
-    else:
-      policy_loss = F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
-    (policy_loss + r1_reg_coeff * r1_reg).backward()
-    discriminator_optimiser.step()
+  # Binary logistic regression
+  discriminator_optimiser.zero_grad(set_to_none=True)
+  expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy_with_logits(D_expert, torch.ones_like(D_expert))  # Loss on "real" (expert) data
+  autograd.backward(expert_loss, create_graph=True)
+  r1_reg = 0
+  for param in discriminator.parameters():
+    r1_reg += param.grad.norm()  # R1 gradient penalty
+  if algorithm == 'PUGAIL':
+    policy_loss = torch.clamp(F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert)) - pos_class_prior * F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy)), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
+  else:
+    policy_loss = F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy))  # Loss on "fake" (policy) data
+  (policy_loss + r1_reg_coeff * r1_reg).backward()
+  discriminator_optimiser.step()
