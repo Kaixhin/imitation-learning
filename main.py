@@ -55,34 +55,33 @@ def main(cfg: DictConfig) -> None:
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
-  # Main training loop
+  if cfg.check_time_usage: start_time = time.time()  # Performance tracking
+  # Pre-training
+  if cfg.imitation in ['BC', 'DRIL', 'RED']:
+    for _ in tqdm(range(cfg.imitation_epochs), leave=False):
+      if cfg.imitation == 'BC':
+        # Perform behavioural cloning updates offline
+        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.batch_size)
+      elif cfg.imitation == 'DRIL':
+        # Perform behavioural cloning updates offline on policy ensemble (dropout version)
+        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size)
+        with torch.no_grad():  # TODO: Check why inference mode fails?
+          discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
+      elif cfg.imitation == 'RED':
+        # Train predictor network to match random target network
+        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
+        with torch.inference_mode():
+          discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
+
+    if cfg.check_time_usage:
+      metrics['pre_training_time'] = time.time() - start_time
+      start_time = time.time()
+
+  # Training
   state, terminal, train_return = env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
-  if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   for step in pbar:
-    # Perform initial training (if needed)
-    if cfg.algorithm in ['BC', 'DRIL', 'RED']:
-      if step == 1:
-        for _ in tqdm(range(cfg.imitation.epochs), leave=False):
-          if cfg.algorithm == 'BC':
-            # Perform behavioural cloning updates offline
-            behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size)
-          elif cfg.algorithm == 'DRIL':
-            # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-            behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)
-            with torch.no_grad():  # TODO: Check why inference mode fails?
-              discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
-          elif cfg.algorithm == 'RED':
-            # Train predictor network to match random target network
-            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing)
-            with torch.inference_mode():
-              discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
-
-        if cfg.check_time_usage:
-          metrics['pre_training_time'] = time.time() - start_time
-          start_time = time.time()
-
-    if cfg.algorithm != 'BC':
+    if cfg.imitation != 'BC':
       # Collect set of trajectories by running policy π in the environment
       with torch.inference_mode():
         policy = actor(state)
