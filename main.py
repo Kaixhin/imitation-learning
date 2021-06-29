@@ -31,9 +31,9 @@ def main(cfg: DictConfig) -> None:
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
-  actor, critic = SoftActor(state_size, action_size, cfg.hidden_size), TwinCritic(state_size, action_size, cfg.hidden_size)
-  target_critic = create_target_network(critic)
-  actor_optimiser, critic_optimiser = optim.RMSprop(actor.parameters(), lr=cfg.agent_learning_rate, alpha=0.9), optim.RMSprop(critic.parameters(), lr=cfg.agent_learning_rate, alpha=0.9)  # TODO: actor_learning_rate, critic_learning_rate
+  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.hidden_size), TwinCritic(state_size, action_size, cfg.hidden_size), torch.zeros(1, requires_grad=True)
+  target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
+  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.agent_learning_rate), optim.Adam(critic.parameters(), lr=cfg.agent_learning_rate), optim.Adam([log_alpha], lr=cfg.agent_learning_rate)  # TODO: separate learning rates?
   memory = ReplayMemory(int(1e6), state_size, action_size)  # TODO: Make replay size hyperparameter
 
   # Set up imitation learning components
@@ -128,7 +128,7 @@ def main(cfg: DictConfig) -> None:
               transitions['rewards'] = discriminator.predict_reward(states, actions)
         
         # Train agent using SAC TODO: Remove cfg.ppo_epochs, cfg.trace_decay, cfg.ppo_clip, cfg.value_loss_coeff, cfg.entropy_loss_coeff
-        sac_update(actor, critic, transitionse, actor_optimiser, critic_optimiser, cfg.reinforcement.discount, cfg.reinforcement.max_grad_norm)
+        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, 0.99, cfg.reinforcement.max_grad_norm)  # TODO: Add cfg.polyak_factor; make sure absorbing doesn't affect?
     
     
     # Evaluate agent and plot metrics
@@ -153,7 +153,7 @@ def main(cfg: DictConfig) -> None:
     _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, ENVS[cfg.env_type], cfg.env_name, cfg.seed, return_trajectories=True, render=cfg.render)
     torch.save(trajectories, 'trajectories.pth')
   # Save agent and metrics
-  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict()), 'agent.pth')
+  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), 'agent.pth')
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
   torch.save(metrics, 'metrics.pth')
 

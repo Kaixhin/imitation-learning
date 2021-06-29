@@ -5,6 +5,8 @@ from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader, Dataset
 
+from models import update_target_network
+
 
 # Indicate absorbing states
 def indicate_absorbing(states, actions, terminals, next_states=None):
@@ -68,24 +70,47 @@ class ReplayMemory(Dataset):
 
 
 # Performs one SAC update
-def sac_update(agent, trajectories, next_state, agent_optimiser, discount, trace_decay, ppo_clip, value_loss_coeff=1, entropy_loss_coeff=1, max_grad_norm=1):
-  """
-  policy, trajectories['values'] = agent(trajectories['states'])
-  trajectories['log_prob_actions'] = policy.log_prob(trajectories['actions'])
-  with torch.no_grad():  # Do not differentiate through advantage calculation
-    next_value = agent(next_state)[1]
-    compute_advantages_(trajectories, next_value, discount, trace_decay)  # Recompute rewards-to-go R and generalised advantage estimates ψ based on the current value function V
-
-  policy_ratio = (trajectories['log_prob_actions'] - trajectories['old_log_prob_actions']).exp()
-  policy_loss = -torch.min(policy_ratio * trajectories['advantages'], torch.clamp(policy_ratio, min=1 - ppo_clip, max=1 + ppo_clip) * trajectories['advantages']).mean()  # Update the policy by maximising the clipped PPO objective
-  value_loss = F.mse_loss(trajectories['values'], trajectories['rewards_to_go'])  # Fit value function by regression on mean squared error
-  entropy_loss = -policy.entropy().mean()  # Add entropy regularisation
+def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor, max_grad_norm=1):
+  states, actions, rewards, next_states, terminals = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals']
   
-  agent_optimiser.zero_grad(set_to_none=True)
-  (policy_loss + value_loss_coeff * value_loss + entropy_loss_coeff * entropy_loss).backward()
-  clip_grad_norm_(agent.parameters(), max_grad_norm)  # Clamp norm of gradients
-  agent_optimiser.step()
-  """
+  # Compute temperature loss
+  new_policies = actor(states)
+  new_actions = new_policies.rsample()
+  new_log_probs = new_policies.log_prob(new_actions)
+  temperature_loss = -(log_alpha * (new_log_probs + entropy_target).detach()).mean()
+  
+  # Update temperature
+  temperature_optimiser.zero_grad(set_to_none=True)
+  temperature_loss.backward()
+  clip_grad_norm_(log_alpha, max_grad_norm)  # Clamp norm of gradients
+  temperature_optimiser.step()
+  alpha = log_alpha.exp()
+
+  # Compute policy loss
+  new_values = torch.min(*critic(states, new_actions))
+  policy_loss = (alpha * new_log_probs - new_values).mean()
+  
+  # Compute value functions loss
+  new_next_policies = actor(next_states)
+  new_next_actions = new_next_policies.sample()
+  new_next_log_probs = new_next_policies.log_prob(new_next_actions)
+  target_values = torch.min(*target_critic(next_states, new_next_actions)) - alpha * new_next_log_probs
+  target_values = rewards + (1 - terminals) * discount * target_values.detach()
+  values_1, values_2 = critic(states, actions)
+  value_loss = F.mse_loss(values_1, target_values) + F.mse_loss(values_2, target_values)
+
+  # Update value functions and policy by one step of gradient descent/ascent
+  critic_optimiser.zero_grad(set_to_none=True)
+  value_loss.backward()
+  clip_grad_norm_(critic.parameters(), max_grad_norm)  # Clamp norm of gradients
+  critic_optimiser.step()
+  actor_optimiser.zero_grad(set_to_none=True)
+  policy_loss.backward()
+  clip_grad_norm_(actor.parameters(), max_grad_norm)  # Clamp norm of gradients
+  actor_optimiser.step()    
+  
+  # Update target critic
+  update_target_network(critic, target_critic, polyak_factor)
 
 
 # Performs a behavioural cloning update
@@ -128,11 +153,11 @@ def adversarial_imitation_update(algorithm, actor, discriminator, expert_transit
     D_policy = discriminator(state, action)
   elif algorithm == 'AIRL':
     with torch.no_grad():
-      expert_data_log_policy = actor.log_prob(expert_state, expert_action)
-      log_policy = actor.log_prob(state, action)
+      expert_log_prob = actor.log_prob(expert_state, expert_action)
+      log_prob = actor.log_prob(state, action)
     if absorbing: expert_state, expert_action, expert_next_state, state, action, next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(state, action, terminal, next_state)
-    D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_log_policy, expert_terminal)
-    D_policy = discriminator(state, action, next_state, log_policy, terminal)
+    D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_log_prob, expert_terminal)
+    D_policy = discriminator(state, action, next_state, log_prob, terminal)
 
   # Binary logistic regression
   discriminator_optimiser.zero_grad(set_to_none=True)
