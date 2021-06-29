@@ -100,38 +100,35 @@ def main(cfg: DictConfig) -> None:
         state, train_return = env.reset(), 0
 
       # Train agent and imitation learning component
-      if step >= 1e4:  # TODO: Make training start hyperparameter
+      if step >= 1e3:  # TODO: Make training start hyperparameter
         # Sample a batch of transitions
         transitions, expert_transitions = memory.sample(cfg.batch_size), expert_trajectories.sample(cfg.batch_size)
 
-        # Train imitation learning component
+        # Use imitation learning component
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:  # TODO: Remove cfg.imitation_epochs?
             adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
-
-          # Predict rewards
-          states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
-          if cfg.imitation.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
+          # Predict rewards 
+          states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
+          if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
           with torch.inference_mode():
             if cfg.algorithm == 'AIRL':
-              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'], terminals)
+              transitions['rewards'] = discriminator.predict_reward(states, actions, next_states, actor.log_prob(states, actions), terminals)
             elif cfg.algorithm == 'DRIL':
               # TODO: By default DRIL also includes behavioural cloning online?
-              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
+              transitions['rewards'] = discriminator.predict_reward(states, actions)
             elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
+              transitions['rewards'] = discriminator.predict_reward(states, actions)
             elif cfg.algorithm == 'GMMIL':
-              expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
-              if cfg.imitation.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
-              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
+              expert_states, expert_actions = expert_transitions['states'], expert_transitions['actions']  # TODO: Use entire dataset as per original? Prohibitively slow in off-policy case
+              if cfg.imitation.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_transitions['terminals'])
+              transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
             elif cfg.algorithm == 'RED':
-              policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
-
-        # Perform PPO updates (includes GAE re-estimation with updated value function)
-        for _ in tqdm(range(cfg.reinforcement.ppo_epochs), leave=False):
-          ppo_update(actor, policy_trajectories, next_state, actor_optimiser, cfg.reinforcement.discount, cfg.reinforcement.trace_decay, cfg.reinforcement.ppo_clip, cfg.reinforcement.value_loss_coeff, cfg.reinforcement.entropy_loss_coeff, cfg.reinforcement.max_grad_norm)
-        trajectories, policy_trajectories = [], None
+              transitions['rewards'] = discriminator.predict_reward(states, actions)
+        
+        # Train agent using SAC TODO: Remove cfg.ppo_epochs, cfg.trace_decay, cfg.ppo_clip, cfg.value_loss_coeff, cfg.entropy_loss_coeff
+        sac_update(actor, critic, transitionse, actor_optimiser, critic_optimiser, cfg.reinforcement.discount, cfg.reinforcement.max_grad_norm)
     
     
     # Evaluate agent and plot metrics
