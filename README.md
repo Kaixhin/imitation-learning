@@ -17,21 +17,14 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 
 Requirements
 ------------
-The code runs on Python3.7 (AX requires >3.7). You can install most of the requirements by running 
-```
+
+This code runs on Python >= 3.7. Base requirements can be installed with:
+```sh
 pip install -r requirements.txt
 ```
-Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL-pybullet](https://github.com/takuseno/d4rl-pybullet), [Hydra](https://hydra.cc/) and [Ax](https://ax.dev/).
-if you fail to install d4rl-pybullet, install it with pip directly from git by using the command 
-```
-pip install git+https://github.com/takuseno/d4rl-pybullet
-```
-### Note:
-For hyperparameter optimization, the code uses the [Hydra AX sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/). This is not included in the `requirements.txt`. Ax requires a specific version of PyTorch, and therefore might upgrade/downgrade the PyTorch if you install it on existing environment. Ax sweeper can be installed with:
-```
-pip install hydra-ax-sweeper --upgrade
-```
+Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL-PyBullet](https://github.com/takuseno/d4rl-pybullet) and [Hydra](https://hydra.cc/).
 
+[Ax](https://ax.dev/) and the [Hydra AX sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; these are considered optional and hence are not included in `requirements.txt`.
 
 Run
 ---
@@ -80,7 +73,7 @@ The state only & absorbing is not used in the result.
 Results
 -------
 
-![all_training_result](figures/result_fig.png) 
+![PyBullet results](figures/pybullet.png) 
 
 Acknowledgements
 ----------------
