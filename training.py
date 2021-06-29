@@ -124,7 +124,7 @@ def adversarial_imitation_update(algorithm, agent, discriminator, expert_traject
         policy_data_log_policy = agent.log_prob(policy_state, policy_action)
       if absorbing: expert_state, expert_action, expert_next_state, policy_state, policy_action, policy_next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(policy_state, policy_action, policy_terminal, policy_next_state)
       D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_data_log_policy, expert_terminal)
-      D_policy = discriminator(policy_state, expert_action, policy_next_state, policy_data_log_policy, policy_terminal)
+      D_policy = discriminator(policy_state, policy_action, policy_next_state, policy_data_log_policy, policy_terminal)
  
     # Binary logistic regression
     discriminator_optimiser.zero_grad(set_to_none=True)
