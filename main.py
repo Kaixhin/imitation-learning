@@ -84,8 +84,7 @@ def main(cfg: DictConfig) -> None:
     if cfg.imitation != 'BC':
       # Collect set of transitions by running policy π in the environment
       with torch.inference_mode():
-        policy = actor(state)
-        action = policy.sample()
+        action = actor(state).sample()
         next_state, reward, terminal = env.step(action)
         train_return += reward
         memory.append(state, action, reward, terminal)

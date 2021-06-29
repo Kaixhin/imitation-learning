@@ -72,43 +72,43 @@ class ReplayMemory(Dataset):
 # Performs one SAC update
 def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor, max_grad_norm=1):
   states, actions, rewards, next_states, terminals = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals']
+  alpha = log_alpha.exp()
   
-  # Compute temperature loss
+  # Compute value function loss
+  with torch.no_grad():
+    new_next_policies = actor(next_states)
+    new_next_actions = new_next_policies.sample()
+    new_next_log_probs = new_next_policies.log_prob(new_next_actions)
+    target_values = torch.min(*target_critic(next_states, new_next_actions)) - alpha * new_next_log_probs
+    target_values = rewards + (1 - terminals) * discount * target_values
+  values_1, values_2 = critic(states, actions)
+  value_loss = F.mse_loss(values_1, target_values) + F.mse_loss(values_2, target_values)
+  # Update critic
+  critic_optimiser.zero_grad(set_to_none=True)
+  value_loss.backward()
+  clip_grad_norm_(critic.parameters(), max_grad_norm)  # Clamp norm of gradients
+  critic_optimiser.step()
+
+  # Compute policy loss
   new_policies = actor(states)
   new_actions = new_policies.rsample()
   new_log_probs = new_policies.log_prob(new_actions)
-  temperature_loss = -(log_alpha * (new_log_probs + entropy_target).detach()).mean()
-  
+  new_values = torch.min(*critic(states, new_actions))
+  policy_loss = (alpha.detach() * new_log_probs - new_values).mean()
+  # Update actor
+  actor_optimiser.zero_grad(set_to_none=True)
+  policy_loss.backward()
+  clip_grad_norm_(actor.parameters(), max_grad_norm)  # Clamp norm of gradients
+  actor_optimiser.step()  
+
+  # Compute temperature loss
+  temperature_loss = -(alpha * (new_log_probs.detach() + entropy_target)).mean()
   # Update temperature
   temperature_optimiser.zero_grad(set_to_none=True)
   temperature_loss.backward()
   clip_grad_norm_(log_alpha, max_grad_norm)  # Clamp norm of gradients
   temperature_optimiser.step()
-  alpha = log_alpha.exp()
 
-  # Compute policy loss
-  new_values = torch.min(*critic(states, new_actions))
-  policy_loss = (alpha * new_log_probs - new_values).mean()
-  
-  # Compute value functions loss
-  new_next_policies = actor(next_states)
-  new_next_actions = new_next_policies.sample()
-  new_next_log_probs = new_next_policies.log_prob(new_next_actions)
-  target_values = torch.min(*target_critic(next_states, new_next_actions)) - alpha * new_next_log_probs
-  target_values = rewards + (1 - terminals) * discount * target_values.detach()
-  values_1, values_2 = critic(states, actions)
-  value_loss = F.mse_loss(values_1, target_values) + F.mse_loss(values_2, target_values)
-
-  # Update value functions and policy by one step of gradient descent/ascent
-  critic_optimiser.zero_grad(set_to_none=True)
-  value_loss.backward()
-  clip_grad_norm_(critic.parameters(), max_grad_norm)  # Clamp norm of gradients
-  critic_optimiser.step()
-  actor_optimiser.zero_grad(set_to_none=True)
-  policy_loss.backward()
-  clip_grad_norm_(actor.parameters(), max_grad_norm)  # Clamp norm of gradients
-  actor_optimiser.step()    
-  
   # Update target critic
   update_target_network(critic, target_critic, polyak_factor)
 
