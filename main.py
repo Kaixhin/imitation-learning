@@ -33,8 +33,8 @@ def main(cfg: DictConfig) -> None:
   # Set up agent
   actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.hidden_size), TwinCritic(state_size, action_size, cfg.hidden_size), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
-  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.agent_learning_rate), optim.Adam(critic.parameters(), lr=cfg.agent_learning_rate), optim.Adam([log_alpha], lr=cfg.agent_learning_rate)  # TODO: separate learning rates?
-  memory = ReplayMemory(int(1e6), state_size, action_size)  # TODO: Make replay size hyperparameter
+  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.rl.learning_rate), optim.Adam(critic.parameters(), lr=cfg.rl.learning_rate), optim.Adam([log_alpha], lr=cfg.rl.learning_rate)
+  memory = ReplayMemory(cfg.replay.size, state_size, action_size)
 
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
@@ -61,15 +61,15 @@ def main(cfg: DictConfig) -> None:
     for _ in tqdm(range(cfg.imitation_epochs), leave=False):
       if cfg.imitation == 'BC':
         # Perform behavioural cloning updates offline
-        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.batch_size)
+        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size)
       elif cfg.imitation == 'DRIL':
         # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size)
+        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)
         with torch.no_grad():  # TODO: Check why inference mode fails?
           discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
       elif cfg.imitation == 'RED':
         # Train predictor network to match random target network
-        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.batch_size, cfg.absorbing)
+        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, cfg.absorbing)
         with torch.inference_mode():
           discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
 
@@ -99,14 +99,14 @@ def main(cfg: DictConfig) -> None:
         state, train_return = env.reset(), 0
 
       # Train agent and imitation learning component
-      if step >= 1e3:  # TODO: Make training start hyperparameter
+      if step >= cfg.training.start:
         # Sample a batch of transitions
         transitions, expert_transitions = memory.sample(cfg.batch_size), expert_trajectories.sample(cfg.batch_size)
 
         # Use imitation learning component
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator
-          if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:  # TODO: Remove cfg.imitation_epochs?
+          if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
             adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
           # Predict rewards 
           states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
@@ -126,9 +126,8 @@ def main(cfg: DictConfig) -> None:
             elif cfg.algorithm == 'RED':
               transitions['rewards'] = discriminator.predict_reward(states, actions)
         
-        # Train agent using SAC TODO: Remove cfg.ppo_epochs, cfg.trace_decay, cfg.ppo_clip, cfg.value_loss_coeff, cfg.entropy_loss_coeff
-        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, 0.99, cfg.reinforcement.max_grad_norm)  # TODO: Add cfg.polyak_factor; make sure absorbing doesn't affect?
-    
+        # Train agent using SAC
+        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.rl.discount, entropy_target, cfg.rl.polyak_factor, cfg.max_grad_norm)  # TODO: make sure absorbing doesn't affect?
     
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:

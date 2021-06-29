@@ -2,10 +2,8 @@
 env_type: hopper
 env_name: hopper-bullet-medium-v0
 
-algorithm: PPO
+algorithm: SAC
 training:
   batch_size: 1024
 reinforcement:
   learning_rate: 0.0003
-  ppo_epochs: 20
-  entropy_loss_coeff: 0.001
