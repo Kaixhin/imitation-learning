@@ -33,23 +33,23 @@ def main(cfg: DictConfig) -> None:
   # Set up agent
   actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), TwinCritic(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
-  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.rl.learning_rate), optim.Adam(critic.parameters(), lr=cfg.rl.learning_rate), optim.Adam([log_alpha], lr=cfg.rl.learning_rate)
+  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.reinforcement.learning_rate), optim.Adam(critic.parameters(), lr=cfg.reinforcement.learning_rate), optim.Adam([log_alpha], lr=cfg.reinforcement.learning_rate)
   memory = ReplayMemory(cfg.replay.size, state_size, action_size)
 
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if cfg.algorithm == 'AIRL':
-      discriminator = AIRLDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.reinforcement.discount, state_only=cfg.imitation.state_only)
+      discriminator = AIRLDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.reinforcement.discount, cfg.model.activation, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'DRIL':
-      discriminator = Actor(state_size, action_size, cfg.model.hidden_size, dropout=0.1)
+      discriminator = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation, dropout=0.1)
     elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only, forward_kl=cfg.algorithm == 'FAIRL')
+      discriminator = GAILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only, forward_kl=cfg.imitation == 'FAIRL')
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, self_similarity=cfg.imitation.self_similarity, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'RED':
-      discriminator = REDDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only)
+      discriminator = REDDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only)
     if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-      discriminator_optimiser = optim.Adam(discriminator.parameters(), lr=cfg.il_learning_rate)
+      discriminator_optimiser = optim.Adam(discriminator.parameters(), lr=cfg.imitation.learning_rate)
 
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
@@ -61,15 +61,15 @@ def main(cfg: DictConfig) -> None:
     for _ in tqdm(range(cfg.imitation_epochs), leave=False):
       if cfg.imitation == 'BC':
         # Perform behavioural cloning updates offline
-        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size, max_grad_norm=cfg.training.max_grad_norm)
+        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
       elif cfg.imitation == 'DRIL':
         # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.training.max_grad_norm)
+        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
         with torch.no_grad():  # TODO: Check why inference mode fails?
           discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
       elif cfg.imitation == 'RED':
         # Train predictor network to match random target network
-        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, cfg.absorbing)
+        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing)
         with torch.inference_mode():
           discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
 
@@ -110,7 +110,7 @@ def main(cfg: DictConfig) -> None:
             adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
           # Predict rewards 
           states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
-          if cfg.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
+          if cfg.imitation.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
           with torch.inference_mode():
             if cfg.algorithm == 'AIRL':
               transitions['rewards'] = discriminator.predict_reward(states, actions, next_states, actor.log_prob(states, actions), terminals)
@@ -127,7 +127,7 @@ def main(cfg: DictConfig) -> None:
               transitions['rewards'] = discriminator.predict_reward(states, actions)
         
         # Train agent using SAC
-        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.rl.discount, entropy_target, cfg.rl.polyak_factor, cfg.max_grad_norm)  # TODO: make sure absorbing doesn't affect?
+        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)  # TODO: make sure absorbing doesn't affect?
     
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:

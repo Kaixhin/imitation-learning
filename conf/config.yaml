@@ -11,24 +11,25 @@ model:
   activation: 'relu'
 replay:
   size: 1000000
-rl:
+reinforcement:
   discount: 0.99
   learning_rate: 0.0003
   polyak_factor: 0.995
+  max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
   state_only: false
   absorbing: false
+  learning_rate: 0.0003
 training:
   start: 10000
-  interval: 100
+  interval: 1
   batch_size: 256
-  max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 evaluation:
   interval: 10000
   episodes: 30
   average_window: 5
-save_trajectories: false
 render: false
+save_trajectories: false
 check_time_usage: false
 
 # Run/sweep directories
