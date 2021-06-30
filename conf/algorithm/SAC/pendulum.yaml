@@ -3,7 +3,3 @@ env_type: pendulum
 env_name: pendulum-v0
 
 algorithm: SAC
-training:
-  batch_size: 4096
-reinforcement:
-  learning_rate: 0.0003

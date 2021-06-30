@@ -19,7 +19,7 @@ from utils import flatten_list_dicts, lineplot
 def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.env_type in ENVS.keys()
-  assert cfg.imitation in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC']
+  assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC']
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -57,17 +57,17 @@ def main(cfg: DictConfig) -> None:
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   # Pre-training
-  if cfg.imitation in ['BC', 'DRIL', 'RED']:
-    for _ in tqdm(range(cfg.imitation_epochs), leave=False):
-      if cfg.imitation == 'BC':
+  if cfg.algorithm in ['BC', 'DRIL', 'RED']:
+    for _ in tqdm(range(cfg.imitation.pretraining_epochs), leave=False):
+      if cfg.algorithm == 'BC':
         # Perform behavioural cloning updates offline
         behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
-      elif cfg.imitation == 'DRIL':
+      elif cfg.algorithm == 'DRIL':
         # Perform behavioural cloning updates offline on policy ensemble (dropout version)
         behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
         with torch.no_grad():  # TODO: Check why inference mode fails?
           discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
-      elif cfg.imitation == 'RED':
+      elif cfg.algorithm == 'RED':
         # Train predictor network to match random target network
         target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing)
         with torch.inference_mode():
@@ -81,7 +81,7 @@ def main(cfg: DictConfig) -> None:
   state, terminal, train_return = env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
-    if cfg.imitation != 'BC':
+    if cfg.algorithm != 'BC':
       # Collect set of transitions by running policy π in the environment
       with torch.inference_mode():
         action = actor(state).sample()
@@ -107,8 +107,9 @@ def main(cfg: DictConfig) -> None:
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-            adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
-          # Predict rewards 
+            adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.imitation.get('pos_class_prior', 0.5), cfg.imitation.get('nonnegative_margin', 0))
+          
+          # Predict rewards
           states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
           if cfg.imitation.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
           with torch.inference_mode():
@@ -120,7 +121,7 @@ def main(cfg: DictConfig) -> None:
             elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
               transitions['rewards'] = discriminator.predict_reward(states, actions)
             elif cfg.algorithm == 'GMMIL':
-              expert_states, expert_actions = expert_transitions['states'], expert_transitions['actions']  # TODO: Use entire dataset as per original? Prohibitively slow in off-policy case
+              expert_states, expert_actions = expert_transitions['states'], expert_transitions['actions']  # Note that using the entire dataset is prohibitively slow in off-policy case
               if cfg.imitation.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_transitions['terminals'])
               transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
             elif cfg.algorithm == 'RED':

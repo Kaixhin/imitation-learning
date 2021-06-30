@@ -3,9 +3,5 @@ env_type: ant
 env_name: ant-bullet-medium-v0
 
 algorithm: BC
-training:
-  batch_size: 2048
-reinforcement:
-  learning_rate: 0.00003
 imitation:
-  epochs: 15
+  pretraining_epochs: 15

@@ -3,9 +3,5 @@ env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
 algorithm: BC
-training:
-  batch_size: 4096
-reinforcement:
-  learning_rate: 0.00003
 imitation:
-  epochs: 5
+  pretraining_epochs: 5

@@ -3,12 +3,5 @@ env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
 algorithm: RED
-training:
-  batch_size: 2048
-reinforcement:
-  learning_rate: 0.0003
-  ppo_epochs: 20
-  entropy_loss_coeff: 0.001
 imitation:
-  epochs: 25
-  learning_rate: 0.00003
+  pretraining_epochs: 25

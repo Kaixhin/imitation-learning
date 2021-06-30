@@ -3,11 +3,5 @@ env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
 algorithm: GMMIL
-training:
-  batch_size: 4096
-reinforcement:
-  learning_rate: 0.0003
-  ppo_epochs: 20
-  entropy_loss_coeff: 0.0
 imitation:
   self_similarity: false

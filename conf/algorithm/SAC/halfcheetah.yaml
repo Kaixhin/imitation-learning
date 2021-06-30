@@ -3,7 +3,3 @@ env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
 algorithm: SAC
-training:
-  batch_size: 1024
-reinforcement:
-  learning_rate: 0.0003

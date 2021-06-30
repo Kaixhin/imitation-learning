@@ -3,9 +3,5 @@ env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
 algorithm: BC
-training:
-  batch_size: 1024
-reinforcement:
-  learning_rate: 0.0003
 imitation:
-  epochs: 25
+  pretraining_epochs: 25
