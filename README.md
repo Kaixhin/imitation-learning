@@ -9,15 +9,17 @@ Imitation learning algorithms (with SAC [[1, 2]](#references)):
 - DRIL [[5]](#references) (without BC)
 - FAIRL [[6]](#references)
 - GAIL [[7]](#references)
+<<<<<<< HEAD
 - GMMIL [[8]](#references) (including an optional self-similarity term [[9]](#references))
 - nn-PUGAIL [[10]](#references)
 - RED [[11]](#references)
+- SQIL [[12]](#references)
 
 Options include:
 
 - State-only imitation learning: `state-only: true/false`
-- Absorbing state indicator [[12]](#references): `absorbing: true/false`
-- R1 gradient regularisation [[13]](#references): `r1-reg-coeff: 0.5`
+- Absorbing state indicator [[13]](#references): `absorbing: true/false`
+- R1 gradient regularisation [[14]](#references): `r1-reg-coeff: 0.5`
 
 ## Requirements
 
@@ -63,7 +65,18 @@ or via the existing bash script:
 
 The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note that running this code twice will overwrite the previous results).
 
+<<<<<<< HEAD
 ## Results
+=======
+- State-only imitation learning [[3]](#references): `state-only: true/false`
+- Absorbing state indicator [[12]](#references): `absorbing: true/false`
+- R1 gradient regularisation [[13]](#references): `r1-reg-coeff: 0.5`
+
+The state only & absorbing is not used in the result.
+ 
+Results
+-------
+>>>>>>> 4a7c4fe... Implement SQIL
 
 ![PyBullet results](figures/pybullet.png) 
 
@@ -97,5 +110,6 @@ If you find this work useful and would like to cite it, the following would be a
 [9] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
 [10] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
 [11] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[12] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[13] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
+[12] [SQIL: Imitation Learning via Reinforcement Learning with Sparse Rewards](https://arxiv.org/abs/1905.11108)  
+[13] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[14] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  

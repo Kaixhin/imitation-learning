@@ -25,15 +25,16 @@ def indicate_absorbing(states, actions, terminals, next_states=None):
 
 # Replay memory returns transition tuples of the form (s, a, r, s', terminal)
 class ReplayMemory(Dataset):
-  def __init__(self, size=0, state_size=0, action_size=0, transitions=None):
+  def __init__(self, size, state_size, action_size, transitions=None):
     super().__init__()
     self.idx = 0
+    self.size, self.full = size, False
+    self.states, self.actions, self.rewards, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size)
     if transitions is not None:
-      self.size, self.full = transitions['states'].size(0), True
-      self.states, self.actions, self.rewards, self.terminals = transitions['states'], transitions['actions'], transitions['rewards'], transitions['terminals']
-    else:
-      self.size, self.full = size, False
-      self.states, self.actions, self.rewards, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size)
+      trans_size = transitions['states'].size(0)
+      self.states[:trans_size], self.actions[:trans_size], self.rewards[:trans_size], self.terminals[:trans_size] = transitions['states'], transitions['actions'], transitions['rewards'], transitions['terminals']
+      self.idx = trans_size % self.size
+      self.full = self.idx == 0
 
   # Allows string-based access for entire data of one type, or int-based access for single transition
   def __getitem__(self, idx):

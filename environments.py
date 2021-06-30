@@ -98,7 +98,7 @@ class D4RLEnv():
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][0::subsample]
 
-    return ReplayMemory(transitions=dataset_out)
+    return ReplayMemory(dataset_out['states'].size(0), dataset_out['states'].size(1), dataset_out['actions'].size(1), transitions=dataset_out)
 
 
 ENVS = {'ant': D4RLEnv, 'halfcheetah': D4RLEnv, 'hopper': D4RLEnv, 'pendulum': PendulumEnv, 'walker2d': D4RLEnv}

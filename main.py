@@ -19,7 +19,7 @@ from utils import flatten_list_dicts, lineplot
 def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.env_type in ENVS.keys()
-  assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC']
+  assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -126,6 +126,9 @@ def main(cfg: DictConfig) -> None:
               transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
             elif cfg.algorithm == 'RED':
               transitions['rewards'] = discriminator.predict_reward(states, actions)
+            elif cfg.algorithm == 'SQIL':  # TODO: Add sampling ratio option?
+              transitions['states'][:cfg.training.batch_size // 2], transitions['actions'][:cfg.training.batch_size // 2], transitions['next_states'][:cfg.training.batch_size // 2], transitions['terminals'][:cfg.training.batch_size // 2] = expert_transitions['states'][:cfg.training.batch_size // 2], expert_transitions['actions'][:cfg.training.batch_size // 2], expert_transitions['next_states'][:cfg.training.batch_size // 2], expert_transitions['terminals'][:cfg.training.batch_size // 2]  # Replace half of the batch with expert data
+              transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, 0  # Set a constant +1 reward for expert data and 0 for policy data
         
         # Train agent using SAC
         sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)  # TODO: make sure absorbing doesn't affect?
