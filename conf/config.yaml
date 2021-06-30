@@ -6,23 +6,23 @@ defaults:
 
 seed: 0
 steps: 1000000
-steps: 2000000
 model:
   hidden_size: 256
-  log_std_dev_init: -2
+  activation: 'relu'
 replay:
-  size: 300000
+  size: 1000000
 rl:
   discount: 0.99
-  learning_rate: .0001
-  polyak_factor: 0.99
-  max_grad_norm: 0.5
+  learning_rate: 0.0003
+  polyak_factor: 0.995
 imitation:
   state_only: false
   absorbing: false
 training:
   start: 10000
+  interval: 100
   batch_size: 256
+  max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 evaluation:
   interval: 10000
   episodes: 30

@@ -31,7 +31,7 @@ def main(cfg: DictConfig) -> None:
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
-  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.hidden_size), TwinCritic(state_size, action_size, cfg.hidden_size), torch.zeros(1, requires_grad=True)
+  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), TwinCritic(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
   actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.rl.learning_rate), optim.Adam(critic.parameters(), lr=cfg.rl.learning_rate), optim.Adam([log_alpha], lr=cfg.rl.learning_rate)
   memory = ReplayMemory(cfg.replay.size, state_size, action_size)
@@ -49,7 +49,7 @@ def main(cfg: DictConfig) -> None:
     elif cfg.algorithm == 'RED':
       discriminator = REDDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only)
     if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-      discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.imitation.learning_rate)
+      discriminator_optimiser = optim.Adam(discriminator.parameters(), lr=cfg.il_learning_rate)
 
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])
@@ -61,10 +61,10 @@ def main(cfg: DictConfig) -> None:
     for _ in tqdm(range(cfg.imitation_epochs), leave=False):
       if cfg.imitation == 'BC':
         # Perform behavioural cloning updates offline
-        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size)
+        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size, max_grad_norm=cfg.training.max_grad_norm)
       elif cfg.imitation == 'DRIL':
         # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)
+        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.training.max_grad_norm)
         with torch.no_grad():  # TODO: Check why inference mode fails?
           discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
       elif cfg.imitation == 'RED':
@@ -99,9 +99,9 @@ def main(cfg: DictConfig) -> None:
         state, train_return = env.reset(), 0
 
       # Train agent and imitation learning component
-      if step >= cfg.training.start:
+      if step >= cfg.training.start and step % cfg.training.interval == 0:
         # Sample a batch of transitions
-        transitions, expert_transitions = memory.sample(cfg.batch_size), expert_trajectories.sample(cfg.batch_size)
+        transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
 
         # Use imitation learning component
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:

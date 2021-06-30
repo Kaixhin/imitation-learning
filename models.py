@@ -28,14 +28,14 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1.0):
+def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
   
   network_dims, layers = (input_size, hidden_size, hidden_size), []
 
   for l in range(len(network_dims) - 1):
     layer = nn.Linear(network_dims[l], network_dims[l + 1])
-    nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
+    nn.init.orthogonal_(layer.weight, gain=1)  # TODO: Check if gain=1, as standard, is better than nn.init.calculate_gain(activation_function)?
     nn.init.constant_(layer.bias, 0)
     layers.append(layer)
     if dropout > 0: layers.append(nn.Dropout(p=dropout))
@@ -65,7 +65,7 @@ class SoftActor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', dropout=0):
     super().__init__()
     self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
-    self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout, final_gain=0.01)
+    self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout)
 
   def forward(self, state):
     mean, log_std_dev = self.actor(state).chunk(2, dim=1)
@@ -127,10 +127,10 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=False, forward_kl=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', state_only=False, forward_kl=False):
     super().__init__()
     self.state_only, self.forward_kl = state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, 'tanh')
+    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function)
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
@@ -163,12 +163,12 @@ class GMMILDiscriminator(nn.Module):
 
 
 class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, state_only=False, ):
+  def __init__(self, state_size, action_size, hidden_size, discount, activation_function='tanh', state_only=False):
     super().__init__()
     self.state_only = state_only
     self.discount = discount
     self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    self.h = _create_fcnn(state_size, hidden_size, 1, 'tanh')  # Shaping function Φ
+    self.h = _create_fcnn(state_size, hidden_size, 1, activation_function)  # Shaping function Φ
 
   def reward(self, state, action):
     if self.state_only:
@@ -189,21 +189,21 @@ class AIRLDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size, hidden_size):
+  def __init__(self, input_size, hidden_size, activation_function='tanh'):
     super().__init__()
-    self.embedding = _create_fcnn(input_size, hidden_size, input_size, 'tanh')
+    self.embedding = _create_fcnn(input_size, hidden_size, input_size, activation_function)
 
   def forward(self, input):
     return self.embedding(input)
 
 
 class REDDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', state_only=False):
     super().__init__()
     self.state_only = state_only
     self.sigma_1 = None
-    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
-    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
+    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
+    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
     for param in self.target.parameters():
       param.requires_grad = False
 

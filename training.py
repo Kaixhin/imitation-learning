@@ -45,7 +45,7 @@ class ReplayMemory(Dataset):
       elif idx == 'terminals':
         return self.terminals
     else:
-      return dict(states=self.states[idx], actions=self.actions[idx], rewards=self.rewards[idx], next_states=self.states[idx + 1], terminals=self.terminals[idx])
+      return dict(states=self.states[idx], actions=self.actions[idx], rewards=self.rewards[idx], next_states=self.states[(idx + 1) % self.size], terminals=self.terminals[idx])
 
   def __len__(self):
     return self.terminals.size(0) - 1  # Need to return state and next state
@@ -70,7 +70,7 @@ class ReplayMemory(Dataset):
 
 
 # Performs one SAC update
-def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor, max_grad_norm=1):
+def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor, max_grad_norm=0):
   states, actions, rewards, next_states, terminals = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals']
   alpha = log_alpha.exp()
   
@@ -86,7 +86,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update critic
   critic_optimiser.zero_grad(set_to_none=True)
   value_loss.backward()
-  clip_grad_norm_(critic.parameters(), max_grad_norm)  # Clamp norm of gradients
+  if max_grad_norm > 0: clip_grad_norm_(critic.parameters(), max_grad_norm)
   critic_optimiser.step()
 
   # Compute policy loss
@@ -98,7 +98,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update actor
   actor_optimiser.zero_grad(set_to_none=True)
   policy_loss.backward()
-  clip_grad_norm_(actor.parameters(), max_grad_norm)  # Clamp norm of gradients
+  if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
   actor_optimiser.step()  
 
   # Compute temperature loss
@@ -106,7 +106,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update temperature
   temperature_optimiser.zero_grad(set_to_none=True)
   temperature_loss.backward()
-  clip_grad_norm_(log_alpha, max_grad_norm)  # Clamp norm of gradients
+  if max_grad_norm > 0: clip_grad_norm_(log_alpha, max_grad_norm)
   temperature_optimiser.step()
 
   # Update target critic
@@ -114,17 +114,18 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
 
 
 # Performs a behavioural cloning update
-def behavioural_cloning_update(agent, expert_trajectories, agent_optimiser, batch_size):
+def behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, batch_size, max_grad_norm=0):
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
 
   for expert_transition in expert_dataloader:
     expert_state, expert_action = expert_transition['states'], expert_transition['actions']
     expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
 
-    agent_optimiser.zero_grad(set_to_none=True)
-    behavioural_cloning_loss = -agent.log_prob(expert_state, expert_action).mean()  # Maximum likelihood objective
+    actor_optimiser.zero_grad(set_to_none=True)
+    behavioural_cloning_loss = -actor.log_prob(expert_state, expert_action).mean()  # Maximum likelihood objective
     behavioural_cloning_loss.backward()
-    agent_optimiser.step()
+    if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
+    actor_optimiser.step()
 
 
 # Performs a target estimation update
