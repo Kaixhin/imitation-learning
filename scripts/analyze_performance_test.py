@@ -2,7 +2,7 @@
 import sys, os
 import glob
 import numpy as np
-
+import torch
 def process_memory_data():
     res = ""
     data_files = glob.glob('./*hopper_time.txt')
@@ -37,17 +37,13 @@ def process_time_data(result_folder='./outputs', folder_prefix='seed_sweeper_hop
         train = []
         for n in multirun_num:
             data_folder = os.path.join(folder, n)
-            pretrain_data = os.path.join(data_folder, "pre_training_time.txt")
-            train_data = os.path.join(data_folder, "training_time.txt")
-            if os.path.isfile(pretrain_data):
-                with open(pretrain_data, 'r') as file:
-                    data = float(file.read())
-                    pretrain.append(data)
-            if os.path.isfile(train_data):
-                with open(train_data, 'r') as file:
-                    data = float(file.read())
-                    train.append(data)
+            metric_data = torch.load(os.path.join(data_folder, 'metrics.pth'))
+            if 'training_time' in metric_data:
+                train.append(metric_data['training_time'])
+            if 'pre_training_time' in metric_data:
+                pretrain.append(metric_data['pre_training_time'])
         pt_mean, pt_std, t_mean, t_std = 0.0, 0.0, 0.0, 0.0 
+        
         if pretrain:
             np_pt = np.array(pretrain)
             pt_mean, pt_std = np_pt.mean(), np_pt.std()
