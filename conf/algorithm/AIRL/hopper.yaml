@@ -4,12 +4,12 @@ env_name: hopper-bullet-medium-v0
 
 imitation: AIRL
 # PPO hyperparameters
-batch_size: 2048
+batch_size: 1024
 agent_learning_rate: 0.0003
 ppo_epochs: 10
-entropy_loss_coeff: 0.001
+entropy_loss_coeff: 0
 # IL hyperparameters
-imitation_epochs: 5
-il_learning_rate: 0.0003
-imitation_replay_size: 3
+imitation_epochs: 25
+il_learning_rate: 0.00003
+imitation_replay_size: 1
 r1_reg_coeff: 0.5
