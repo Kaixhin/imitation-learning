@@ -24,7 +24,7 @@ pip install -r requirements.txt
 ```
 Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL-PyBullet](https://github.com/takuseno/d4rl-pybullet) and [Hydra](https://hydra.cc/).
 
-[Ax](https://ax.dev/) and the [Hydra AX sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; these are considered optional and hence are not included in `requirements.txt`.
+[Ax](https://ax.dev/) and the [Hydra AX sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; If you do not intend to do hyperparameter optimisation it can be removed from `requirements.txt`.
 
 Run
 ---
@@ -40,7 +40,7 @@ python main.py algorithm=AIRL/hopper
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG/ENV.yaml`, 
 with the latter containing algorithm & environment specific hyperparameter that was tuned with AX.
 
-The resulting model will saved in `./outputs/ENV_ALGO/m-d-H-M` with the last subfolder indicating current date (month-day-hour-minute).
+The resulting model will saved in `./outputs/ENV_ALGO/m-d-H-M-S` with the last subfolder indicating current date (month-day-hour-minute-second).
 
 ### Run hyperparameter optimization
 Hyper parameter optimization can be run by adding the `-m` flag. 
