@@ -21,7 +21,7 @@ Options include:
 
 ## Requirements
 
-Base requirements can be installed with:
+Requirements can be installed with:
 ```sh
 pip install -r requirements.txt
 ```
@@ -40,15 +40,15 @@ python main.py algorithm=AIRL/hopper
 
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG/ENV.yaml`, with the latter containing algorithm- and environment-specific hyperparameters that were tuned with Ax.
 
-Results will be saved in `outputs/ENV_ALGO/m-d_H-M-S` with the last subfolder indicating the current datetime (month-day\_hour-minute-second).
+Results will be saved in `outputs/ENV_ALGO/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
 ### Hyperparameter optimisation
 
-Hyperparameter optimisation can be run by adding the `-m` flag and `hydra/sweeper=ax hyperparam_opt=ALG`, for example:
+Hyperparameter optimisation can be run by adding `-m hydra/sweeper=ax hyperparam_opt=ALG`, for example:
 ```sh
 python main.py -m algorithm=AIRL/hopper hydra/sweeper=ax hyperparam_opt=AIRL 
 ```
-`hyperparam_opt` specifies the hyperparameter search space (the default is `IL` and it contains all hyperparameters).
+`hyperparam_opt` specifies the hyperparameter search space.
 
 ### Seed sweep
 
@@ -93,7 +93,7 @@ If you find this work useful and would like to cite it, the following would be a
 [5] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
 [6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[8] [A Pragmatic Look at Deep Imitation Learning]()  
+[8] [A Pragmatic Look at Deep Imitation Learning](https://github.com/Kaixhin/imitation-learning)  
 [9] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
 [10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
 [11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
