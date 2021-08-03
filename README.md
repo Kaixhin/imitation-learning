@@ -6,7 +6,7 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 
 - AIRL [[2]](#references)
 - BC [[3]](#references)
-- DRIL [[4]](#references)
+- DRIL [[4]](#references) (without BC)
 - FAIRL [[5]](#references)
 - GAIL [[6]](#references)
 - GMMIL [[7]](#references) (including an optional self-similarity term [[8]](#references))
