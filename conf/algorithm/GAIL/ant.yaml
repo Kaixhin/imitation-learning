@@ -3,14 +3,17 @@ env_type: ant
 env_name: ant-bullet-medium-v0
 
 # resuling optimal parameters from 20 hyper parameter optimization run (best sweep 557)
-imitation: GAIL
+imitation_algorithm: GAIL
 #IL param to be optimized
-imitation_epochs: 25
-il_learning_rate: !!float 3e-5
-imitation_replay_size: 3
-r1_reg_coeff: 1.0
+imitation:
+  imitation_epochs: 25
+  il_learning_rate: !!float 3e-5
+  imitation_replay_size: 3
+  r1_reg_coeff: 1.0
 # PPO param to be optimized
-batch_size: 4096
-ppo_epochs: 10
-agent_learning_rate: !!float 3e-5
-entropy_loss_coeff: 0.01
+training:
+  batch_size: 4096
+reinforcement:
+  ppo_epochs: 10
+  agent_learning_rate: !!float 3e-5
+  entropy_loss_coeff: 0.01

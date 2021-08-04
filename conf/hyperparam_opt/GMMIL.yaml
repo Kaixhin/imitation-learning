@@ -13,24 +13,24 @@ hydra:
 
       is_noisy: true
       params:
-        self_similarity: # IL params
+        imitation.self_similarity: # IL params
           type: choice
           values: [false, true]
           value_type: 'bool'
         # PPO hyper params
-        batch_size:
+        training.batch_size:
           type: choice
           values: [1024, 2048, 4096 ]
           value_type: 'int'
-        agent_learning_rate:
+        reinforcement.agent_learning_rate:
           type: choice
           values: [ 0.00003, 0.0003 ]
           value_type: 'float'
-        ppo_epochs:
+        reinforcement.ppo_epochs:
           type: choice
           values: [5, 10, 20]
           value_type: 'int'
-        entropy_loss_coeff:
+        reinforcement.entropy_loss_coeff:
           type: choice
           values: [ 0, 0.001, 0.01 ]
           value_type: 'float'

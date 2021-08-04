@@ -2,12 +2,15 @@
 env_type: hopper
 env_name: hopper-bullet-medium-v0
 
-imitation: DRIL
+imitation_algorithm: DRIL
 # PPO hyperparameters
-batch_size: 2048
-agent_learning_rate: 0.0003
-ppo_epochs: 10
-entropy_loss_coeff: 0.001
+training:
+  batch_size: 2048
+reinforcement:
+  agent_learning_rate: 0.0003
+  ppo_epochs: 10
+  entropy_loss_coeff: 0.001
 # IL hyperparameters
-imitation_epochs: 25
-il_learning_rate: 0.00003
+imitation:
+  imitation_epochs: 25
+  il_learning_rate: 0.00003
