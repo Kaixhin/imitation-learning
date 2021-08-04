@@ -1,26 +1,21 @@
 # @package _global_
 hydra:
   sweeper:
-    #ax configuration. Same across all algorithms
     ax_config:
       max_trials: 20
-
       experiment:
         minimize: false
-
       early_stop:
         max_epochs_without_improvement: 5
-
       is_noisy: true
-
       params:
         training.batch_size:
           type: choice
-          values: [1024, 2048, 4096 ]
+          values: [1024, 2048, 4096]
           value_type: 'int'
-        reinforcement.agent_learning_rate:
+        reinforcement.learning_rate:
           type: choice
-          values: [ 0.00003, 0.0003 ]
+          values: [0.00003, 0.0003]
           value_type: 'float'
         reinforcement.ppo_epochs:
           type: choice
@@ -28,5 +23,5 @@ hydra:
           value_type: 'int'
         reinforcement.entropy_loss_coeff:
           type: choice
-          values: [ 0, 0.001, 0.01 ]
+          values: [0, 0.001, 0.01]
           value_type: 'float'

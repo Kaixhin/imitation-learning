@@ -1,35 +1,21 @@
 # @package _global_
 hydra:
   sweeper:
-    #ax configuration. Same across all algorithms
     ax_config:
       max_trials: 20
-
       experiment:
         minimize: false
-
       early_stop:
         max_epochs_without_improvement: 5
-
       is_noisy: true
-
       params:
-        imitation.imitation_epochs: # IL params
+        training.batch_size:
           type: choice
-          values: [5, 15, 25]
+          values: [1024, 2048, 4096]
           value_type: 'int'
-        imitation.il_learning_rate: #keep
+        reinforcement.learning_rate:
           type: choice
-          values: [ 0.00003, 0.0003 ]
-          value_type: 'float'
-        # PPO hyper params
-        training.batch_size: #keep
-          type: choice
-          values: [1024, 2048, 4096 ]
-          value_type: 'int'
-        reinforcement.agent_learning_rate:
-          type: choice
-          values: [ 0.00003, 0.0003 ]
+          values: [0.00003, 0.0003]
           value_type: 'float'
         reinforcement.ppo_epochs:
           type: choice
@@ -37,5 +23,13 @@ hydra:
           value_type: 'int'
         reinforcement.entropy_loss_coeff:
           type: choice
-          values: [ 0, 0.001, 0.01 ]
+          values: [0, 0.001, 0.01]
+          value_type: 'float'
+        imitation.epochs:
+          type: choice
+          values: [5, 15, 25]
+          value_type: 'int'
+        imitation.learning_rate:
+          type: choice
+          values: [0.00003, 0.0003]
           value_type: 'float'
