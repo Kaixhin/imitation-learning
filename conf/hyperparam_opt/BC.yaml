@@ -1,23 +1,20 @@
-# @package _global_
-hydra:
-  sweeper:
-    ax_config:
-      max_trials: 20
-      experiment:
-        minimize: false
-      early_stop:
-        max_epochs_without_improvement: 5
-      is_noisy: true
-      params:
-        training.batch_size:
-          type: choice
-          values: [1024, 2048, 4096]
-          value_type: 'int'
-        reinforcement.learning_rate:
-          type: choice
-          values: [0.00003, 0.0003]
-          value_type: 'float'
-        imitation.epochs:
-          type: choice
-          values: [5, 15, 25]
-          value_type: 'int'
+# @package hydra.sweeper.ax_config
+max_trials: 20
+experiment:
+  minimize: false
+early_stop:
+  max_epochs_without_improvement: 5
+is_noisy: true
+params:
+  training.batch_size:
+    type: choice
+    values: [1024, 2048, 4096]
+    value_type: 'int'
+  reinforcement.learning_rate:
+    type: choice
+    values: [0.00003, 0.0003]
+    value_type: 'float'
+  imitation.epochs:
+    type: choice
+    values: [5, 15, 25]
+    value_type: 'int'
