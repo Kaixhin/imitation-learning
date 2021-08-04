@@ -2,12 +2,10 @@
 env_type: hopper
 env_name: hopper-bullet-medium-v0
 
-imitation_algorithm: BC
-# PPO hyperparameters
+algorithm: BC
 training:
   batch_size: 2048
 reinforcement:
-  agent_learning_rate: 0.0003
-# IL hyperparameters
+  learning_rate: 0.0003
 imitation:
-  imitation_epochs: 15
+  epochs: 15

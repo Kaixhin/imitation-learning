@@ -2,16 +2,13 @@
 env_type: hopper
 env_name: hopper-bullet-medium-v0
 
-# Resuling optimal parameters from 20 Hyper parameter optimization run (best sweep 883)
-imitation_algorithm: RED
-#IL param to be optimized
-imitation:
-  imitation_epochs: 25 #Benchmark
-  il_learning_rate: 0.0003
-# PPO param to be optimized
+algorithm: RED
 training:
-  batch_size: 2048 #Benchmark
+  batch_size: 2048
 reinforcement:
-  ppo_epochs: 10 #Benchmark
-  agent_learning_rate: !!float 3e-5
+  learning_rate: 0.00003
+  ppo_epochs: 10
   entropy_loss_coeff: 0.0
+imitation:
+  epochs: 25
+  learning_rate: 0.0003

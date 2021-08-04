@@ -2,12 +2,10 @@
 env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
-imitation_algorithm: BC
-# PPO hyperparameters
+algorithm: BC
 training:
   batch_size: 1024
 reinforcement:
-  agent_learning_rate: 0.0003
-# IL hyperparameters
+  learning_rate: 0.0003
 imitation:
-  imitation_epochs: 25
+  epochs: 25

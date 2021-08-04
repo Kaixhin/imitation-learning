@@ -2,17 +2,15 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
-imitation_algorithm: AIRL
-# PPO hyperparameters
+algorithm: AIRL
 training:
   batch_size: 4096
 reinforcement:
-  agent_learning_rate: 0.0003
+  learning_rate: 0.0003
   ppo_epochs: 20
   entropy_loss_coeff: 0.01
-# IL hyperparameters
 imitation:
-  imitation_epochs: 15
-  il_learning_rate: 0.00003
-  imitation_replay_size: 1
+  epochs: 15
+  learning_rate: 0.00003
+  replay_size: 1
   r1_reg_coeff: 0.5

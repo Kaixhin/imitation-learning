@@ -3,32 +3,30 @@ defaults:
   - algorithm: PPO/pendulum
   - hyperparam_opt: empty
   - override hydra/sweeper: basic
-# Experiment hyperparameters
+
 seed: 0
 steps: 2000000
+model:
+  hidden_size: 256
+  log_std_dev_init: -2
+reinforcement:
+  discount: 0.99
+  trace_decay: 0.9
+  learning_rate: 0.0003
+  ppo_clip: 0.25
+  ppo_epochs: 20
+  value_loss_coeff: 0.5
+  entropy_loss_coeff: 0.001
+  max_grad_norm: 0.5
+imitation:
+  state_only: false
+  absorbing: false
 training:
   batch_size: 4096
 evaluation:
   interval: 20000
   episodes: 30
   average_window: 5
-# Model hyperparameters
-model:
-  hidden_size: 256
-  log_std_dev_init: -2
-# RL hyperparameters
-reinforcement:
-  discount: 0.99
-  trace_decay: 0.9
-  ppo_clip: 0.25
-  value_loss_coeff: 0.5
-  max_grad_norm: 0.5
-# IL hyperparameters
-imitation:
-  imitation_epochs: 15
-  state_only: false
-  absorbing: false
-# Misc hyperparameters
 save_trajectories: false
 render: false
 check_time_usage: false
@@ -36,6 +34,6 @@ check_time_usage: false
 # Run/sweep directories
 hydra:
   run:
-    dir: ./outputs/${env_type}_${imitation_algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
   sweep:
-    dir: ./outputs/sweeper_${env_type}_${imitation_algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/sweeper_${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
