@@ -76,10 +76,10 @@ The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note th
 If you find this work useful and would like to cite it, the following would be appropriate:
 
 ```tex
-@misc{arulkumaran2021pragmatic,
+@article{arulkumaran2021pragmatic,
   author = {Arulkumaran, Kai and Ogawa Lillrank, Dan},
   title = {A Pragmatic Look at Deep Imitation Learning},
-  url = {https://github.com/Kaixhin/imitation-learning},
+  journal={arXiv preprint arXiv:2108.01867},
   year = {2021}
 }
 ```
@@ -93,7 +93,7 @@ If you find this work useful and would like to cite it, the following would be a
 [5] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
 [6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[8] [A Pragmatic Look at Deep Imitation Learning](https://github.com/Kaixhin/imitation-learning)  
+[8] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
 [9] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
 [10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
 [11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
