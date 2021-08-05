@@ -2,9 +2,10 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
-imitation: BC
-# PPO hyperparameters
-batch_size: 4096
-agent_learning_rate: 0.00003
-# IL hyperparameters
-imitation_epochs: 5
+algorithm: BC
+training:
+  batch_size: 4096
+reinforcement:
+  learning_rate: 0.00003
+imitation:
+  epochs: 5

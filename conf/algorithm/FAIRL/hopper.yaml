@@ -2,14 +2,15 @@
 env_type: hopper
 env_name: hopper-bullet-medium-v0
 
-imitation: FAIRL
-# PPO hyperparameters
-batch_size: 2048
-agent_learning_rate: 0.00003
-ppo_epochs: 10
-entropy_loss_coeff: 0.0
-# IL hyperparameters
-imitation_epochs: 5
-il_learning_rate: 0.0003
-imitation_replay_size: 3
-r1_reg_coeff: 0.1
+algorithm: FAIRL
+training:
+  batch_size: 2048
+reinforcement:
+  learning_rate: 0.00003
+  ppo_epochs: 10
+  entropy_loss_coeff: 0.0
+imitation:
+  epochs: 5
+  learning_rate: 0.0003
+  replay_size: 3
+  r1_reg_coeff: 0.1

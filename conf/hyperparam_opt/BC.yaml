@@ -1,29 +1,20 @@
-# @package _global_
-hydra:
-  sweeper:
-    #ax configuration. Same across all algorithms
-    ax_config:
-      max_trials: 20
-
-      experiment:
-        minimize: false
-
-      early_stop:
-        max_epochs_without_improvement: 5
-
-      is_noisy: true
-
-      params:
-        imitation_epochs: # IL params
-          type: choice
-          values: [5, 15, 25]
-          value_type: 'int'
-        # PPO hyper params
-        batch_size:
-          type: choice
-          values: [1024, 2048, 4096 ]
-          value_type: 'int'
-        agent_learning_rate:
-          type: choice
-          values: [ 0.00003, 0.0003 ]
-          value_type: 'float'
+# @package hydra.sweeper.ax_config
+max_trials: 20
+experiment:
+  minimize: false
+early_stop:
+  max_epochs_without_improvement: 5
+is_noisy: true
+params:
+  training.batch_size:
+    type: choice
+    values: [1024, 2048, 4096]
+    value_type: 'int'
+  reinforcement.learning_rate:
+    type: choice
+    values: [0.00003, 0.0003]
+    value_type: 'float'
+  imitation.epochs:
+    type: choice
+    values: [5, 15, 25]
+    value_type: 'int'

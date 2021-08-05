@@ -2,11 +2,12 @@
 env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
-imitation: GMMIL
-# PPO hyperparameters
-batch_size: 1024
-agent_learning_rate: 0.0003
-ppo_epochs: 20
-entropy_loss_coeff: 0.01
-# IL hyperparameters
-self_similarity: true
+algorithm: GMMIL
+training:
+  batch_size: 1024
+reinforcement:
+  learning_rate: 0.0003
+  ppo_epochs: 20
+  entropy_loss_coeff: 0.01
+imitation:
+  self_similarity: true

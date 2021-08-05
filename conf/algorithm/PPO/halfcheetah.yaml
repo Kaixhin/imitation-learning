@@ -2,9 +2,10 @@
 env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
-imitation: PPO
-# PPO hyperparameters
-batch_size: 1024
-agent_learning_rate: 0.0003
-ppo_epochs: 20
-entropy_loss_coeff: 0.01
+algorithm: PPO
+training:
+  batch_size: 1024
+reinforcement:
+  learning_rate: 0.0003
+  ppo_epochs: 20
+  entropy_loss_coeff: 0.01

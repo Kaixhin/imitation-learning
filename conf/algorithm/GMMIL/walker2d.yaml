@@ -2,11 +2,12 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
-imitation: GMMIL
-# PPO hyperparameters
-batch_size: 4096
-agent_learning_rate: 0.0003
-ppo_epochs: 20
-entropy_loss_coeff: 0.0
-# IL hyperparameters
-self_similarity: false
+algorithm: GMMIL
+training:
+  batch_size: 4096
+reinforcement:
+  learning_rate: 0.0003
+  ppo_epochs: 20
+  entropy_loss_coeff: 0.0
+imitation:
+  self_similarity: false

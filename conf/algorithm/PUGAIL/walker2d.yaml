@@ -2,14 +2,17 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
-imitation: PUGAIL
-#IL param to be optimized
-imitation_epochs: 10
-il_learning_rate: 0.0003
-imitation_replay_size: 3
-r1_reg_coeff: 0.5
-# PPO param to be optimized
-batch_size: 512
-ppo_epochs: 10
-agent_learning_rate: !!float 3e-5
-entropy_loss_coeff: 0.0
+algorithm: PUGAIL
+training:
+  batch_size: 512
+reinforcement:
+  learning_rate: 0.00003
+  ppo_epochs: 10
+  entropy_loss_coeff: 0.0
+imitation:
+  epochs: 10
+  learning_rate: 0.0003
+  replay_size: 3
+  r1_reg_coeff: 0.5
+  pos_class_prior: 0.5
+  nonnegative_margin: 0.0
