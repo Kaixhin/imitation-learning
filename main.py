@@ -145,7 +145,7 @@ def main(cfg: DictConfig) -> None:
       if cfg.algorithm == 'BC':
         lineplot(range(cfg.evaluation.interval, cfg.steps + 1, cfg.evaluation.interval), metrics['test_returns'] * (cfg.steps // cfg.evaluation.interval), 'test_returns')
         break
-      else:
+      elif len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
     elif cfg.algorithm == 'BC' and cfg.check_time_usage: break
 
