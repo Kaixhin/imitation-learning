@@ -33,7 +33,7 @@ def main(cfg: DictConfig) -> None:
   # Set up agent
   actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), TwinCritic(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
-  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.reinforcement.learning_rate), optim.Adam(critic.parameters(), lr=cfg.reinforcement.learning_rate), optim.Adam([log_alpha], lr=cfg.reinforcement.learning_rate)
+  actor_optimiser, critic_optimiser, temperature_optimiser = optim.AdamW(actor.parameters(), lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay), optim.Adam(critic.parameters(), lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay), optim.Adam([log_alpha], lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay)
   memory = ReplayMemory(cfg.replay.size, state_size, action_size)
 
   # Set up imitation learning components
@@ -49,7 +49,7 @@ def main(cfg: DictConfig) -> None:
     elif cfg.algorithm == 'RED':
       discriminator = REDDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only)
     if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
-      discriminator_optimiser = optim.Adam(discriminator.parameters(), lr=cfg.imitation.learning_rate)
+      discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[])

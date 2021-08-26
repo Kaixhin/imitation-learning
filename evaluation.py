@@ -1,10 +1,10 @@
 import torch
 
-from environments import PendulumEnv, D4RLEnv
+from environments import D4RLEnv
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(actor, num_episodes, env_type=PendulumEnv, env_name='', seed=1, return_trajectories=False, render=False):
+def evaluate_agent(actor, num_episodes, env_type, env_name, seed, return_trajectories=False, render=False):
   env = env_type(env_name)
   env.seed(seed)
 

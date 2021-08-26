@@ -35,7 +35,7 @@ def _create_fcnn(input_size, hidden_size, output_size, activation_function, drop
 
   for l in range(len(network_dims) - 1):
     layer = nn.Linear(network_dims[l], network_dims[l + 1])
-    nn.init.orthogonal_(layer.weight, gain=1)  # TODO: Check if gain=1, as standard, is better than nn.init.calculate_gain(activation_function)?
+    nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
     nn.init.constant_(layer.bias, 0)
     layers.append(layer)
     if dropout > 0: layers.append(nn.Dropout(p=dropout))
@@ -162,7 +162,8 @@ class GMMILDiscriminator(nn.Module):
     return similarity - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0)) if self.self_similarity else similarity
 
 
-class AIRLDiscriminator(nn.Module):  # TODO: Move just below GAILDiscriminator later for organisational purposes
+# TODO: Move just below GAILDiscriminator later for organisational purposes
+class AIRLDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False):
     super().__init__()
     self.state_only = state_only

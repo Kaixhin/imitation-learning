@@ -34,7 +34,7 @@ The training of each imitation learning algorithm can be started with:
 ```sh
 python main.py algorithm=ALG/ENV
 ```
-where `ALG` is one of `[AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `[AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
 python main.py algorithm=AIRL/hopper
 ```
