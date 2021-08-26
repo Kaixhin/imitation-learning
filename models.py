@@ -62,7 +62,7 @@ def update_target_network(network, target_network, polyak_factor):
 
 
 class SoftActor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', dropout=0):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, dropout=0):
     super().__init__()
     self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
     self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout)
@@ -101,7 +101,7 @@ class SoftActor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh'):
+  def __init__(self, state_size, action_size, hidden_size, activation_function):
     super().__init__()
     self.critic = _create_fcnn(state_size + action_size, hidden_size, output_size=1, activation_function=activation_function)
 
@@ -111,7 +111,7 @@ class Critic(nn.Module):
 
 
 class TwinCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh'):
+  def __init__(self, state_size, action_size, hidden_size, activation_function):
     super().__init__()
     self.critic_1 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
     self.critic_2 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
@@ -127,7 +127,7 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', state_only=False, forward_kl=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, forward_kl=False):
     super().__init__()
     self.state_only, self.forward_kl = state_only, forward_kl
     self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function)
@@ -162,8 +162,8 @@ class GMMILDiscriminator(nn.Module):
     return similarity - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0)) if self.self_similarity else similarity
 
 
-class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, activation_function='tanh', state_only=False):
+class AIRLDiscriminator(nn.Module):  # TODO: Move just below GAILDiscriminator later for organisational purposes
+  def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False):
     super().__init__()
     self.state_only = state_only
     self.discount = discount
@@ -189,7 +189,7 @@ class AIRLDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size, hidden_size, activation_function='tanh'):
+  def __init__(self, input_size, hidden_size, activation_function):
     super().__init__()
     self.embedding = _create_fcnn(input_size, hidden_size, input_size, activation_function)
 
@@ -198,7 +198,7 @@ class EmbeddingNetwork(nn.Module):
 
 
 class REDDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False):
     super().__init__()
     self.state_only = state_only
     self.sigma_1 = None

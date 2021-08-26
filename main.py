@@ -43,7 +43,7 @@ def main(cfg: DictConfig) -> None:
     elif cfg.algorithm == 'DRIL':
       discriminator = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation, dropout=0.1)
     elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only, forward_kl=cfg.imitation == 'FAIRL')
+      discriminator = GAILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only, forward_kl=cfg.algorithm == 'FAIRL')
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, self_similarity=cfg.imitation.self_similarity, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'RED':
@@ -103,11 +103,10 @@ def main(cfg: DictConfig) -> None:
         # Sample a batch of transitions
         transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
 
-        # Use imitation learning component
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-            adversarial_imitation_update(cfg.algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.imitation.get('pos_class_prior', 0.5), cfg.imitation.get('nonnegative_margin', 0))
+            adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.imitation.get('pos_class_prior', 0.5), cfg.imitation.get('nonnegative_margin', 0))
           
           # Predict rewards
           states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
@@ -131,7 +130,7 @@ def main(cfg: DictConfig) -> None:
               transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, 0  # Set a constant +1 reward for expert data and 0 for policy data
         
         # Train agent using SAC
-        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)  # TODO: make sure absorbing doesn't affect?
+        sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)  # TODO: Make sure absorbing doesn't affect?
     
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:

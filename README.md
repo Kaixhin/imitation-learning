@@ -9,7 +9,6 @@ Imitation learning algorithms (with SAC [[1, 2]](#references)):
 - DRIL [[5]](#references) (without BC)
 - FAIRL [[6]](#references)
 - GAIL [[7]](#references)
-<<<<<<< HEAD
 - GMMIL [[8]](#references) (including an optional self-similarity term [[9]](#references))
 - nn-PUGAIL [[10]](#references)
 - RED [[11]](#references)
@@ -63,20 +62,9 @@ or via the existing bash script:
 ./scripts/run_seed_experiments.sh ALG ENV
 ```
 
-The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note that running this code twice will overwrite the previous results).
+The results will be available in `./outputs/seed_sweeper_ENV_ALG` folder (note that running this code twice will overwrite the previous results).
 
-<<<<<<< HEAD
 ## Results
-=======
-- State-only imitation learning [[3]](#references): `state-only: true/false`
-- Absorbing state indicator [[12]](#references): `absorbing: true/false`
-- R1 gradient regularisation [[13]](#references): `r1-reg-coeff: 0.5`
-
-The state only & absorbing is not used in the result.
- 
-Results
--------
->>>>>>> 4a7c4fe... Implement SQIL
 
 ![PyBullet results](figures/pybullet.png) 
 
@@ -86,7 +74,7 @@ Results
 
 ## Citation
 
-If you find this work useful and would like to cite it, the following would be appropriate:
+If you find this work useful and would like to cite it, please use the following:
 
 ```tex
 @article{arulkumaran2021pragmatic,

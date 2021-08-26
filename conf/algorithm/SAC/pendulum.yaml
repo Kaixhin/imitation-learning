@@ -1,5 +1,0 @@
-# @package _global_
-env_type: pendulum
-env_name: pendulum-v0
-
-algorithm: SAC

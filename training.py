@@ -145,7 +145,7 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, actor, discriminator, expert_transitions, transitions, discriminator_optimiser, absorbing=False, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
+def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, absorbing=False, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
   expert_state, expert_action, expert_next_state, expert_terminal = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals']
   state, action, next_state, terminal = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
 

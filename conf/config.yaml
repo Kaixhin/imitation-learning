@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - algorithm: SAC/pendulum
+  - algorithm: SAC/ant
   - hyperparam_opt: empty
   - override hydra/sweeper: basic
 
@@ -28,8 +28,8 @@ evaluation:
   interval: 10000
   episodes: 30
   average_window: 5
-render: false
 save_trajectories: false
+render: false
 check_time_usage: false
 
 # Run/sweep directories
