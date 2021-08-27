@@ -67,7 +67,7 @@ class ReplayMemory(Dataset):
   def sample(self, n):
     idxs = [self._sample_idx() for _ in range(n)]
     transitions = [self[idx] for idx in idxs]
-    return dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))
+    return dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))  # Note that stack creates new memory so SQIL does not overwrite original data
 
 
 # Performs one SAC update
