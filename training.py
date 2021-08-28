@@ -31,10 +31,10 @@ class ReplayMemory(Dataset):
     self.size, self.full = size, False
     self.states, self.actions, self.rewards, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size)
     if transitions is not None:
-      trans_size = transitions['states'].size(0)
+      trans_size = min(transitions['states'].size(0), size)  # Take data up to size of replay
       self.states[:trans_size], self.actions[:trans_size], self.rewards[:trans_size], self.terminals[:trans_size] = transitions['states'], transitions['actions'], transitions['rewards'], transitions['terminals']
       self.idx = trans_size % self.size
-      self.full = self.idx == 0
+      self.full = self.idx == 0 and trans_size > 0  # Replay is full if index has wrapped around (but not if there was no data)
 
   # Allows string-based access for entire data of one type, or int-based access for single transition
   def __getitem__(self, idx):
