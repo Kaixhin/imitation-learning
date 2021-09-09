@@ -16,8 +16,7 @@ Imitation learning algorithms (with PPO [[1]](#references)):
 Options include:
 
 - State-only imitation learning: `state-only: true/false`
-- Absorbing state indicator [[11]](#references): `absorbing: true/false`
-- R1 gradient regularisation [[12]](#references): `r1-reg-coeff: 0.5`
+- R1 gradient regularisation [[11]](#references): `r1-reg-coeff: 0.5`
 
 ## Requirements
 
@@ -96,5 +95,4 @@ If you find this work useful and would like to cite it, the following would be a
 [8] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
 [9] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
 [10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[12] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
+[11] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  

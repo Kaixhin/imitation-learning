@@ -11,7 +11,7 @@ from tqdm import tqdm
 from environments import ENVS
 from evaluation import evaluate_agent
 from models import Actor, ActorCritic, AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator
-from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, ppo_update, target_estimation_update
+from training import TransitionDataset, adversarial_imitation_update, behavioural_cloning_update, ppo_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
 
@@ -36,15 +36,15 @@ def main(cfg: DictConfig) -> None:
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if cfg.algorithm == 'AIRL':
-      discriminator = AIRLDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, cfg.reinforcement.discount, state_only=cfg.imitation.state_only)
+      discriminator = AIRLDiscriminator(state_size, action_size, cfg.model.hidden_size, cfg.reinforcement.discount, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'DRIL':
       discriminator = Actor(state_size, action_size, cfg.model.hidden_size, dropout=0.1)
     elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only, forward_kl=cfg.algorithm == 'FAIRL')
+      discriminator = GAILDiscriminator(state_size, action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only, forward_kl=cfg.algorithm == 'FAIRL')
     elif cfg.algorithm == 'GMMIL':
-      discriminator = GMMILDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, self_similarity=cfg.imitation.self_similarity, state_only=cfg.imitation.state_only)
+      discriminator = GMMILDiscriminator(state_size, action_size, self_similarity=cfg.imitation.self_similarity, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'RED':
-      discriminator = REDDiscriminator(state_size + (1 if cfg.imitation.absorbing else 0), action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only)
+      discriminator = REDDiscriminator(state_size, action_size, cfg.model.hidden_size, state_only=cfg.imitation.state_only)
     if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
       discriminator_optimiser = optim.RMSprop(discriminator.parameters(), lr=cfg.imitation.learning_rate)
 
@@ -72,7 +72,7 @@ def main(cfg: DictConfig) -> None:
               discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
           elif cfg.algorithm == 'RED':
             # Train predictor network to match random target network
-            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing)
+            target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)
             with torch.inference_mode():
               discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
 
@@ -109,11 +109,10 @@ def main(cfg: DictConfig) -> None:
             policy_trajectory_replay_buffer.append(policy_trajectories)
             policy_trajectory_replays = flatten_list_dicts(policy_trajectory_replay_buffer)
             for _ in tqdm(range(cfg.imitation.epochs), leave=False):
-              adversarial_imitation_update(cfg.algorithm, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.absorbing, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
+              adversarial_imitation_update(cfg.algorithm, agent, discriminator, expert_trajectories, TransitionDataset(policy_trajectory_replays), discriminator_optimiser, cfg.training.batch_size, cfg.imitation.r1_reg_coeff, cfg.get('pos_class_prior', 0.5), cfg.get('nonnegative_margin', 0))
 
           # Predict rewards
           states, actions, next_states, terminals = policy_trajectories['states'], policy_trajectories['actions'], torch.cat([policy_trajectories['states'][1:], next_state]), policy_trajectories['terminals']
-          if cfg.imitation.absorbing: states, actions, next_states = indicate_absorbing(states, actions, terminals, next_states)
           with torch.inference_mode():
             if cfg.algorithm == 'AIRL':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, next_states, policy_trajectories['log_prob_actions'], terminals)
@@ -124,7 +123,6 @@ def main(cfg: DictConfig) -> None:
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
             elif cfg.algorithm == 'GMMIL':
               expert_states, expert_actions = expert_trajectories['states'], expert_trajectories['actions']
-              if cfg.imitation.absorbing: expert_states, expert_actions = indicate_absorbing(expert_states, expert_actions, expert_trajectories['terminals'])
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
             elif cfg.algorithm == 'RED':
               policy_trajectories['rewards'] = discriminator.predict_reward(states, actions)
