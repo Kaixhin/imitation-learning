@@ -2,6 +2,4 @@
 env_type: ant
 env_name: ant-bullet-medium-v0
 
-algorithm: BC
-imitation:
-  pretraining_epochs: 15
+algorithm: SQIL

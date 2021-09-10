@@ -2,6 +2,4 @@
 env_type: halfcheetah
 env_name: halfcheetah-bullet-medium-v0
 
-algorithm: RED
-imitation:
-  pretraining_epochs: 25
+algorithm: SQIL

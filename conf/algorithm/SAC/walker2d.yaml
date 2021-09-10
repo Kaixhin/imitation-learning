@@ -2,6 +2,4 @@
 env_type: walker2d
 env_name: walker2d-bullet-medium-v0
 
-algorithm: AIRL
-imitation:
-  r1_reg_coeff: 0.1
+algorithm: SAC

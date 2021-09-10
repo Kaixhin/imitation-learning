@@ -1,30 +1,33 @@
 defaults:
   - _self_
-  - algorithm: PPO/pendulum
+  - algorithm: SAC/ant
   - hyperparam_opt: empty
   - override hydra/sweeper: basic
 
 seed: 0
-steps: 2000000
+steps: 1000000
 model:
   hidden_size: 256
-  log_std_dev_init: -2
+  activation: 'relu'
+replay:
+  size: 1000000
 reinforcement:
   discount: 0.99
-  trace_decay: 0.9
   learning_rate: 0.0003
-  ppo_clip: 0.25
-  ppo_epochs: 20
-  value_loss_coeff: 0.5
-  entropy_loss_coeff: 0.001
-  max_grad_norm: 0.5
+  weight_decay: 0
+  polyak_factor: 0.995
+  max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
   state_only: false
   absorbing: false
+  learning_rate: 0.0003
+  weight_decay: 0
 training:
-  batch_size: 4096
+  start: 10000
+  interval: 1
+  batch_size: 256
 evaluation:
-  interval: 20000
+  interval: 10000
   episodes: 30
   average_window: 5
 save_trajectories: false

@@ -1,14 +1,17 @@
+import copy
+
 import numpy as np
 import torch
 from torch import nn
-from torch.distributions import Independent, Normal
+from torch.distributions import Independent, Normal, TransformedDistribution
+from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
 
-# Concatenates the state and action (previously one-hot discrete version)
-def _join_state_action(state, action, action_size):
+# Concatenates the state and action
+def _join_state_action(state, action):
     return torch.cat([state, action], dim=1)
 
 
@@ -25,7 +28,7 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1.0):
+def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
   
   network_dims, layers = (input_size, hidden_size, hidden_size), []
@@ -46,20 +49,36 @@ def _create_fcnn(input_size, hidden_size, output_size, activation_function, drop
   return nn.Sequential(*layers)
 
 
-class Actor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', log_std_dev_init=-0.5, dropout=0):
+def create_target_network(network):
+  target_network = copy.deepcopy(network)
+  for param in target_network.parameters():
+    param.requires_grad = False
+  return target_network
+
+
+def update_target_network(network, target_network, polyak_factor):
+  for param, target_param in zip(network.parameters(), target_network.parameters()):
+    target_param.data.mul_(polyak_factor).add_((1 - polyak_factor) * param.data)
+
+
+class SoftActor(nn.Module):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, dropout=0):
     super().__init__()
-    self.actor = _create_fcnn(state_size, hidden_size, output_size=action_size, activation_function=activation_function, dropout=dropout, final_gain=0.01)
-    self.log_std_dev = Parameter(torch.full((action_size, ), log_std_dev_init, dtype=torch.float32))
+    self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
+    self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout)
 
   def forward(self, state):
-    mean = self.actor(state)
-    policy = Independent(Normal(mean, self.log_std_dev.exp()), 1)
+    mean, log_std_dev = self.actor(state).chunk(2, dim=1)
+    log_std_dev = torch.clamp(log_std_dev, min=self.log_std_dev_min, max=self.log_std_dev_max)
+    policy = TransformedDistribution(Independent(Normal(mean, log_std_dev.exp()), 1), TanhTransform(cache_size=1))  # Restrict action range to (-1, 1)
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
     return self.forward(state).log_prob(action)
+
+  def get_greedy_action(self, state):
+    return torch.tanh(self.forward(state).base_dist.mean)
 
   def _get_action_uncertainty(self, state, action):
     ensemble_policies = []
@@ -82,27 +101,25 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, hidden_size, activation_function='tanh'):
+  def __init__(self, state_size, action_size, hidden_size, activation_function):
     super().__init__()
-    self.critic = _create_fcnn(state_size, hidden_size, output_size=1, activation_function=activation_function)
+    self.critic = _create_fcnn(state_size + action_size, hidden_size, output_size=1, activation_function=activation_function)
 
-  def forward(self, state):
-    value = self.critic(state).squeeze(dim=1)
+  def forward(self, state, action):
+    value = self.critic(_join_state_action(state, action)).squeeze(dim=1)
     return value
 
 
-class ActorCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function='tanh', log_std_dev_init=-0.5, dropout=0):
+class TwinCritic(nn.Module):
+  def __init__(self, state_size, action_size, hidden_size, activation_function):
     super().__init__()
-    self.actor = Actor(state_size, action_size, hidden_size, activation_function=activation_function, log_std_dev_init=log_std_dev_init, dropout=dropout)
-    self.critic = Critic(state_size, hidden_size, activation_function=activation_function)
+    self.critic_1 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
+    self.critic_2 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
 
-  def forward(self, state):
-    policy, value = self.actor(state), self.critic(state)
-    return policy, value
+  def forward(self, state, action):
+    value_1, value_2 = self.critic_1(state, action), self.critic_2(state, action)
+    return value_1, value_2
 
-  def get_greedy_action(self, state):
-    return self.actor(state).mean
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state, action):
@@ -110,13 +127,13 @@ class ActorCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=False, forward_kl=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, forward_kl=False):
     super().__init__()
-    self.action_size, self.state_only, self.forward_kl = action_size, state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, 'tanh')
+    self.state_only, self.forward_kl = state_only, forward_kl
+    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function)
 
   def forward(self, state, action):
-    D = self.discriminator(state if self.state_only else _join_state_action(state, action, self.action_size)).squeeze(dim=1)
+    D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
     return D
   
   def predict_reward(self, state, action):
@@ -128,12 +145,12 @@ class GAILDiscriminator(nn.Module):
 class GMMILDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, self_similarity=True, state_only=True):
     super().__init__()
-    self.action_size, self.state_only = action_size, state_only
+    self.state_only = state_only
     self.gamma_1, self.gamma_2, self.self_similarity = None, None, self_similarity
 
   def predict_reward(self, state, action, expert_state, expert_action):
-    state_action = state if self.state_only else _join_state_action(state, action, self.action_size)
-    expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action, self.action_size)
+    state_action = state if self.state_only else _join_state_action(state, action)
+    expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
     
     # Use median heuristics to set data-dependent bandwidths
     if self.gamma_1 is None:
@@ -145,19 +162,20 @@ class GMMILDiscriminator(nn.Module):
     return similarity - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0)) if self.self_similarity else similarity
 
 
+# TODO: Move just below GAILDiscriminator later for organisational purposes
 class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, state_only=False, ):
+  def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False):
     super().__init__()
-    self.action_size, self.state_only = action_size, state_only
+    self.state_only = state_only
     self.discount = discount
     self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    self.h = _create_fcnn(state_size, hidden_size, 1, 'tanh')  # Shaping function Φ
+    self.h = _create_fcnn(state_size, hidden_size, 1, activation_function)  # Shaping function Φ
 
   def reward(self, state, action):
     if self.state_only:
       return self.g(state).squeeze(dim=1)
     else:
-      return self.g(_join_state_action(state, action, self.action_size)).squeeze(dim=1)
+      return self.g(_join_state_action(state, action)).squeeze(dim=1)
 
   def value(self, state):
     return self.h(state).squeeze(dim=1)
@@ -172,26 +190,26 @@ class AIRLDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size, hidden_size):
+  def __init__(self, input_size, hidden_size, activation_function):
     super().__init__()
-    self.embedding = _create_fcnn(input_size, hidden_size, input_size, 'tanh')
+    self.embedding = _create_fcnn(input_size, hidden_size, input_size, activation_function)
 
   def forward(self, input):
     return self.embedding(input)
 
 
 class REDDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False):
     super().__init__()
-    self.action_size, self.state_only = action_size, state_only
+    self.state_only = state_only
     self.sigma_1 = None
-    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
-    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size)
+    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
+    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
     for param in self.target.parameters():
       param.requires_grad = False
 
   def forward(self, state, action):
-    state_action = state if self.state_only else _join_state_action(state, action, self.action_size)
+    state_action = state if self.state_only else _join_state_action(state, action)
     prediction, target = self.predictor(state_action), self.target(state_action)
     return prediction, target
 

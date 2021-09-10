@@ -2,22 +2,23 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-Imitation learning algorithms (with PPO [[1]](#references)):
+Imitation learning algorithms (with SAC [[1, 2]](#references)):
 
-- AIRL [[2]](#references)
-- BC [[3]](#references)
-- DRIL [[4]](#references) (without BC)
-- FAIRL [[5]](#references)
-- GAIL [[6]](#references)
-- GMMIL [[7]](#references) (including an optional self-similarity term [[8]](#references))
-- nn-PUGAIL [[9]](#references)
-- RED [[10]](#references)
+- AIRL [[3]](#references)
+- BC [[4]](#references)
+- DRIL [[5]](#references) (without BC)
+- FAIRL [[6]](#references)
+- GAIL [[7]](#references)
+- GMMIL [[8]](#references) (including an optional self-similarity term [[9]](#references))
+- nn-PUGAIL [[10]](#references)
+- RED [[11]](#references)
+- SQIL [[12]](#references)
 
 Options include:
 
 - State-only imitation learning: `state-only: true/false`
-- Absorbing state indicator [[11]](#references): `absorbing: true/false`
-- R1 gradient regularisation [[12]](#references): `r1-reg-coeff: 0.5`
+- Absorbing state indicator [[13]](#references): `absorbing: true/false`
+- R1 gradient regularisation [[14]](#references): `r1-reg-coeff: 0.5`
 
 ## Requirements
 
@@ -33,7 +34,7 @@ The training of each imitation learning algorithm can be started with:
 ```sh
 python main.py algorithm=ALG/ENV
 ```
-where `ALG` is one of `[AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `[AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
 python main.py algorithm=AIRL/hopper
 ```
@@ -61,7 +62,7 @@ or via the existing bash script:
 ./scripts/run_seed_experiments.sh ALG ENV
 ```
 
-The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note that running this code twice will overwrite the previous results).
+The results will be available in `./outputs/seed_sweeper_ENV_ALG` folder (note that running this code twice will overwrite the previous results).
 
 ## Results
 
@@ -73,7 +74,7 @@ The results will be available in `./output/seed_sweeper_ENV_ALG` folder (note th
 
 ## Citation
 
-If you find this work useful and would like to cite it, the following would be appropriate:
+If you find this work useful and would like to cite it, please use the following:
 
 ```tex
 @article{arulkumaran2021pragmatic,
@@ -86,15 +87,17 @@ If you find this work useful and would like to cite it, the following would be a
 
 ## References
 
-[1] [Proximal Policy Optimization Algorithms](https://arxiv.org/abs/1707.06347)  
-[2] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
-[3] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
-[4] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  
-[5] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
-[6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
-[7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[8] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
-[9] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
-[10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[12] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
+[1] [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)  
+[2] [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/abs/1812.05905)  
+[3] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
+[4] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
+[5] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  
+[6] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
+[7] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
+[8] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
+[9] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
+[10] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
+[11] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[12] [SQIL: Imitation Learning via Reinforcement Learning with Sparse Rewards](https://arxiv.org/abs/1905.11108)  
+[13] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[14] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
