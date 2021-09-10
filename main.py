@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from environments import ENVS
 from evaluation import evaluate_agent
-from models import AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network
+from models import AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, sqil_sample
 from training import ReplayMemory, adversarial_imitation_update, behavioural_cloning_update, indicate_absorbing, sac_update, target_estimation_update
 from utils import flatten_list_dicts, lineplot
 
@@ -125,9 +125,8 @@ def main(cfg: DictConfig) -> None:
               transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
             elif cfg.algorithm == 'RED':
               transitions['rewards'] = discriminator.predict_reward(states, actions)
-            elif cfg.algorithm == 'SQIL':  # TODO: Add sampling ratio option?
-              transitions['states'][:cfg.training.batch_size // 2], transitions['actions'][:cfg.training.batch_size // 2], transitions['next_states'][:cfg.training.batch_size // 2], transitions['terminals'][:cfg.training.batch_size // 2] = expert_transitions['states'][:cfg.training.batch_size // 2], expert_transitions['actions'][:cfg.training.batch_size // 2], expert_transitions['next_states'][:cfg.training.batch_size // 2], expert_transitions['terminals'][:cfg.training.batch_size // 2]  # Replace half of the batch with expert data
-              transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, 0  # Set a constant +1 reward for expert data and 0 for policy data
+            elif cfg.algorithm == 'SQIL':
+              sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
         
         # Train agent using SAC
         sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)  # TODO: Make sure absorbing doesn't affect?
