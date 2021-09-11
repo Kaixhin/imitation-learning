@@ -13,7 +13,7 @@ D4RL_ENV_NAMES = ['ant-bullet-medium-v0', 'halfcheetah-bullet-medium-v0', 'hoppe
 
 
 class D4RLEnv():
-  def __init__(self, env_name, absorbing=False):
+  def __init__(self, env_name, absorbing):
     assert env_name in D4RL_ENV_NAMES
     
     self.env = gym.make(env_name)
@@ -26,17 +26,14 @@ class D4RLEnv():
   def reset(self):
     state = self.env.reset()
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
-    if self.absorbing:
-      state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
+    if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
     return state 
 
   def step(self, action):
     action = action.clamp(min=self.env.action_space.low, max=self.env.action_space.high)  # Clip actions
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
-    if self.absorbing:
-      state = torch.zeros_like(state) if terminal else state  # Create all zero absorbing state for episodic environments
-      state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
+    if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state; if terminal replay memory will overwrite with absorbing state
     return state, reward, terminal
 
   def seed(self, seed):
