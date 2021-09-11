@@ -130,12 +130,11 @@ def behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, batc
 
 
 # Performs a target estimation update
-def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size, absorbing):
+def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size):
   expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
 
   for expert_transition in expert_dataloader:
     expert_state, expert_action = expert_transition['states'], expert_transition['actions']
-    if absorbing: expert_state, expert_action = indicate_absorbing(expert_state, expert_action, expert_transition['terminals'])
 
     discriminator_optimiser.zero_grad(set_to_none=True)
     prediction, target = discriminator(expert_state, expert_action)
@@ -145,19 +144,17 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, absorbing=False, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
+def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
   expert_state, expert_action, expert_next_state, expert_terminal = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals']
   state, action, next_state, terminal = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
 
   if algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-    if absorbing: expert_state, expert_action, state, action = *indicate_absorbing(expert_state, expert_action, expert_terminal), *indicate_absorbing(state, action, terminal)
     D_expert = discriminator(expert_state, expert_action)
     D_policy = discriminator(state, action)
   elif algorithm == 'AIRL':
     with torch.no_grad():
       expert_log_prob = actor.log_prob(expert_state, expert_action)
       log_prob = actor.log_prob(state, action)
-    if absorbing: expert_state, expert_action, expert_next_state, state, action, next_state = *indicate_absorbing(expert_state, expert_action, expert_terminal, expert_next_state), *indicate_absorbing(state, action, terminal, next_state)
     D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_log_prob, expert_terminal)
     D_policy = discriminator(state, action, next_state, log_prob, terminal)
 
