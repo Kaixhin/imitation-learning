@@ -8,21 +8,6 @@ from torch.utils.data import DataLoader, Dataset
 from models import update_target_network
 
 
-# Indicate absorbing states
-def indicate_absorbing(states, actions, terminals, next_states=None):
-  absorbing_idxs = terminals.to(dtype=torch.bool)
-  abs_states = torch.cat([states, torch.zeros(states.size(0), 1)], axis=1)
-  abs_states[absorbing_idxs] = 0
-  abs_states[absorbing_idxs, -1] = 1
-  abs_actions = actions.clone()
-  abs_actions[absorbing_idxs] = 0
-  if next_states is not None:
-    abs_next_states = torch.cat([next_states, torch.zeros(next_states.size(0), 1)], axis=1)
-    return abs_states, abs_actions, abs_next_states
-  else:
-    return abs_states, abs_actions
-
-
 # Replay memory returns transition tuples of the form (s, a, r, s', terminal)
 class ReplayMemory(Dataset):
   def __init__(self, size, state_size, action_size, transitions=None):
@@ -71,7 +56,7 @@ class ReplayMemory(Dataset):
 
   def wrap_for_absorbing_states(self):  # TODO: Apply only if terminal state was not caused by a time limit?
     absorbing_state = torch.cat([torch.zeros(self.states.size(1) - 1), torch.ones(1)], dim=0)
-    self.next_states[(self.idx - 1) % self.size], self.terminals[(self.idx - 1) % self.size] = absorbing_state, False  # Replace terminal state with absorbing state and remove terminal indicator
+    self.next_states[(self.idx - 1) % self.size], self.terminals[(self.idx - 1) % self.size] = absorbing_state, False  # Replace terminal state with absorbing state and remove terminal
     self.append(absorbing_state, torch.zeros(self.actions.size(1)), 0, absorbing_state, False)  # Add absorbing state pair as next transition
 
 

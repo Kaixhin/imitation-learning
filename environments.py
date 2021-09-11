@@ -12,14 +12,6 @@ gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 D4RL_ENV_NAMES = ['ant-bullet-medium-v0', 'halfcheetah-bullet-medium-v0', 'hopper-bullet-medium-v0', 'walker2d-bullet-medium-v0']
 
 
-# TODO: Apply only if terminal state was not caused by a time limit?
-def wrap_for_absorbing_states(states, actions, rewards, next_states, terminals):
-  # Add terminal indicator bit TODO: Implement fully
-  states = torch.cat([states, torch.zeros(states.size(0), 1)], dim=1)
-  next_states = torch.cat([next_states, torch.zeros(states.size(0), 1)], dim=1)
-  return states, actions, rewards, next_states, terminals
-
-
 class D4RLEnv():
   def __init__(self, env_name, absorbing=False):
     assert env_name in D4RL_ENV_NAMES
@@ -35,7 +27,7 @@ class D4RLEnv():
     state = self.env.reset()
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
     if self.absorbing:
-      state = torch.cat([state, torch.full((state.size(0), 1), 0)], dim=1)  # Add absorbing indicator to state
+      state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
     return state 
 
   def step(self, action):
@@ -44,7 +36,7 @@ class D4RLEnv():
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
     if self.absorbing:
       state = torch.zeros_like(state) if terminal else state  # Create all zero absorbing state for episodic environments
-      state = torch.cat([state, torch.full((state.size(0), 1), 1 if terminal else 0)], dim=1)  # Add absorbing indicator to state
+      state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
     return state, reward, terminal
 
   def seed(self, seed):
@@ -78,8 +70,12 @@ class D4RLEnv():
     if subsample > 0:
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][0::subsample]
-    if self.absorbing:
-      dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'], dataset_out['terminals'] = wrap_for_absorbing_states(dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'], dataset_out['terminals'])
+    if self.absorbing:  # Wrap for absorbing states
+      # Append absorbing indicator (zero)
+      dataset_out['states'] = torch.cat([dataset_out['states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
+      dataset_out['next_states'] = torch.cat([dataset_out['next_states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
+      # TODO: Finish implementation by looping over trajectories and altering to include absorbing states
+      # TODO: Apply only if terminal state was not caused by a time limit?
 
     return ReplayMemory(dataset_out['states'].size(0), dataset_out['states'].size(1), dataset_out['actions'].size(1), transitions=dataset_out)
 
