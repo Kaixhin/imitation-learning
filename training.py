@@ -29,10 +29,10 @@ class ReplayMemory(Dataset):
     super().__init__()
     self.idx = 0
     self.size, self.full = size, False
-    self.states, self.actions, self.rewards, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size)
+    self.states, self.actions, self.rewards, self.next_states, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size, state_size), torch.empty(size)
     if transitions is not None:
       trans_size = min(transitions['states'].size(0), size)  # Take data up to size of replay
-      self.states[:trans_size], self.actions[:trans_size], self.rewards[:trans_size], self.terminals[:trans_size] = transitions['states'], transitions['actions'], transitions['rewards'], transitions['terminals']
+      self.states[:trans_size], self.actions[:trans_size], self.rewards[:trans_size], self.next_states[:trans_size], self.terminals[:trans_size] = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals']
       self.idx = trans_size % self.size
       self.full = self.idx == 0 and trans_size > 0  # Replay is full if index has wrapped around (but not if there was no data)
 
@@ -46,13 +46,13 @@ class ReplayMemory(Dataset):
       elif idx == 'terminals':
         return self.terminals
     else:
-      return dict(states=self.states[idx], actions=self.actions[idx], rewards=self.rewards[idx], next_states=self.states[(idx + 1) % self.size], terminals=self.terminals[idx])
+      return dict(states=self.states[idx], actions=self.actions[idx], rewards=self.rewards[idx], next_states=self.next_states[idx], terminals=self.terminals[idx])
 
   def __len__(self):
-    return self.terminals.size(0) - 1  # Need to return state and next state
+    return self.terminals.size(0)
 
-  def append(self, state, action, reward, terminal):
-    self.states[self.idx], self.actions[self.idx], self.rewards[self.idx], self.terminals[self.idx] = state, action, reward, terminal
+  def append(self, state, action, reward, next_state, terminal):
+    self.states[self.idx], self.actions[self.idx], self.rewards[self.idx], self.next_states[self.idx], self.terminals[self.idx] = state, action, reward, next_state, terminal
     self.idx = (self.idx + 1) % self.size
     self.full = self.full or self.idx == 0
 
@@ -68,6 +68,11 @@ class ReplayMemory(Dataset):
     idxs = [self._sample_idx() for _ in range(n)]
     transitions = [self[idx] for idx in idxs]
     return dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))  # Note that stack creates new memory so SQIL does not overwrite original data
+
+  def wrap_for_absorbing_states(self):  # TODO: Apply only if terminal state was not caused by a time limit?
+    absorbing_state = torch.cat([torch.zeros(self.states.size(1) - 1), torch.ones(1)], dim=0)
+    self.next_states[(self.idx - 1) % self.size], self.terminals[(self.idx - 1) % self.size] = absorbing_state, False  # Replace terminal state with absorbing state and remove terminal indicator
+    self.append(absorbing_state, torch.zeros(self.actions.size(1)), 0, absorbing_state, False)  # Add absorbing state pair as next transition
 
 
 # Performs one SAC update

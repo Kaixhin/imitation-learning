@@ -12,6 +12,7 @@ gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 D4RL_ENV_NAMES = ['ant-bullet-medium-v0', 'halfcheetah-bullet-medium-v0', 'hopper-bullet-medium-v0', 'walker2d-bullet-medium-v0']
 
 
+# TODO: Apply only if terminal state was not caused by a time limit?
 def wrap_for_absorbing_states(states, actions, rewards, next_states, terminals):
   # Add terminal indicator bit TODO: Implement fully
   states = torch.cat([states, torch.zeros(states.size(0), 1)], dim=1)

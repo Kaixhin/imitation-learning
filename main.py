@@ -87,11 +87,12 @@ def main(cfg: DictConfig) -> None:
         action = actor(state).sample()
         next_state, reward, terminal = env.step(action)
         train_return += reward
-        memory.append(state, action, reward, terminal)
+        memory.append(state, action, reward, next_state, terminal)
         state = next_state
 
       # Reset environment and track metrics on episode termination
       if terminal:
+        if cfg.imitation.absorbing: memory.wrap_for_absorbing_states()
         # Store metrics and reset environment
         metrics['train_steps'].append(step)
         metrics['train_returns'].append([train_return])
