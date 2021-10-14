@@ -17,7 +17,7 @@ class D4RLEnv():
     assert env_name in D4RL_ENV_NAMES
     
     self.env = gym.make(env_name)
-    self.dataset = self.env.get_dataset() # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
+    self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
     self.absorbing = absorbing
@@ -68,11 +68,30 @@ class D4RLEnv():
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][0::subsample]
     if self.absorbing:  # Wrap for absorbing states
+      absorbing_state, absorbing_action = torch.cat([torch.zeros(dataset_out['states'].shape[1]), torch.ones(1)]), torch.zeros(dataset_out['actions'].shape[1])  # Create absorbing state and absorbing action
       # Append absorbing indicator (zero)
       dataset_out['states'] = torch.cat([dataset_out['states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
       dataset_out['next_states'] = torch.cat([dataset_out['next_states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
-      # TODO: Finish implementation by looping over trajectories and altering to include absorbing states
-      # TODO: Apply only if terminal state was not caused by a time limit?
+      # Loop over episodes
+      terminal_idxs = np.concatenate([[[0]], self.dataset['terminals'].nonzero()], axis=1).squeeze()
+      states, actions, rewards, next_states = [], [], [], []
+      for i in range(len(terminal_idxs) - 1):  # TODO: Apply only if terminal state was not caused by a time limit?
+        # Extract all transitions within an episode
+        states.append(dataset_out['states'][terminal_idxs[i]:terminal_idxs[i + 1]])
+        actions.append(dataset_out['actions'][terminal_idxs[i]:terminal_idxs[i + 1]])
+        next_states.append(dataset_out['next_states'][terminal_idxs[i]:terminal_idxs[i + 1]])
+        rewards.append(dataset_out['rewards'][terminal_idxs[i]:terminal_idxs[i + 1]])
+        # Replace the final next state with the absorbing state
+        print(next_states[-1], terminal_idxs[i], terminal_idxs[i + 1])
+        next_states[-1][-1] = absorbing_state
+        # Add absorbing state to absorbing state transition
+        states.append(absorbing_state.unsqueeze(dim=0))
+        actions.append(absorbing_action.unsqueeze(dim=0))
+        next_states.append(absorbing_state.unsqueeze(dim=0))
+        rewards.append(torch.zeros(1, 1))
+      # Recreate memory with wrapped episodes
+      dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'] = torch.cat(states, dim=0), torch.cat(actions, dim=0), torch.cat(rewards, dim=0), torch.cat(next_states, dim=0)
+      datset_out['terminals'] = torch.zeros_like(dataset_out['rewards'])  # TODO: Terminals needed?
 
     return ReplayMemory(dataset_out['states'].size(0), dataset_out['states'].size(1), dataset_out['actions'].size(1), transitions=dataset_out)
 
