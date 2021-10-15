@@ -88,8 +88,8 @@ class D4RLEnv():
       # Recreate memory with wrapped episodes
       dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'] = torch.cat(states, dim=0), torch.cat(actions, dim=0), torch.cat(rewards, dim=0), torch.cat(next_states, dim=0)
       dataset_out['terminals'] = torch.zeros_like(dataset_out['rewards'])
-    if subsample > 0:
-      rand_start_idx = np.random.choice(subsample)  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
+    if subsample > 0:  # TODO: Move before absorbing state, add importance weights
+      rand_start_idx = np.random.choice(subsample)  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation) TODO: Check if this is done per expert trajectory
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][rand_start_idx::subsample]  
 
