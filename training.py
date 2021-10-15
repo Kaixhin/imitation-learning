@@ -57,7 +57,7 @@ class ReplayMemory(Dataset):
   def wrap_for_absorbing_states(self):  # TODO: Apply only if terminal state was not caused by a time limit?
     absorbing_state = torch.cat([torch.zeros(self.states.size(1) - 1), torch.ones(1)], dim=0)
     self.next_states[(self.idx - 1) % self.size], self.terminals[(self.idx - 1) % self.size] = absorbing_state, False  # Replace terminal state with absorbing state and remove terminal
-    self.append(absorbing_state, torch.zeros(self.actions.size(1)), 0, absorbing_state, False)  # Add absorbing state pair as next transition TODO: Terminal needed here or not?
+    self.append(absorbing_state, torch.zeros(self.actions.size(1)), 0, absorbing_state, False)  # Add absorbing state pair as next transition
 
 
 # Performs one SAC update

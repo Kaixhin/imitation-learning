@@ -27,7 +27,7 @@ def main(cfg: DictConfig) -> None:
   # Set up environment
   env = ENVS[cfg.env_type](cfg.env_name, cfg.imitation.absorbing)
   env.seed(cfg.seed)
-  expert_trajectories = env.get_dataset()  # Load expert trajectories dataset
+  expert_trajectories = env.get_dataset(subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
