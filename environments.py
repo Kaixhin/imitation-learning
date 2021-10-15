@@ -64,10 +64,7 @@ class D4RLEnv():
     if size > -1 and size < N:
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][0:size]
-    if subsample > 0:
-      for key in dataset_out.keys():
-        dataset_out[key] = dataset_out[key][0::subsample]
-    if self.absorbing:  # Wrap for absorbing states
+    if self.absorbing:  # Wrap for absorbing states; note that subsampling after removes need for importance weighting (https://openreview.net/forum?id=Hk4fpoA5Km)
       absorbing_state, absorbing_action = torch.cat([torch.zeros(dataset_out['states'].shape[1]), torch.ones(1)]), torch.zeros(dataset_out['actions'].shape[1])  # Create absorbing state and absorbing action
       # Append absorbing indicator (zero)
       dataset_out['states'] = torch.cat([dataset_out['states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
@@ -91,6 +88,10 @@ class D4RLEnv():
       # Recreate memory with wrapped episodes
       dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'] = torch.cat(states, dim=0), torch.cat(actions, dim=0), torch.cat(rewards, dim=0), torch.cat(next_states, dim=0)
       dataset_out['terminals'] = torch.zeros_like(dataset_out['rewards'])
+    if subsample > 0:
+      for key in dataset_out.keys():
+        dataset_out[key] = dataset_out[key][np.random.choice(subsample)::subsample]  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
+
 
     return ReplayMemory(dataset_out['states'].size(0), dataset_out['states'].size(1), dataset_out['actions'].size(1), transitions=dataset_out)
 
