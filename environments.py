@@ -89,8 +89,9 @@ class D4RLEnv():
       dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'] = torch.cat(states, dim=0), torch.cat(actions, dim=0), torch.cat(rewards, dim=0), torch.cat(next_states, dim=0)
       dataset_out['terminals'] = torch.zeros_like(dataset_out['rewards'])
     if subsample > 0:
+      rand_start_idx = np.random.choice(subsample)  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
       for key in dataset_out.keys():
-        dataset_out[key] = dataset_out[key][np.random.choice(subsample)::subsample]  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
+        dataset_out[key] = dataset_out[key][rand_start_idx::subsample]  
 
 
     return ReplayMemory(dataset_out['states'].size(0), dataset_out['states'].size(1), dataset_out['actions'].size(1), transitions=dataset_out)
