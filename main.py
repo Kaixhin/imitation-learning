@@ -27,7 +27,7 @@ def main(cfg: DictConfig) -> None:
   # Set up environment
   env = ENVS[cfg.env_type](cfg.env_name, cfg.imitation.absorbing)
   env.seed(cfg.seed)
-  expert_trajectories = env.get_dataset(subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
+  expert_trajectories = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
@@ -87,7 +87,7 @@ def main(cfg: DictConfig) -> None:
         action = actor(state).sample()
         next_state, reward, terminal = env.step(action)
         train_return += reward
-        memory.append(state, action, reward, next_state, terminal)
+        memory.append(state, action, reward, next_state, terminal)  # True reward stored for SAC, should be overwritten by IL algorithms
         state = next_state
 
       # Reset environment and track metrics on episode termination

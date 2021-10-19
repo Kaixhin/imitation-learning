@@ -18,6 +18,7 @@ reinforcement:
   polyak_factor: 0.995
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
+  trajectories: -1  # -1 to disable; otherwise select number of trajectories
   subsample: 20
   state_only: false
   absorbing: false
