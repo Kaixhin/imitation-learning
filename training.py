@@ -54,7 +54,7 @@ class ReplayMemory(Dataset):
     transitions = [self[idx] for idx in idxs]
     return dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))  # Note that stack creates new memory so SQIL does not overwrite original data
 
-  def wrap_for_absorbing_states(self):  # TODO: Apply only if terminal state was not caused by a time limit?
+  def wrap_for_absorbing_states(self):  # TODO: Apply only if terminal state was not caused by a time limit? https://github.com/google-research/google-research/blob/master/dac/replay_buffer.py#L108
     absorbing_state = torch.cat([torch.zeros(self.states.size(1) - 1), torch.ones(1)], dim=0)
     self.next_states[(self.idx - 1) % self.size], self.terminals[(self.idx - 1) % self.size] = absorbing_state, False  # Replace terminal state with absorbing state and remove terminal
     self.append(absorbing_state, torch.zeros(self.actions.size(1)), 0, absorbing_state, False)  # Add absorbing state pair as next transition
@@ -69,7 +69,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   with torch.no_grad():
     new_next_policies = actor(next_states)
     new_next_actions = new_next_policies.sample()
-    new_next_log_probs = new_next_policies.log_prob(new_next_actions)
+    new_next_log_probs = new_next_policies.log_prob(new_next_actions)  # TODO: Deal with absorbing state? https://github.com/google-research/google-research/blob/master/dac/ddpg_td3.py#L146
     target_values = torch.min(*target_critic(next_states, new_next_actions)) - alpha * new_next_log_probs
     target_values = rewards + (1 - terminals) * discount * target_values
   values_1, values_2 = critic(states, actions)
@@ -80,6 +80,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   if max_grad_norm > 0: clip_grad_norm_(critic.parameters(), max_grad_norm)
   critic_optimiser.step()
 
+  # TODO: Remove absorbing states so actor/temperature are not updated on these
   # Compute policy loss
   new_policies = actor(states)
   new_actions = new_policies.rsample()
@@ -138,6 +139,7 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   expert_state, expert_action, expert_next_state, expert_terminal = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals']
   state, action, next_state, terminal = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
 
+  # TODO: Weight expert transitions even without absorbing state? https://github.com/google-research/google-research/blob/master/dac/gail.py#L109
   if algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
     D_expert = discriminator(expert_state, expert_action)
     D_policy = discriminator(state, action)

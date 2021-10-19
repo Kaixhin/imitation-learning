@@ -60,24 +60,27 @@ class D4RLEnv():
                    'rewards': torch.as_tensor(self.dataset['rewards'][:-1], dtype=torch.float32),
                    'next_states': torch.as_tensor(self.dataset['observations'][1:], dtype=torch.float32), 
                    'terminals': torch.as_tensor(self.dataset['terminals'][:-1], dtype=torch.float32)}
+    dataset_out['weights'] = torch.ones_like(dataset_out['terminals'])  # Add importance sampling weights
     # Postprocess
-    if size > -1 and size < N:
+    if size > -1 and size < N:  # TODO: Replace size with num_trajectories
       for key in dataset_out.keys():
         dataset_out[key] = dataset_out[key][0:size]
-    if self.absorbing:  # Wrap for absorbing states; note that subsampling after removes need for importance weighting (https://openreview.net/forum?id=Hk4fpoA5Km)
+
+    if self.absorbing:  # Wrap for absorbing states
       absorbing_state, absorbing_action = torch.cat([torch.zeros(dataset_out['states'].shape[1]), torch.ones(1)]), torch.zeros(dataset_out['actions'].shape[1])  # Create absorbing state and absorbing action
       # Append absorbing indicator (zero)
       dataset_out['states'] = torch.cat([dataset_out['states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
       dataset_out['next_states'] = torch.cat([dataset_out['next_states'], torch.zeros(dataset_out['states'].size(0), 1)], dim=1)
       # Loop over episodes
       terminal_idxs = np.concatenate([[[0]], dataset_out['terminals'].nonzero()], axis=0).squeeze()
-      states, actions, rewards, next_states = [], [], [], []
+      states, actions, rewards, next_states, weights = [], [], [], [], []
       for i in range(len(terminal_idxs) - 1):  # TODO: Apply only if terminal state was not caused by a time limit?
         # Extract all transitions within an episode
         states.append(dataset_out['states'][terminal_idxs[i]:terminal_idxs[i + 1]])
         actions.append(dataset_out['actions'][terminal_idxs[i]:terminal_idxs[i + 1]])
-        next_states.append(dataset_out['next_states'][terminal_idxs[i]:terminal_idxs[i + 1]])
         rewards.append(dataset_out['rewards'][terminal_idxs[i]:terminal_idxs[i + 1]])
+        next_states.append(dataset_out['next_states'][terminal_idxs[i]:terminal_idxs[i + 1]])
+        weights.append(dataset_out['weights'][terminal_idxs[i]:terminal_idxs[i + 1]])
         # Replace the final next state with the absorbing state
         next_states[-1][-1] = absorbing_state
         # Add absorbing state to absorbing state transition
@@ -85,14 +88,17 @@ class D4RLEnv():
         actions.append(absorbing_action.unsqueeze(dim=0))
         next_states.append(absorbing_state.unsqueeze(dim=0))
         rewards.append(torch.zeros(1))
+        # TODO: Weights
       # Recreate memory with wrapped episodes
       dataset_out['states'], dataset_out['actions'], dataset_out['rewards'], dataset_out['next_states'] = torch.cat(states, dim=0), torch.cat(actions, dim=0), torch.cat(rewards, dim=0), torch.cat(next_states, dim=0)
+      # TODO: Weights
       dataset_out['terminals'] = torch.zeros_like(dataset_out['rewards'])
-    if subsample > 0:  # TODO: Move before absorbing state, add importance weights
-      rand_start_idx = np.random.choice(subsample)  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation) TODO: Check if this is done per expert trajectory
-      for key in dataset_out.keys():
-        dataset_out[key] = dataset_out[key][rand_start_idx::subsample]  
 
+    if subsample > 0:
+      rand_start_idx = np.random.choice(subsample)  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation) TODO: Check if this is done per expert trajectory
+      # TODO: Subsample but keep absorbing states https://github.com/google-research/google-research/blob/master/dac/replay_buffer.py#L154
+      for key in dataset_out.keys():
+        dataset_out[key] = dataset_out[key][rand_start_idx::subsample]
 
     return ReplayMemory(dataset_out['states'].size(0), dataset_out['states'].size(1), dataset_out['actions'].size(1), transitions=dataset_out)
 
