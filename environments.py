@@ -33,7 +33,7 @@ class D4RLEnv():
     action = action.clamp(min=self.env.action_space.low, max=self.env.action_space.high)  # Clip actions
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
-    if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state # TODO: Add indicator (one) if terminal and not a time limit
+    if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
     return state, reward, terminal
 
   def seed(self, seed):
