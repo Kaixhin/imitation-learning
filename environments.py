@@ -1,6 +1,6 @@
 from logging import ERROR
 
-import d4rl_pybullet
+import d4rl
 import gym
 import numpy as np
 import torch
@@ -9,15 +9,11 @@ from training import ReplayMemory
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
-D4RL_ENV_NAMES = ['ant-bullet-medium-v0', 'halfcheetah-bullet-medium-v0', 'hopper-bullet-medium-v0', 'walker2d-bullet-medium-v0']
-
 
 class D4RLEnv():
   def __init__(self, env_name, absorbing):
-    assert env_name in D4RL_ENV_NAMES
-    
     self.env = gym.make(env_name)
-    self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
+    self.dataset = d4rl.qlearning_dataset(self.env)  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
     self.absorbing = absorbing
@@ -103,6 +99,3 @@ class D4RLEnv():
     transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0)}  # TODO: Weights?
     transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability
     return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, transitions=transitions)
-
-
-ENVS = {'ant': D4RLEnv, 'halfcheetah': D4RLEnv, 'hopper': D4RLEnv, 'walker2d': D4RLEnv}
