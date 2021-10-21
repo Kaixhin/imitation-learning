@@ -51,10 +51,10 @@ class D4RLEnv():
 
   def get_dataset(self, trajectories=-1, subsample=20):
     # Extract data
-    states = torch.as_tensor(self.dataset['observations'][:-1], dtype=torch.float32)
-    actions = torch.as_tensor(self.dataset['actions'][:-1], dtype=torch.float32)
-    next_states = torch.as_tensor(self.dataset['observations'][1:], dtype=torch.float32)
-    terminals = torch.as_tensor(self.dataset['terminals'][:-1], dtype=torch.float32)
+    states = torch.as_tensor(self.dataset['observations'], dtype=torch.float32)
+    actions = torch.as_tensor(self.dataset['actions'], dtype=torch.float32)
+    next_states = torch.as_tensor(self.dataset['next_observations'], dtype=torch.float32)
+    terminals = torch.as_tensor(self.dataset['terminals'], dtype=torch.float32)
     state_size, action_size = states.size(1), actions.size(1)
     # Split into separate trajectories
     states_list, actions_list, next_states_list, terminals_list = [], [], [], []

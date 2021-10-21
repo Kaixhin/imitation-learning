@@ -1,5 +1,5 @@
 # @package _global_
 env_type: walker2d
-env_name: walker2d-medium-expert-v2
+env_name: walker2d-expert-v2
 
 algorithm: SAC
