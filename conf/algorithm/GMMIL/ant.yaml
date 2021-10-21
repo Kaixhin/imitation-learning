@@ -1,6 +1,6 @@
 # @package _global_
 env_type: ant
-env_name: ant-bullet-medium-v0
+env_name: ant-expert-v2
 
 algorithm: GMMIL
 imitation:

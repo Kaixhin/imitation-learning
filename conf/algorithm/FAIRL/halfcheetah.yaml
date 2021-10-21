@@ -1,6 +1,6 @@
 # @package _global_
 env_type: halfcheetah
-env_name: halfcheetah-bullet-medium-v0
+env_name: halfcheetah-expert-v2
 
 algorithm: FAIRL
 imitation:
