@@ -89,12 +89,13 @@ class D4RLEnv():
     # Subsample within trajectories
     if subsample > 0:
       for i in range(len(states_list)):
-        rand_start_idx = np.random.choice(subsample)  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
-        states_list[i] = states_list[i][rand_start_idx::subsample]
-        actions_list[i] = actions_list[i][rand_start_idx::subsample]
-        next_states_list[i] = next_states_list[i][rand_start_idx::subsample]
-        terminals_list[i] = terminals_list[i][rand_start_idx::subsample]
-        # TODO: Subsample but keep absorbing states https://github.com/google-research/google-research/blob/master/dac/replay_buffer.py#L154
+        rand_start_idx, T = np.random.choice(subsample), len(states_list[i])  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
+        idxs = range(rand_start_idx, T, subsample)
+        if self.absorbing: idxs = sorted(list(set(idxs) | set([T - 2, T - 1])))  # Subsample but keep absorbing state transitions
+        states_list[i] = states_list[i][idxs]
+        actions_list[i] = actions_list[i][idxs]
+        next_states_list[i] = next_states_list[i][idxs]
+        terminals_list[i] = terminals_list[i][idxs]
 
     transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0)}  # TODO: Weights?
     transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability
