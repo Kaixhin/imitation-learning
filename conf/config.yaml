@@ -25,7 +25,7 @@ imitation:
   learning_rate: 0.0003
   weight_decay: 0
 training:
-  start: 10000
+  start: 1000
   interval: 1
   batch_size: 256
 evaluation:

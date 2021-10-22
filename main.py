@@ -33,7 +33,7 @@ def main(cfg: DictConfig) -> None:
   actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), TwinCritic(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
   actor_optimiser, critic_optimiser, temperature_optimiser = optim.AdamW(actor.parameters(), lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay), optim.Adam(critic.parameters(), lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay), optim.Adam([log_alpha], lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay)
-  memory = ReplayMemory(cfg.replay.size, state_size, action_size)
+  memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
@@ -77,7 +77,7 @@ def main(cfg: DictConfig) -> None:
       start_time = time.time()
 
   # Training
-  state, terminal, train_return = env.reset(), False, 0
+  t, state, terminal, train_return = 0, env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
     if cfg.algorithm != 'BC':
@@ -85,18 +85,19 @@ def main(cfg: DictConfig) -> None:
       with torch.inference_mode():
         action = actor(state).sample()
         next_state, reward, terminal = env.step(action)
+        t += 1
         train_return += reward
-        memory.append(state, action, reward, next_state, terminal)  # True reward stored for SAC, should be overwritten by IL algorithms
+        memory.append(state, action, reward, next_state, terminal and t != env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal
         state = next_state
 
       # Reset environment and track metrics on episode termination
       if terminal:
-        if cfg.imitation.absorbing: memory.wrap_for_absorbing_states()
+        if cfg.imitation.absorbing and t != env.max_episode_steps: memory.wrap_for_absorbing_states()  # Wrap for absorbing state if terminated without time limit
         # Store metrics and reset environment
         metrics['train_steps'].append(step)
         metrics['train_returns'].append([train_return])
         pbar.set_description(f'Step: {step} | Return: {train_return}')
-        state, train_return = env.reset(), 0
+        t, state, train_return = 0, env.reset(), 0
 
       # Train agent and imitation learning component
       if step >= cfg.training.start and step % cfg.training.interval == 0:

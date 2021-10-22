@@ -49,6 +49,10 @@ class D4RLEnv():
   def action_space(self):
     return self.env.action_space
 
+  @property
+  def max_episode_steps(self):
+    return self.env._max_episode_steps
+
   def get_dataset(self, trajectories=-1, subsample=20):
     # Extract data
     states = torch.as_tensor(self.dataset['observations'], dtype=torch.float32)
@@ -73,19 +77,18 @@ class D4RLEnv():
     # Wrap for absorbing states
     if self.absorbing:  
       absorbing_state, absorbing_action = torch.cat([torch.zeros(1, state_size), torch.ones(1, 1)], dim=1), torch.zeros(1, action_size)  # Create absorbing state and absorbing action
-      for i in range(len(states_list)):
+      for i in range(len(states_list)):  # Apply for episodes that did not terminate due to time limits; note that D4RL does not seem to include time limit terminated episodes!
         # Append absorbing indicator (zero)
         states_list[i] = torch.cat([states_list[i], torch.zeros(states_list[i].size(0), 1)], dim=1)
         next_states_list[i] = torch.cat([next_states_list[i], torch.zeros(next_states_list[i].size(0), 1)], dim=1)
-        if True:  # TODO: Apply only if terminal state was not caused by a time limit?
-          # Replace the final next state with the absorbing state and overwrite terminal status
-          next_states_list[i][-1] = absorbing_state
-          terminals_list[i][-1] = 0
-          # Add absorbing state to absorbing state transition
-          states_list[i] = torch.cat([states_list[i], absorbing_state], dim=0)
-          actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
-          next_states_list[i] = torch.cat([next_states_list[i], absorbing_state], dim=0)
-          terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
+        # Replace the final next state with the absorbing state and overwrite terminal status
+        next_states_list[i][-1] = absorbing_state
+        terminals_list[i][-1] = 0
+        # Add absorbing state to absorbing state transition
+        states_list[i] = torch.cat([states_list[i], absorbing_state], dim=0)
+        actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
+        next_states_list[i] = torch.cat([next_states_list[i], absorbing_state], dim=0)
+        terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
     # Subsample within trajectories
     if subsample > 0:
       for i in range(len(states_list)):
@@ -99,4 +102,4 @@ class D4RLEnv():
 
     transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0)}  # TODO: Weights?
     transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability
-    return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, transitions=transitions)
+    return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)

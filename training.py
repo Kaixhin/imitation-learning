@@ -10,10 +10,10 @@ from models import update_target_network
 
 # Replay memory returns transition tuples of the form (s, a, r, s', terminal)
 class ReplayMemory(Dataset):
-  def __init__(self, size, state_size, action_size, transitions=None):
+  def __init__(self, size, state_size, action_size, absorbing, transitions=None):
     super().__init__()
-    self.idx = 0
-    self.size, self.full = size, False
+    self.size, self.idx, self.full = size, 0, False
+    self.absorbing = absorbing
     self.states, self.actions, self.rewards, self.next_states, self.terminals = torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size, state_size), torch.empty(size)
     if transitions is not None:
       trans_size = min(transitions['states'].size(0), size)  # Take data up to size of replay
@@ -52,9 +52,11 @@ class ReplayMemory(Dataset):
   def sample(self, n):
     idxs = [self._sample_idx() for _ in range(n)]
     transitions = [self[idx] for idx in idxs]
-    return dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))  # Note that stack creates new memory so SQIL does not overwrite original data
+    transitions = dict(states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]))  # Note that stack creates new memory so SQIL does not overwrite original data
+    transitions['absorbing'] = transitions['states'][:, -1] if self.absorbing else torch.zeros_like(transitions['terminals'])  # Indicate absorbing states if absorbing env
+    return transitions
 
-  def wrap_for_absorbing_states(self):  # TODO: Apply only if terminal state was not caused by a time limit? https://github.com/google-research/google-research/blob/master/dac/replay_buffer.py#L108
+  def wrap_for_absorbing_states(self):
     absorbing_state = torch.cat([torch.zeros(self.states.size(1) - 1), torch.ones(1)], dim=0)
     self.next_states[(self.idx - 1) % self.size], self.terminals[(self.idx - 1) % self.size] = absorbing_state, False  # Replace terminal state with absorbing state and remove terminal
     self.append(absorbing_state, torch.zeros(self.actions.size(1)), 0, absorbing_state, False)  # Add absorbing state pair as next transition
@@ -62,15 +64,16 @@ class ReplayMemory(Dataset):
 
 # Performs one SAC update
 def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor, max_grad_norm=0):
-  states, actions, rewards, next_states, terminals = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals']
+  states, actions, rewards, next_states, terminals, absorbing = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['absorbing']
   alpha = log_alpha.exp()
   
   # Compute value function loss
   with torch.no_grad():
     new_next_policies = actor(next_states)
     new_next_actions = new_next_policies.sample()
-    new_next_log_probs = new_next_policies.log_prob(new_next_actions)  # TODO: Deal with absorbing state? https://github.com/google-research/google-research/blob/master/dac/ddpg_td3.py#L146
-    target_values = torch.min(*target_critic(next_states, new_next_actions)) - alpha * new_next_log_probs
+    new_next_log_probs = new_next_policies.log_prob(new_next_actions)  # Log prob calculated before absorbing state rewrite; these are masked out of target values, but tends to result in NaNs as the policy might be strange over the all-zeros "absorbing action", and NaNs propagate into the target values, so we just avoid it in the first place
+    new_next_actions = (1 - absorbing.unsqueeze(dim=1)) * new_next_actions  # If current state is absorbing, manually overwrite with absorbing state action
+    target_values = torch.min(*target_critic(next_states, new_next_actions)) - (1 - absorbing) * alpha * new_next_log_probs  # Agent has no control at absorbing state, therefore do not maximise entropy on these
     target_values = rewards + (1 - terminals) * discount * target_values
   values_1, values_2 = critic(states, actions)
   value_loss = F.mse_loss(values_1, target_values) + F.mse_loss(values_2, target_values)
@@ -80,21 +83,20 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   if max_grad_norm > 0: clip_grad_norm_(critic.parameters(), max_grad_norm)
   critic_optimiser.step()
 
-  # TODO: Remove absorbing states so actor/temperature are not updated on these
   # Compute policy loss
   new_policies = actor(states)
   new_actions = new_policies.rsample()
   new_log_probs = new_policies.log_prob(new_actions)
   new_values = torch.min(*critic(states, new_actions))
-  policy_loss = (alpha.detach() * new_log_probs - new_values).mean()
+  policy_loss = ((1 - absorbing) * alpha.detach() * new_log_probs - new_values).mean()  # Do not update actor on absorbing states (no control)
   # Update actor
   actor_optimiser.zero_grad(set_to_none=True)
   policy_loss.backward()
   if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
-  actor_optimiser.step()  
+  actor_optimiser.step()
 
   # Compute temperature loss
-  temperature_loss = -(alpha * (new_log_probs.detach() + entropy_target)).mean()
+  temperature_loss = -((1 - absorbing) * alpha * (new_log_probs.detach() + entropy_target)).mean()  # Do not update temperature on absorbing states (no control)
   # Update temperature
   temperature_optimiser.zero_grad(set_to_none=True)
   temperature_loss.backward()
