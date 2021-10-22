@@ -61,19 +61,21 @@ class D4RLEnv():
     terminals = torch.as_tensor(self.dataset['terminals'], dtype=torch.float32)
     state_size, action_size = states.size(1), actions.size(1)
     # Split into separate trajectories
-    states_list, actions_list, next_states_list, terminals_list = [], [], [], []
+    states_list, actions_list, next_states_list, terminals_list, weights_list = [], [], [], [], []
     terminal_idxs = np.concatenate([[[-1]], terminals.nonzero()], axis=0).squeeze()
     for i in range(len(terminal_idxs) - 1):
       states_list.append(states[terminal_idxs[i] + 1:terminal_idxs[i + 1] + 1])
       actions_list.append(actions[terminal_idxs[i] + 1:terminal_idxs[i + 1] + 1])
       next_states_list.append(next_states[terminal_idxs[i] + 1:terminal_idxs[i + 1] + 1])
       terminals_list.append(terminals[terminal_idxs[i] + 1:terminal_idxs[i + 1] + 1])
+      weights_list.append(torch.ones_like(terminals_list[-1]))  # Add an importance weight of 1 to every transition
     # Pick number of trajectories
     if trajectories > -1:
       states_list = states_list[:trajectories]
       actions_list = actions_list[:trajectories]
       next_states_list = next_states_list[:trajectories]
       terminals_list = terminals_list[:trajectories]
+      weights_list = weights_list[:trajectories]
     # Wrap for absorbing states
     if self.absorbing:  
       absorbing_state, absorbing_action = torch.cat([torch.zeros(1, state_size), torch.ones(1, 1)], dim=1), torch.zeros(1, action_size)  # Create absorbing state and absorbing action
@@ -84,11 +86,13 @@ class D4RLEnv():
         # Replace the final next state with the absorbing state and overwrite terminal status
         next_states_list[i][-1] = absorbing_state
         terminals_list[i][-1] = 0
+        weights_list[i][-1] = 1 / subsample  # Importance weight absorbing state as kept during subsampling
         # Add absorbing state to absorbing state transition
         states_list[i] = torch.cat([states_list[i], absorbing_state], dim=0)
         actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
         next_states_list[i] = torch.cat([next_states_list[i], absorbing_state], dim=0)
         terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
+        weights_list[i] = torch.cat([weights_list[i], torch.full((1, ), 1 / subsample)], dim=0)  # Importance weight absorbing state as kept during subsampling
     # Subsample within trajectories
     if subsample > 0:
       for i in range(len(states_list)):
@@ -99,7 +103,8 @@ class D4RLEnv():
         actions_list[i] = actions_list[i][idxs]
         next_states_list[i] = next_states_list[i][idxs]
         terminals_list[i] = terminals_list[i][idxs]
+        weights_list[i] = weights_list[i][idxs]
 
-    transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0)}  # TODO: Weights?
+    transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0), 'weights': torch.cat(weights_list, dim=0)}
     transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability
     return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)

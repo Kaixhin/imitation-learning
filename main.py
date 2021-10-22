@@ -19,6 +19,7 @@ from utils import flatten_list_dicts, lineplot
 def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.imitation.subsample >= 1
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -122,6 +123,7 @@ def main(cfg: DictConfig) -> None:
             elif cfg.algorithm == 'GMMIL':
               expert_states, expert_actions = expert_transitions['states'], expert_transitions['actions']  # Note that using the entire dataset is prohibitively slow in off-policy case
               transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
+              # TODO: Importance weight expert absorbing states?
             elif cfg.algorithm == 'RED':
               transitions['rewards'] = discriminator.predict_reward(states, actions)
             elif cfg.algorithm == 'SQIL':
