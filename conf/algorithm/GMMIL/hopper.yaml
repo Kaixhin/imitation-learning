@@ -1,6 +1,6 @@
 # @package _global_
 env_type: hopper
-env_name: hopper-bullet-medium-v0
+env_name: hopper-expert-v2
 
 algorithm: GMMIL
 imitation:

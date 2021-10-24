@@ -18,12 +18,14 @@ reinforcement:
   polyak_factor: 0.995
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
+  trajectories: -1  # -1 to disable; otherwise select number of trajectories
+  subsample: 20
   state_only: false
   absorbing: false
   learning_rate: 0.0003
   weight_decay: 0
 training:
-  start: 10000
+  start: 1000
   interval: 1
   batch_size: 256
 evaluation:

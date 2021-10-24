@@ -4,8 +4,8 @@ from environments import D4RLEnv
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(actor, num_episodes, env_type, env_name, seed, return_trajectories=False, render=False):
-  env = env_type(env_name)
+def evaluate_agent(actor, num_episodes, env_name, absorbing, seed, return_trajectories=False, render=False):
+  env = D4RLEnv(env_name, absorbing)
   env.seed(seed)
 
   returns, trajectories = [], []
