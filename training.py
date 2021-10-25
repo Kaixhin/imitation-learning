@@ -131,7 +131,7 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
     discriminator_optimiser.zero_grad(set_to_none=True)
     prediction, target = discriminator(expert_state, expert_action)
-    regression_loss = (weight * (prediction - target).pow(2)).mean()
+    regression_loss = (weight * (prediction - target).pow(2).mean(dim=1)).mean()
     regression_loss.backward()
     discriminator_optimiser.step()
 
