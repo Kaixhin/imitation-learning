@@ -160,8 +160,8 @@ class GMMILDiscriminator(nn.Module):
     
     # Use median heuristics to set data-dependent bandwidths
     if self.gamma_1 is None:
-      self.gamma_1 = 1 / _squared_distance(state_action, expert_state_action).median().item()
-      self.gamma_2 = 1 / _squared_distance(expert_state_action.transpose(0, 1), expert_state_action.transpose(0, 1)).median().item()
+      self.gamma_1 = 1 / (_squared_distance(state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+      self.gamma_2 = 1 / (_squared_distance(expert_state_action.transpose(0, 1), expert_state_action.transpose(0, 1)).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
 
     # Calculate negative of witness function (based on kernel mean embeddings)
     similarity = (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0))
