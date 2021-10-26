@@ -56,13 +56,19 @@ def main(cfg: DictConfig) -> None:
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
+  # Behavioural cloning pretraining
+  if cfg.pretraining.iterations > 0:
+    actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg.pretraining.learning_rate, weight_decay=cfg.pretraining.weight_decay)  # Create separate pretraining optimiser
+    for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
+      break
+      # behavioural_cloning_update(actor, expert_trajectories, actor_pretrain_optimiser, cfg.pretraining.batch_size)  TODO: Make BC work on iterations, not epochs
+  # TODO: Check BC performance
+  # TODO: Stop if only BC
+
   # Pre-training
-  if cfg.algorithm in ['BC', 'DRIL', 'RED']:
+  if cfg.algorithm in ['DRIL', 'RED']:
     for _ in tqdm(range(cfg.imitation.pretraining_epochs), leave=False):
-      if cfg.algorithm == 'BC':
-        # Perform behavioural cloning updates offline
-        behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
-      elif cfg.algorithm == 'DRIL':
+      if cfg.algorithm == 'DRIL':
         # Perform behavioural cloning updates offline on policy ensemble (dropout version)
         behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
         with torch.no_grad():  # TODO: Check why inference mode fails?
@@ -81,7 +87,7 @@ def main(cfg: DictConfig) -> None:
   t, state, terminal, train_return = 0, env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
-    if cfg.algorithm != 'BC':
+    if cfg.algorithm != 'BC':  # TODO: Remove
       # Collect set of transitions by running policy π in the environment
       with torch.inference_mode():
         action = actor(state).sample()
@@ -139,12 +145,12 @@ def main(cfg: DictConfig) -> None:
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
       lineplot(metrics['test_steps'], metrics['test_returns'], 'test_returns')
-      if cfg.algorithm == 'BC':
+      if cfg.algorithm == 'BC':  # TODO: Remove
         lineplot(range(cfg.evaluation.interval, cfg.steps + 1, cfg.evaluation.interval), metrics['test_returns'] * (cfg.steps // cfg.evaluation.interval), 'test_returns')
         break
       elif len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], 'train_returns')
-    elif cfg.algorithm == 'BC' and cfg.check_time_usage: break
+    elif cfg.algorithm == 'BC' and cfg.check_time_usage: break  # TODO: Remove
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
@@ -159,7 +165,7 @@ def main(cfg: DictConfig) -> None:
   torch.save(metrics, 'metrics.pth')
 
   env.close()
-  return sum(recent_returns) / float(1 if cfg.algorithm == 'BC' else cfg.evaluation.average_window)
+  return sum(recent_returns) / float(1 if cfg.algorithm == 'BC' else cfg.evaluation.average_window)  # TODO: Remove and just return from BC early
 
 
 if __name__ == '__main__':

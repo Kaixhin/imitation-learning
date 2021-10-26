@@ -10,12 +10,17 @@ model:
   hidden_size: 256
   activation: 'relu'
 replay:
-  size: 1000000
+  size: 1000000  # TODO: Change steps and replay size to 3M
+pretraining:
+  iterations: 100000
+  batch_size: 256
+  learning_rate: 0.0001
+  weight_decay: 0
 reinforcement:
-  discount: 0.99
+  discount: 0.97
   learning_rate: 0.0003
   weight_decay: 0
-  polyak_factor: 0.995
+  polyak_factor: 0.99
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
   trajectories: -1  # -1 to disable; otherwise select number of trajectories

@@ -3,3 +3,8 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: SAC
+pretraining:
+  iterations: 0
+reinforcement:
+  discount: 0.99
+  polyak_factor: 0.995
