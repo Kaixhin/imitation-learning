@@ -6,6 +6,7 @@ from torch import nn
 from torch.distributions import Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
+from torch.nn.utils import parametrizations
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -28,7 +29,7 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1):
+def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1, spectral_norm=False):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
   
   network_dims, layers = (input_size, hidden_size, hidden_size), []
@@ -37,6 +38,7 @@ def _create_fcnn(input_size, hidden_size, output_size, activation_function, drop
     layer = nn.Linear(network_dims[l], network_dims[l + 1])
     nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
     nn.init.constant_(layer.bias, 0)
+    if spectral_norm: layer = parametrizations.spectral_norm(layer)
     layers.append(layer)
     if dropout > 0: layers.append(nn.Dropout(p=dropout))
     layers.append(ACTIVATION_FUNCTIONS[activation_function]())
@@ -44,6 +46,7 @@ def _create_fcnn(input_size, hidden_size, output_size, activation_function, drop
   final_layer = nn.Linear(network_dims[-1], output_size)
   nn.init.orthogonal_(final_layer.weight, gain=final_gain)
   nn.init.constant_(final_layer.bias, 0)
+  if spectral_norm: final_layer = parametrizations.spectral_norm(final_layer)
   layers.append(final_layer)
 
   return nn.Sequential(*layers)
@@ -133,10 +136,10 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, forward_kl=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, forward_kl=False, spectral_norm=False):
     super().__init__()
     self.state_only, self.forward_kl = state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function)
+    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
@@ -149,12 +152,13 @@ class GAILDiscriminator(nn.Module):
 
 
 class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False):
+  def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False, spectral_norm=False):
     super().__init__()
     self.state_only = state_only
     self.discount = discount
     self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    self.h = _create_fcnn(state_size, hidden_size, 1, activation_function)  # Shaping function Φ
+    if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
+    self.h = _create_fcnn(state_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
 
   def reward(self, state, action):
     if self.state_only:
