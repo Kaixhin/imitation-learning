@@ -148,27 +148,6 @@ class GAILDiscriminator(nn.Module):
     return torch.exp(h) * -h if self.forward_kl else h
 
 
-class GMMILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, self_similarity=True, state_only=True):
-    super().__init__()
-    self.state_only = state_only
-    self.gamma_1, self.gamma_2, self.self_similarity = None, None, self_similarity
-
-  def predict_reward(self, state, action, expert_state, expert_action):
-    state_action = state if self.state_only else _join_state_action(state, action)
-    expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
-    
-    # Use median heuristics to set data-dependent bandwidths
-    if self.gamma_1 is None:
-      self.gamma_1 = 1 / (_squared_distance(state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
-      self.gamma_2 = 1 / (_squared_distance(expert_state_action.transpose(0, 1), expert_state_action.transpose(0, 1)).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
-
-    # Calculate negative of witness function (based on kernel mean embeddings)
-    similarity = (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0))
-    return similarity - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0)) if self.self_similarity else similarity
-
-
-# TODO: Move just below GAILDiscriminator later for organisational purposes
 class AIRLDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False):
     super().__init__()
@@ -193,6 +172,26 @@ class AIRLDiscriminator(nn.Module):
   def predict_reward(self, state, action, next_state, log_policy, terminal):
     D = torch.sigmoid(self.forward(state, action, next_state, log_policy, terminal))
     return torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
+
+
+class GMMILDiscriminator(nn.Module):
+  def __init__(self, state_size, action_size, self_similarity=True, state_only=True):
+    super().__init__()
+    self.state_only = state_only
+    self.gamma_1, self.gamma_2, self.self_similarity = None, None, self_similarity
+
+  def predict_reward(self, state, action, expert_state, expert_action):
+    state_action = state if self.state_only else _join_state_action(state, action)
+    expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
+    
+    # Use median heuristics to set data-dependent bandwidths
+    if self.gamma_1 is None:
+      self.gamma_1 = 1 / (_squared_distance(state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+      self.gamma_2 = 1 / (_squared_distance(expert_state_action.transpose(0, 1), expert_state_action.transpose(0, 1)).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+
+    # Calculate negative of witness function (based on kernel mean embeddings)
+    similarity = (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0))
+    return similarity - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0)) if self.self_similarity else similarity
 
 
 class EmbeddingNetwork(nn.Module):

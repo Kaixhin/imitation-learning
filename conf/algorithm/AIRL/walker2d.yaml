@@ -5,3 +5,4 @@ env_name: walker2d-expert-v2
 algorithm: AIRL
 imitation:
   r1_reg_coeff: 0.1
+  spectral_norm: true

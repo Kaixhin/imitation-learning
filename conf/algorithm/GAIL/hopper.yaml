@@ -5,3 +5,4 @@ env_name: walker2d-expert-v2
 algorithm: GAIL
 imitation:
   r1_reg_coeff: 1.0
+  spectral_norm: true

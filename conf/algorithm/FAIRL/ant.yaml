@@ -5,3 +5,4 @@ env_name: ant-expert-v2
 algorithm: FAIRL
 imitation:
   r1_reg_coeff: 1.0
+  spectral_norm: true
