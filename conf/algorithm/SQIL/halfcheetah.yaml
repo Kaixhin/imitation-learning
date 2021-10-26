@@ -3,3 +3,5 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: SQIL
+pretraining:
+  iterations: 0

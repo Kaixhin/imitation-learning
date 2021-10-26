@@ -6,19 +6,11 @@ early_stop:
   max_epochs_without_improvement: 5
 is_noisy: true
 params:
-  training.batch_size:
+  reinforcement.discount:
     type: choice
-    values: [1024, 2048, 4096]
-    value_type: 'int'
-  reinforcement.learning_rate:
-    type: choice
-    values: [0.00003, 0.0003]
+    values: [0.97, 0.99]
     value_type: 'float'
-  reinforcement.ppo_epochs:
+  reinforcement.polyak_factor:
     type: choice
-    values: [5, 10, 20]
-    value_type: 'int'
-  reinforcement.entropy_loss_coeff:
-    type: choice
-    values: [0, 0.001, 0.01]
+    values: [0.99, 0.995]
     value_type: 'float'
