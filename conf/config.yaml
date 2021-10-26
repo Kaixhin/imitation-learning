@@ -5,12 +5,12 @@ defaults:
   - override hydra/sweeper: basic
 
 seed: 0
-steps: 1000000
+steps: 1000000  # TODO: Set to 3M for seed experiments
 model:
   hidden_size: 256
   activation: 'relu'
 replay:
-  size: 1000000  # TODO: Change steps and replay size to 3M
+  size: 3000000
 pretraining:
   iterations: 100000
   batch_size: 256

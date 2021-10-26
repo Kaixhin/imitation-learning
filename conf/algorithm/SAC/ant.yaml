@@ -3,6 +3,8 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: SAC
+replay:
+  size: 1000000
 pretraining:
   iterations: 0
 reinforcement:
