@@ -13,7 +13,7 @@ reinforcement:
   polyak_factor: 0.99
 imitation:
   absorbing: true
-  pos_class_prior: 0.5
-  nonnegative_margin: 0.0
+  pos_class_prior: 0.7
+  nonnegative_margin: .inf
   r1_reg_coeff: 0.5
   spectral_norm: true
