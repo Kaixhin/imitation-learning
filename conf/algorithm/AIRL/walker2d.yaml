@@ -3,6 +3,8 @@ env_type: walker2d
 env_name: walker2d-expert-v2
 
 algorithm: AIRL
+replay:
+  size: 3000000
 pretraining:
   iterations: 100000
 reinforcement:

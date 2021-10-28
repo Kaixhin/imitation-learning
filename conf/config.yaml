@@ -5,10 +5,7 @@ defaults:
   - override hydra/sweeper: basic
 
 seed: 0
-steps: 1000000
-model:
-  hidden_size: 256
-  activation: 'relu'
+steps: 1000000  # TODO: Change per environment: 2M for Adroit
 replay:
   size: 1000000
 pretraining:

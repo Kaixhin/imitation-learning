@@ -3,6 +3,8 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: GAIL
+replay:
+  size: 3000000
 pretraining:
   iterations: 100000
 reinforcement:

@@ -19,6 +19,7 @@ from utils import flatten_list_dicts, lineplot
 def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
+  cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.imitation.subsample >= 1
   # General setup
   np.random.seed(cfg.seed)
