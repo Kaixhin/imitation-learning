@@ -6,13 +6,14 @@ import numpy as np
 from omegaconf import DictConfig
 import torch
 from torch import optim
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from environments import D4RLEnv
 from evaluation import evaluate_agent
 from models import AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, sqil_sample
 from training import ReplayMemory, adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
-from utils import flatten_list_dicts, lineplot
+from utils import cycle, flatten_list_dicts, lineplot
 
 
 @hydra.main(config_path='conf', config_name='config')
@@ -58,10 +59,11 @@ def main(cfg: DictConfig) -> None:
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   # Behavioural cloning pretraining
   if cfg.pretraining.iterations > 0:
+    expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
     actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg.pretraining.learning_rate, weight_decay=cfg.pretraining.weight_decay)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
-      break
-      # behavioural_cloning_update(actor, expert_trajectories, actor_pretrain_optimiser, cfg.pretraining.batch_size)  TODO: Make BC work on iterations, not epochs
+      expert_transition = next(expert_dataloader)
+      behavioural_cloning_update(actor, expert_transition, actor_pretrain_optimiser)
   # TODO: Check BC performance
   # TODO: Stop if only BC
 
@@ -69,6 +71,7 @@ def main(cfg: DictConfig) -> None:
   if cfg.algorithm in ['DRIL', 'RED']:
     for _ in tqdm(range(cfg.imitation.pretraining_epochs), leave=False):
       if cfg.algorithm == 'DRIL':
+        raise NotImplementedError  # TODO: Adapt HPs to run for certain number of iterations
         # Perform behavioural cloning updates offline on policy ensemble (dropout version)
         behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
         with torch.no_grad():  # TODO: Check why inference mode fails?

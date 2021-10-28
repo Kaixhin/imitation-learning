@@ -6,6 +6,13 @@ import torch
 sns.set(style='white')
 
 
+# Cycles over an iterable without caching the order (unlike itertools.cycle)
+def cycle(iterable):
+  while True:
+    for x in iterable:
+      yield x
+
+
 # Flattens a list of dicts with torch Tensors
 def flatten_list_dicts(list_dicts):
   return {k: torch.cat([d[k] for d in list_dicts], dim=0) for k in list_dicts[-1].keys()}

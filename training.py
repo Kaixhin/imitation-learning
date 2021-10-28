@@ -108,18 +108,15 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
 
 
 # Performs a behavioural cloning update
-def behavioural_cloning_update(actor, expert_trajectories, actor_optimiser, batch_size, max_grad_norm=0):
-  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
+def behavioural_cloning_update(actor, expert_transition, actor_optimiser, max_grad_norm=0):
+  expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
+  expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
 
-  for expert_transition in expert_dataloader:
-    expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
-    expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
-
-    actor_optimiser.zero_grad(set_to_none=True)
-    behavioural_cloning_loss = (weight * -actor.log_prob(expert_state, expert_action)).mean()  # Maximum likelihood objective
-    behavioural_cloning_loss.backward()
-    if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
-    actor_optimiser.step()
+  actor_optimiser.zero_grad(set_to_none=True)
+  behavioural_cloning_loss = (weight * -actor.log_prob(expert_state, expert_action)).mean()  # Maximum likelihood objective
+  behavioural_cloning_loss.backward()
+  if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
+  actor_optimiser.step()
 
 
 # Performs a target estimation update
