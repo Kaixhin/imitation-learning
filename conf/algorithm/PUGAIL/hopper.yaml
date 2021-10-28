@@ -12,6 +12,7 @@ reinforcement:
   target_temperature: -0.5
   polyak_factor: 0.99
 imitation:
+  absorbing: true
   pos_class_prior: 0.5
   nonnegative_margin: 0.0
   r1_reg_coeff: 0.5
