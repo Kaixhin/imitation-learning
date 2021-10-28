@@ -17,3 +17,4 @@ imitation:
   nonnegative_margin: .inf
   grad_penalty: 1
   spectral_norm: true
+  mixup_alpha: 0

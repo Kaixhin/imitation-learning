@@ -21,6 +21,7 @@ def main(cfg: DictConfig) -> None:
   assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.imitation.subsample >= 1
+  # TODO: Check that both PUGAIL and Mixup are not selected at the same time
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
@@ -115,7 +116,7 @@ def main(cfg: DictConfig) -> None:
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-            adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation.grad_penalty, cfg.imitation.get('pos_class_prior', 0.5), cfg.imitation.get('nonnegative_margin', 0))
+            adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, pos_class_prior=cfg.imitation.get('pos_class_prior', 0.5), nonnegative_margin=cfg.imitation.get('nonnegative_margin', 0))
           
           # Predict rewards
           states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
