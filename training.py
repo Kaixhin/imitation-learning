@@ -137,7 +137,7 @@ def target_estimation_update(discriminator, expert_trajectories, discriminator_o
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, r1_reg_coeff=1, pos_class_prior=1, nonnegative_margin=0):
+def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, grad_penalty=1, pos_class_prior=1, nonnegative_margin=0):
   expert_state, expert_action, expert_next_state, expert_terminal, expert_weight = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']
   state, action, next_state, terminal, weight = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']
 
@@ -154,13 +154,22 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   # Binary logistic regression
   discriminator_optimiser.zero_grad(set_to_none=True)
   expert_loss = (pos_class_prior if algorithm == 'PUGAIL' else 1) * F.binary_cross_entropy_with_logits(D_expert, torch.ones_like(D_expert), weight=expert_weight)  # Loss on "real" (expert) data
-  autograd.backward(expert_loss, create_graph=True)
-  r1_reg = 0
-  for param in discriminator.parameters():
-    r1_reg += param.grad.norm()  # R1 gradient penalty
+  expert_loss.backward()
+
   if algorithm == 'PUGAIL':
     policy_loss = torch.clamp(pos_class_prior * F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert), weight=expert_weight) - F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy), weight=weight), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
   else:
     policy_loss = F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy), weight=weight)  # Loss on "fake" (policy) data
-  (policy_loss + r1_reg_coeff * r1_reg).backward()
+  policy_loss.backward()
+  
+  if grad_penalty > 0:
+    eps = torch.rand_like(D_expert).unsqueeze(dim=1)  # Sample ε ∼ U(0, 1)
+    mix_state, mix_action = eps * expert_state + (1 - eps) * state, eps * expert_action + (1 - eps) * action  # Create convex combination of expert and policy data  # TODO: Adapt for AIRL
+    mix_state.requires_grad_()
+    mix_action.requires_grad_()
+    D_mix = discriminator(mix_state, mix_action)
+    grads = autograd.grad(D_mix, (mix_state, mix_action), torch.ones_like(D_mix), create_graph=True)  # Calculate gradients wrt inputs (does not accumulate parameter gradients)
+    grad_penalty_loss = sum([grad_penalty * (grad.norm(2) ** 2).mean() for grad in grads])  # Penalise norm of input gradients
+    grad_penalty_loss.backward()
+
   discriminator_optimiser.step()

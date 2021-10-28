@@ -115,7 +115,7 @@ def main(cfg: DictConfig) -> None:
         if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
           # Train discriminator
           if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
-            adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation.r1_reg_coeff, cfg.imitation.get('pos_class_prior', 0.5), cfg.imitation.get('nonnegative_margin', 0))
+            adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation.grad_penalty, cfg.imitation.get('pos_class_prior', 0.5), cfg.imitation.get('nonnegative_margin', 0))
           
           # Predict rewards
           states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
