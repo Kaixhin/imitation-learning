@@ -3,6 +3,12 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: FAIRL
+pretraining:
+  iterations: 100000
+reinforcement:
+  discount: 0.97
+  target_temperature: -0.5
+  polyak_factor: 0.99
 imitation:
   r1_reg_coeff: 1.0
   spectral_norm: true

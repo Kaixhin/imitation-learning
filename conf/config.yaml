@@ -5,24 +5,33 @@ defaults:
   - override hydra/sweeper: basic
 
 seed: 0
-steps: 1000000  # TODO: Set to 3M for seed experiments
+steps: 1000000
 model:
   hidden_size: 256
   activation: 'relu'
 replay:
-  size: 3000000
+  size: 1000000
 pretraining:
-  iterations: 100000
+  iterations: 0
   batch_size: 256
   learning_rate: 0.0001
   weight_decay: 0
 reinforcement:
-  discount: 0.97
+  model:
+    hidden_size: 256
+    depth: 2
+    activation: 'relu'
+  discount: 0.99
+  target_temperature: -1
   learning_rate: 0.0003
   weight_decay: 0
-  polyak_factor: 0.99
+  polyak_factor: 0.995
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
+  model:
+    hidden_size: 128
+    depth: 1
+    activation: 'relu'
   trajectories: -1  # -1 to disable; otherwise select number of trajectories
   subsample: 20
   state_only: false

@@ -31,23 +31,23 @@ def main(cfg: DictConfig) -> None:
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
-  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), TwinCritic(state_size, action_size, cfg.model.hidden_size, cfg.model.activation), torch.zeros(1, requires_grad=True)
-  target_critic, entropy_target = create_target_network(critic), -action_size  # Entropy target heuristic from SAC paper for continuous action domains
+  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.reinforcement.model.hidden_size, cfg.reinforcement.model.activation), TwinCritic(state_size, action_size, cfg.reinforcement.model.hidden_size, cfg.reinforcement.model.activation), torch.zeros(1, requires_grad=True)  # TODO: Account for model hidden size and depth
+  target_critic, entropy_target = create_target_network(critic), cfg.reinforcement.target_temperature * action_size  # Entropy target heuristic from SAC paper for continuous action domains
   actor_optimiser, critic_optimiser, temperature_optimiser = optim.AdamW(actor.parameters(), lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay), optim.Adam(critic.parameters(), lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay), optim.Adam([log_alpha], lr=cfg.reinforcement.learning_rate, weight_decay=cfg.reinforcement.weight_decay)
   memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
   if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if cfg.algorithm == 'AIRL':
-      discriminator = AIRLDiscriminator(state_size, action_size, cfg.model.hidden_size, cfg.reinforcement.discount, cfg.model.activation, state_only=cfg.imitation.state_only, spectral_norm=cfg.imitation.spectral_norm)
+      discriminator = AIRLDiscriminator(state_size, action_size, cfg.imitation.model.hidden_size, cfg.reinforcement.discount, cfg.imitation.model.activation, state_only=cfg.imitation.state_only, spectral_norm=cfg.imitation.spectral_norm)  # TODO: Account for model hidden size and depth
     elif cfg.algorithm == 'DRIL':
-      discriminator = SoftActor(state_size, action_size, cfg.model.hidden_size, cfg.model.activation, dropout=0.1)
+      discriminator = SoftActor(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, dropout=0.1)  # TODO: Check model HPs
     elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(state_size, action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only, forward_kl=cfg.algorithm == 'FAIRL', spectral_norm=cfg.imitation.spectral_norm)
+      discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, state_only=cfg.imitation.state_only, forward_kl=cfg.algorithm == 'FAIRL', spectral_norm=cfg.imitation.spectral_norm)  # TODO: Account for model hidden size and depth + Account for model hidden size and depth
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size, action_size, self_similarity=cfg.imitation.self_similarity, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'RED':
-      discriminator = REDDiscriminator(state_size, action_size, cfg.model.hidden_size, cfg.model.activation, state_only=cfg.imitation.state_only)
+      discriminator = REDDiscriminator(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, state_only=cfg.imitation.state_only)  # TODO: Check model HPs + Account for model hidden size and depth
     if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
       discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 

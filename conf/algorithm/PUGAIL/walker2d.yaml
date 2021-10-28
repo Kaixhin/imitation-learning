@@ -3,6 +3,12 @@ env_type: walker2d
 env_name: walker2d-expert-v2
 
 algorithm: PUGAIL
+pretraining:
+  iterations: 100000
+reinforcement:
+  discount: 0.97
+  target_temperature: -0.5
+  polyak_factor: 0.99
 imitation:
   pos_class_prior: 0.5
   nonnegative_margin: 0.0
