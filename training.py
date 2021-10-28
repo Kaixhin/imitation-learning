@@ -159,7 +159,7 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   for param in discriminator.parameters():
     r1_reg += param.grad.norm()  # R1 gradient penalty
   if algorithm == 'PUGAIL':
-    policy_loss = torch.clamp(F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert), weight=expert_weight) - pos_class_prior * F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy), weight=weight), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data
+    policy_loss = torch.clamp(F.binary_cross_entropy_with_logits(D_expert, torch.zeros_like(D_expert), weight=expert_weight) - pos_class_prior * F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy), weight=weight), min=-nonnegative_margin)  # Loss on "real" and "unlabelled" (policy) data  # TODO: Work out which way round we are doing loss and hence where weight should go
   else:
     policy_loss = F.binary_cross_entropy_with_logits(D_policy, torch.zeros_like(D_policy), weight=weight)  # Loss on "fake" (policy) data
   (policy_loss + r1_reg_coeff * r1_reg).backward()
