@@ -19,8 +19,9 @@ from utils import cycle, flatten_list_dicts, lineplot
 @hydra.main(config_path='conf', config_name='config')
 def main(cfg: DictConfig) -> None:
   # Configuration check
-  assert cfg.algorithm in ['BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.algorithm in ['BC', 'DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
+  assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']  # TODO: Only assert if adv imitation
   assert cfg.imitation.subsample >= 1
   # TODO: Check that both PUGAIL and Mixup are not selected at the same time
   # General setup
@@ -40,16 +41,16 @@ def main(cfg: DictConfig) -> None:
   memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
-  if cfg.algorithm in ['DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
+  if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
     if cfg.algorithm == 'DRIL':
       discriminator = SoftActor(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, dropout=0.1)  # TODO: Check model HPs
-    elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, cfg.reinforcement.discount, state_only=cfg.imitation.state_only, reward_shaping=cfg.imitation.model.reward_shaping, forward_kl=cfg.algorithm == 'FAIRL', spectral_norm=cfg.imitation.spectral_norm)  # TODO: Account for model hidden size and depth + Account for model hidden size and depth
+    elif cfg.algorithm in ['GAIL', 'PUGAIL']:
+      discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, cfg.reinforcement.discount, state_only=cfg.imitation.state_only, reward_shaping=cfg.imitation.model.reward_shaping, reward_function=cfg.imitation.model.reward_function, spectral_norm=cfg.imitation.spectral_norm)  # TODO: Account for model hidden size and depth + Account for model hidden size and depth
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size, action_size, self_similarity=cfg.imitation.self_similarity, state_only=cfg.imitation.state_only)
     elif cfg.algorithm == 'RED':
       discriminator = REDDiscriminator(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, state_only=cfg.imitation.state_only)  # TODO: Check model HPs + Account for model hidden size and depth
-    if cfg.algorithm in ['DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
+    if cfg.algorithm in ['DRIL', 'GAIL', 'PUGAIL', 'RED']:
       discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 
   # Metrics
@@ -114,9 +115,9 @@ def main(cfg: DictConfig) -> None:
         # Sample a batch of transitions
         transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
 
-        if cfg.algorithm in ['DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
+        if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
           # Train discriminator
-          if cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
+          if cfg.algorithm in ['GAIL', 'PUGAIL']:
             adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, pos_class_prior=cfg.imitation.get('pos_class_prior', 0.5), nonnegative_margin=cfg.imitation.get('nonnegative_margin', 0))
           
           # Predict rewards
@@ -125,7 +126,7 @@ def main(cfg: DictConfig) -> None:
             if cfg.algorithm == 'DRIL':
               # TODO: By default DRIL also includes behavioural cloning online?
               transitions['rewards'] = discriminator.predict_reward(states, actions)
-            elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
+            elif cfg.algorithm in ['GAIL', 'PUGAIL']:
               discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
               transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
             elif cfg.algorithm == 'GMMIL':
@@ -163,7 +164,7 @@ def main(cfg: DictConfig) -> None:
     torch.save(trajectories, 'trajectories.pth')
   # Save agent and metrics
   torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), 'agent.pth')
-  if cfg.algorithm in ['DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
+  if cfg.algorithm in ['DRIL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
   torch.save(metrics, 'metrics.pth')
 
   env.close()

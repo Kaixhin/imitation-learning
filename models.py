@@ -135,9 +135,9 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, discount, state_only=False, reward_shaping=False, forward_kl=False, spectral_norm=False):
+  def __init__(self, state_size, action_size, hidden_size, activation_function, discount, state_only=False, reward_shaping=False, reward_function='GAIL', spectral_norm=False):
     super().__init__()
-    self.discount, self.state_only, self.forward_kl = discount, state_only, forward_kl
+    self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, state_only, reward_shaping, reward_function
     if reward_shaping:
       self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
       if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
@@ -163,8 +163,8 @@ class GAILDiscriminator(nn.Module):
   
   def predict_reward(self, state, action, next_state=None, log_policy=None, terminal=None):
     D = torch.sigmoid(self.forward(state, action, next_state=next_state, log_policy=log_policy, terminal=terminal))
-    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
-    return torch.exp(h) * -h if self.forward_kl else h
+    h = -torch.log1p(-D + 1e-6) if self.reward_function == 'GAIL' else torch.log(D + 1e-6) - torch.log1p(-D + 1e-6)  # Add epsilon to improve numerical stability given limited floating point precision
+    return torch.exp(h) * -h if self.reward_function == 'FAIRL' else h  # FAIRL reward function is based on AIRL reward function
 
 
 class GMMILDiscriminator(nn.Module):
