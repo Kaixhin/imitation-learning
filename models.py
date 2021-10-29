@@ -135,47 +135,36 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, reward_shaping=False, forward_kl=False, spectral_norm=False):  # TODO: If reward shaping, then do AIRL algo
+  def __init__(self, state_size, action_size, hidden_size, activation_function, discount, state_only=False, reward_shaping=False, forward_kl=False, spectral_norm=False):
     super().__init__()
-    self.state_only, self.forward_kl = state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)
+    self.discount, self.state_only, self.forward_kl = discount, state_only, forward_kl
+    if reward_shaping:
+      self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
+      if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
+      self.h = _create_fcnn(state_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
+    else:
+      self.g = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)
 
-  def forward(self, state, action):
-    D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
-    return D
-  
-  def predict_reward(self, state, action):
-    D = torch.sigmoid(self.forward(state, action))
-    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
-    return torch.exp(h) * -h if self.forward_kl else h
-
-
-# TODO: Make generic adversarial discriminator model class (putting reward shaping + subtract log-pi together as an option which effectively = AIRL)
-class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False, spectral_norm=False):
-    super().__init__()
-    self.state_only = state_only
-    self.discount = discount
-    self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
-    self.h = _create_fcnn(state_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
-
-  def reward(self, state, action):
+  def _reward(self, state, action):
     if self.state_only:
       return self.g(state).squeeze(dim=1)
     else:
       return self.g(_join_state_action(state, action)).squeeze(dim=1)
 
-  def value(self, state):
+  def _value(self, state):
     return self.h(state).squeeze(dim=1)
 
-  def forward(self, state, action, next_state, log_policy, terminal):
-    f = self.reward(state, action) + (1 - terminal) * (self.discount * self.value(next_state) - self.value(state))
-    return f - log_policy  # Note that this is equivalent to sigmoid^-1(e^f / (e^f + π))
-
-  def predict_reward(self, state, action, next_state, log_policy, terminal):
-    D = torch.sigmoid(self.forward(state, action, next_state, log_policy, terminal))
-    return torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
+  def forward(self, state, action, next_state=None, log_policy=None, terminal=None):
+    if self.reward_shaping:
+      f = self._reward(state, action) + (1 - terminal) * (self.discount * self._value(next_state) - self._value(state))
+      return f - log_policy  # Note that this is equivalent to sigmoid^-1(e^f / (e^f + π))
+    else:
+      return self.g(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
+  
+  def predict_reward(self, state, action, next_state=None, log_policy=None, terminal=None):
+    D = torch.sigmoid(self.forward(state, action, next_state=next_state, log_policy=log_policy, terminal=terminal))
+    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
+    return torch.exp(h) * -h if self.forward_kl else h
 
 
 class GMMILDiscriminator(nn.Module):
