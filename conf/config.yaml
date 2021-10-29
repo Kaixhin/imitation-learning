@@ -15,9 +15,15 @@ pretraining:
   weight_decay: 0
 reinforcement:
   model:
-    hidden_size: 256
-    depth: 2
-    activation: 'relu'
+    actor:
+      hidden_size: 256
+      depth: 2
+      activation: 'relu'
+    critic:
+      hidden_size: 256
+      depth: 2
+      activation: 'relu'
+
   discount: 0.99
   target_temperature: -1
   learning_rate: 0.0003
@@ -29,6 +35,8 @@ imitation:
     hidden_size: 128
     depth: 1
     activation: 'relu'
+    input_dropout: 0.5
+    dropout: 0.75 
   trajectories: -1  # -1 to disable; otherwise select number of trajectories
   subsample: 20
   state_only: false

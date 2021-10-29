@@ -7,6 +7,7 @@ from torch.distributions import Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 from torch.nn.utils import parametrizations
+from omegaconf import DictConfig
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -29,11 +30,12 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1, spectral_norm=False):
+def _create_fcnn(input_size, hidden_size, depth, output_size, activation_function, dropout=0, input_dropout=0, final_gain=1, spectral_norm=False):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
   
-  network_dims, layers = (input_size, hidden_size, hidden_size), []
-
+  network_dims, layers = (input_size, *[hidden_size] * depth), []
+  if input_dropout > 0:
+    layers.append(nn.Dropout(p=input_dropout))
   for l in range(len(network_dims) - 1):
     layer = nn.Linear(network_dims[l], network_dims[l + 1])
     nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
@@ -71,9 +73,9 @@ def sqil_sample(transitions, expert_transitions, batch_size):
 
 
 class SoftActor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, dropout=0):
+  def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
-    self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout)
+    self.actor = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, output_size=2 * action_size, activation_function=model_cfg.activation, dropout=model_cfg.dropout, input_dropout=model_cfg.get('input_dropout', 0))
 
   def forward(self, state):
     mean, pre_std_dev = self.actor(state).chunk(2, dim=1)
@@ -111,7 +113,7 @@ class SoftActor(nn.Module):
 class Critic(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, activation_function):
     super().__init__()
-    self.critic = _create_fcnn(state_size + action_size, hidden_size, output_size=1, activation_function=activation_function)
+    self.critic = _create_fcnn(state_size + action_size, hidden_size, depth, output_size=1, activation_function=activation_function)
 
   def forward(self, state, action):
     value = self.critic(_join_state_action(state, action)).squeeze(dim=1)
@@ -138,7 +140,7 @@ class GAILDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, reward_shaping=False, forward_kl=False, spectral_norm=False):  # TODO: If reward shaping, then do AIRL algo
     super().__init__()
     self.state_only, self.forward_kl = state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)
+    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, depth, 1, activation_function, spectral_norm=spectral_norm)
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
@@ -158,7 +160,7 @@ class AIRLDiscriminator(nn.Module):
     self.discount = discount
     self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
     if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
-    self.h = _create_fcnn(state_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
+    self.h = _create_fcnn(state_size, hidden_size, depth, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
 
   def reward(self, state, action):
     if self.state_only:
@@ -201,7 +203,7 @@ class GMMILDiscriminator(nn.Module):
 class EmbeddingNetwork(nn.Module):
   def __init__(self, input_size, hidden_size, activation_function):
     super().__init__()
-    self.embedding = _create_fcnn(input_size, hidden_size, input_size, activation_function)
+    self.embedding = _create_fcnn(input_size, hidden_size, depth, input_size, activation_function)
 
   def forward(self, input):
     return self.embedding(input)
