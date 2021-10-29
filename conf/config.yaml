@@ -29,6 +29,7 @@ imitation:
     hidden_size: 128
     depth: 1
     activation: 'relu'
+    reward_shaping: false
   trajectories: -1  # -1 to disable; otherwise select number of trajectories
   subsample: 20
   state_only: false
