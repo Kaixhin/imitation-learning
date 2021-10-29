@@ -3,6 +3,18 @@ env_type: hopper
 env_name: hopper-expert-v2
 
 algorithm: FAIRL
+replay:
+  size: 3000000
+pretraining:
+  iterations: 100000
+reinforcement:
+  discount: 0.97
+  target_temperature: -0.5
+  polyak_factor: 0.99
 imitation:
-  r1_reg_coeff: 0.1
+  absorbing: true
+  grad_penalty: 1
   spectral_norm: true
+  mixup_alpha: 1
+training:
+  start: 10000

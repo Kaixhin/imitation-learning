@@ -2,6 +2,7 @@ from logging import ERROR
 
 import d4rl
 import gym
+from gym.spaces import Box
 import numpy as np
 import torch
 
@@ -17,7 +18,7 @@ class D4RLEnv():
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
     self.absorbing = absorbing
-    if absorbing: self.env.observation_space.shape = (self.env.observation_space.shape[0] + 1, )  # Append absorbing indicator bit to state dimension (assumes 1D state space)
+    if absorbing: self.env.observation_space = Box(low=np.concatenate([self.env.observation_space.low, np.zeros(1)]), high=np.concatenate([self.env.observation_space.high, np.ones(1)]))  # Append absorbing indicator bit to state dimension (assumes 1D state space)
 
   def reset(self):
     state = self.env.reset()
