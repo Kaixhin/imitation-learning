@@ -77,7 +77,7 @@ class SoftActor(nn.Module):
 
   def forward(self, state):
     mean, pre_std_dev = self.actor(state).chunk(2, dim=1)
-    std_dev = F.softplus(std_dev) + 0.001  # Constrain standard deviation to be positive
+    std_dev = F.softplus(pre_std_dev) + 0.001  # Constrain standard deviation to be positive
     policy = TransformedDistribution(Independent(Normal(mean, std_dev), 1), TanhTransform(cache_size=1))  # Restrict action range to (-1, 1)
     return policy
 
