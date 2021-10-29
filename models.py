@@ -141,7 +141,7 @@ class GAILDiscriminator(nn.Module):
     super().__init__()
     self.state_only, self.forward_kl = imitation_cfg.state_only, forward_kl
     model_cfg = imitation_cfg.model
-    self.discriminator = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1,  model_cfg.activation, dropout=model_cfg.dropout, input_dropout=model_cfg.get('input_dropout', 0), spectral_norm=model_cfg.spectral_norm)
+    self.discriminator = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1,  model_cfg.activation, dropout=model_cfg.dropout, input_dropout=model_cfg.get('input_dropout', 0), spectral_norm=imitation_cfg.spectral_norm)
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
