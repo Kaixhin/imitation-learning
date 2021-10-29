@@ -3,5 +3,5 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: BC
-imitation:
-  pretraining_epochs: 15
+pretraining:
+  iterations: 100000

@@ -115,7 +115,7 @@ def behavioural_cloning_update(actor, expert_transition, actor_optimiser, max_gr
 
   actor_optimiser.zero_grad(set_to_none=True)
   behavioural_cloning_loss = (weight * -actor.log_prob(expert_state, expert_action)).mean()  # Maximum likelihood objective
-  behavioural_cloning_loss.backward()
+  behavioural_cloning_loss.backward() #TODO: Pretraining with BC according to What Matters paper is done with MSE objective. Should we?
   if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
   actor_optimiser.step()
 
@@ -151,12 +151,17 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
 
   # Binary logistic regression
   discriminator_optimiser.zero_grad(set_to_none=True)
-  if mixup_alpha > 0:
+  if mixup_alpha > 0: #TODO: Support AIRL? (mix_next_state, mix_)
     batch_size = state.size(0)
     eps = Beta(torch.full((batch_size, ), 1.), torch.full((batch_size, ), 1.)).sample()  # Sample ε ∼ Beta(α, α)  # TODO: Make alpha a hyperparam
     eps_2d = eps.unsqueeze(dim=1)  # Expand weights for broadcasting
     mix_state, mix_action, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data  # TODO: Adapt for AIRL
-    D_mix = discriminator(mix_state, mix_action)
+    if algorithm == "AIRL":
+      mix_next_state, mix_terminal = eps_2d * expert_next_state + (1 - eps_2d), expert_terminal + terminal
+      mix_log_prob = actor.log_prob(mix_state, mix_action)
+      D_mix = discriminator(mix_state, mix_action, mix_next_state, mix_log_prob, mix_terminal)
+    else:
+      D_mix = discriminator(mix_state, mix_action)
     mix_loss = eps * F.binary_cross_entropy_with_logits(D_mix, torch.ones_like(D_mix), weight=mix_weight, reduction='none') + (1 - eps) * F.binary_cross_entropy_with_logits(D_mix, torch.zeros_like(D_mix), weight=mix_weight, reduction='none') 
     mix_loss.mean(dim=0).backward()
   else:
@@ -175,7 +180,12 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
     mix_state, mix_action, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data  # TODO: Adapt for AIRL
     mix_state.requires_grad_()
     mix_action.requires_grad_()
-    D_mix = discriminator(mix_state, mix_action)
+    if algorithm == "AIRL":
+      mix_next_state, mix_terminal = eps_2d * expert_next_state + (1 - eps_2d), expert_terminal + terminal
+      mix_log_prob = actor.log_prob(mix_state, mix_action)
+      D_mix = discriminator(mix_state, mix_action, mix_next_state, mix_log_prob, mix_terminal)
+    else:
+      D_mix = discriminator(mix_state, mix_action)
     grads = autograd.grad(D_mix, (mix_state, mix_action), torch.ones_like(D_mix), create_graph=True)  # Calculate gradients wrt inputs (does not accumulate parameter gradients)
     grad_penalty_loss = grad_penalty * mix_weight * sum([grad.norm(2, dim=1) ** 2 for grad in grads])  # Penalise norm of input gradients (assumes 1D inputs)
     grad_penalty_loss.mean(dim=0).backward()

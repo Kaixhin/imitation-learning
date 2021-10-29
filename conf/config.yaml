@@ -19,6 +19,7 @@ reinforcement:
       hidden_size: 256
       depth: 2
       activation: 'relu'
+      dropout: 0
     critic:
       hidden_size: 256
       depth: 2
@@ -32,7 +33,7 @@ reinforcement:
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
   model:
-    hidden_size: 128
+    hidden_size: 64 
     depth: 1
     activation: 'relu'
     input_dropout: 0.5

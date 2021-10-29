@@ -3,5 +3,5 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: BC
-imitation:
-  pretraining_epochs: 25
+pretraining:
+  iterations: 100000

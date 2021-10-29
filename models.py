@@ -111,9 +111,9 @@ class SoftActor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function):
+  def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
-    self.critic = _create_fcnn(state_size + action_size, hidden_size, depth, output_size=1, activation_function=activation_function)
+    self.critic = _create_fcnn(state_size + action_size, model_cfg.hidden_size, model_cfg.depth, output_size=1, activation_function=model_cfg.activation)
 
   def forward(self, state, action):
     value = self.critic(_join_state_action(state, action)).squeeze(dim=1)
@@ -121,10 +121,10 @@ class Critic(nn.Module):
 
 
 class TwinCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function):
+  def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
-    self.critic_1 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
-    self.critic_2 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
+    self.critic_1 = Critic(state_size, action_size, model_cfg)
+    self.critic_2 = Critic(state_size, action_size, model_cfg)
 
   def forward(self, state, action):
     value_1, value_2 = self.critic_1(state, action), self.critic_2(state, action)
@@ -137,10 +137,11 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False, reward_shaping=False, forward_kl=False, spectral_norm=False):  # TODO: If reward shaping, then do AIRL algo
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig,  reward_shaping=False, forward_kl=False):  # TODO: If reward shaping, then do AIRL algo
     super().__init__()
-    self.state_only, self.forward_kl = state_only, forward_kl
-    self.discriminator = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, depth, 1, activation_function, spectral_norm=spectral_norm)
+    self.state_only, self.forward_kl = imitation_cfg.state_only, forward_kl
+    model_cfg = imitation_cfg.model
+    self.discriminator = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1,  model_cfg.activation, dropout=model_cfg.dropout, input_dropout=model_cfg.get('input_dropout', 0), spectral_norm=model_cfg.spectral_norm)
 
   def forward(self, state, action):
     D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
@@ -154,13 +155,14 @@ class GAILDiscriminator(nn.Module):
 
 # TODO: Make generic adversarial discriminator model class (putting reward shaping + subtract log-pi together as an option which effectively = AIRL)
 class AIRLDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, discount, activation_function, state_only=False, spectral_norm=False):
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig, discount):
     super().__init__()
-    self.state_only = state_only
+    self.state_only = imitation_cfg.state_only
     self.discount = discount
-    self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-    if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
-    self.h = _create_fcnn(state_size, hidden_size, depth, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
+    self.g = nn.Linear(state_size if imitation_cfg.state_only else state_size + action_size, 1)  # Reward function r
+    if imitation_cfg.spectral_norm: self.g = parametrizations.spectral_norm(self.g)
+    model_cfg = imitation_cfg.model
+    self.h = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)  # Shaping function Φ
 
   def reward(self, state, action):
     if self.state_only:
@@ -181,10 +183,10 @@ class AIRLDiscriminator(nn.Module):
 
 
 class GMMILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, self_similarity=True, state_only=True):
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig):
     super().__init__()
-    self.state_only = state_only
-    self.gamma_1, self.gamma_2, self.self_similarity = None, None, self_similarity
+    self.state_only = imitation_cfg.state_only
+    self.gamma_1, self.gamma_2, self.self_similarity = None, None, imitation_cfg.self_similarity
 
   def predict_reward(self, state, action, expert_state, expert_action):
     state_action = state if self.state_only else _join_state_action(state, action)
@@ -201,21 +203,21 @@ class GMMILDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size, hidden_size, activation_function):
+  def __init__(self, input_size, model_cfg: DictConfig):
     super().__init__()
-    self.embedding = _create_fcnn(input_size, hidden_size, depth, input_size, activation_function)
+    self.embedding = _create_fcnn(input_size, model_cfg.hidden_size, model_cfg.depth, input_size, model_cfg.activation)
 
   def forward(self, input):
     return self.embedding(input)
 
 
 class REDDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False):
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig):
     super().__init__()
-    self.state_only = state_only
+    self.state_only = imitation_cfg.state_only
     self.sigma_1 = None
-    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
-    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
+    self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
+    self.target = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
     for param in self.target.parameters():
       param.requires_grad = False
 
