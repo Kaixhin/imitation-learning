@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from environments import D4RLEnv
 from evaluation import evaluate_agent
-from models import AIRLDiscriminator, GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, sqil_sample
+from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, sqil_sample
 from training import ReplayMemory, adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
 
@@ -19,8 +19,9 @@ from utils import cycle, flatten_list_dicts, lineplot
 @hydra.main(config_path='conf', config_name='config')
 def main(cfg: DictConfig) -> None:
   # Configuration check
-  assert cfg.algorithm in ['AIRL', 'BC', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.algorithm in ['BC', 'DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
+  if cfg.algorithm in ['GAIL', 'PUGAIL']: assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']
   assert cfg.imitation.subsample >= 1
   assert not (cfg.algorithm == 'PUGAIL' and cfg.imitation.mixup_alpha > 0)
   # TODO: Check that both PUGAIL and Mixup are not selected at the same time
@@ -41,18 +42,16 @@ def main(cfg: DictConfig) -> None:
   memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
-  if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
-    if cfg.algorithm == 'AIRL':
-      discriminator = AIRLDiscriminator(state_size, action_size, cfg.imitation, cfg.reinforcement.discount)  # TODO: Account for model hidden size and depth
-    elif cfg.algorithm == 'DRIL':
-      discriminator = SoftActor(state_size, action_size, cfg.imitation.model.hidden_size, cfg.imitation.model.activation, dropout=0.1)  # TODO: Check model HPs
-    elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
+  if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED']:
+    if cfg.algorithm == 'DRIL':
+      discriminator = SoftActor(state_size, action_size, cfg.imitation.model)  # TODO: Check model HPs
+    elif cfg.algorithm in ['GAIL', 'PUGAIL']:
       discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation, forward_kl=cfg.algorithm == 'FAIRL')  # TODO: Account for model hidden size and depth + Account for model hidden size and depth
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size, action_size, cfg.imitation)
     elif cfg.algorithm == 'RED':
       discriminator = REDDiscriminator(state_size, action_size, cfg.imitation)  # TODO: Check model HPs 
-    if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']:
+    if cfg.algorithm in ['DRIL', 'GAIL', 'PUGAIL', 'RED']:
       discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 
   # Metrics
@@ -97,6 +96,7 @@ def main(cfg: DictConfig) -> None:
   t, state, terminal, train_return = 0, env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
+    if cfg.algorithm != 'BC':  # TODO: Remove
     # Collect set of transitions by running policy π in the environment
     with torch.inference_mode():
       action = actor(state).sample()
@@ -120,21 +120,20 @@ def main(cfg: DictConfig) -> None:
       # Sample a batch of transitions
       transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
 
-      if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
+      if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
         # Train discriminator
-        if cfg.algorithm in ['AIRL', 'FAIRL', 'GAIL', 'PUGAIL']:
+        if cfg.algorithm in ['GAIL', 'PUGAIL']:
           adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, pos_class_prior=cfg.imitation.get('pos_class_prior', 0.5), nonnegative_margin=cfg.imitation.get('nonnegative_margin', 0))
         
         # Predict rewards
         states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
         with torch.inference_mode():
-          if cfg.algorithm == 'AIRL':
-            transitions['rewards'] = discriminator.predict_reward(states, actions, next_states, actor.log_prob(states, actions), terminals)
-          elif cfg.algorithm == 'DRIL':
+          if cfg.algorithm == 'DRIL':
             # TODO: By default DRIL also includes behavioural cloning online?
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-          elif cfg.algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
-            transitions['rewards'] = discriminator.predict_reward(states, actions)
+          elif cfg.algorithm in ['GAIL', 'PUGAIL']:
+            discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
+            transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
           elif cfg.algorithm == 'GMMIL':
             expert_states, expert_actions = expert_transitions['states'], expert_transitions['actions']  # Note that using the entire dataset is prohibitively slow in off-policy case
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions)
@@ -143,7 +142,6 @@ def main(cfg: DictConfig) -> None:
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'SQIL':
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
-      
       # Train agent using SAC
       sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)
   
@@ -166,7 +164,7 @@ def main(cfg: DictConfig) -> None:
     torch.save(trajectories, 'trajectories.pth')
   # Save agent and metrics
   torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), 'agent.pth')
-  if cfg.algorithm in ['AIRL', 'DRIL', 'FAIRL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
+  if cfg.algorithm in ['DRIL', 'GAIL', 'PUGAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
   torch.save(metrics, 'metrics.pth')
 
   env.close()

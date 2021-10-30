@@ -139,7 +139,7 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   expert_state, expert_action, expert_next_state, expert_terminal, expert_weight = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']
   state, action, next_state, terminal, weight = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']
 
-  if algorithm in ['FAIRL', 'GAIL', 'PUGAIL']:
+  if algorithm in ['GAIL', 'PUGAIL']:
     D_expert = discriminator(expert_state, expert_action)
     D_policy = discriminator(state, action)
   elif algorithm == 'AIRL':
