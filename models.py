@@ -30,7 +30,7 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, depth, output_size, activation_function, dropout=0, input_dropout=0, final_gain=1, spectral_norm=False):
+def _create_fcnn(input_size, hidden_size, depth, output_size, activation_function, input_dropout=0, dropout=0, final_gain=1, spectral_norm=False):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
   
   network_dims, layers = (input_size, *[hidden_size] * depth), []
@@ -76,7 +76,7 @@ class SoftActor(nn.Module):
   def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
     self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
-    self.actor = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, output_size=2 * action_size, activation_function=model_cfg.activation, dropout=model_cfg.get('dropout', 0), input_dropout=model_cfg.get('input_dropout', 0))
+    self.actor = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, output_size=2 * action_size, activation_function=model_cfg.activation, input_dropout=model_cfg.get('input_dropout', 0), dropout=model_cfg.get('dropout', 0))
 
   def forward(self, state):
     mean, log_std_dev = self.actor(state).chunk(2, dim=1)
@@ -144,7 +144,7 @@ class GAILDiscriminator(nn.Module):
     self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.reward_function
     if self.reward_shaping:
       self.g = nn.Linear(state_size if self.state_only else state_size + action_size, 1)  # Reward function r
-      if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
+      if imitation_cfg.spectral_norm: self.g = parametrizations.spectral_norm(self.g)
       self.h = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)  # Shaping function Φ
     else:
       self.g = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)
