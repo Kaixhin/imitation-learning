@@ -23,11 +23,9 @@ reinforcement:
       hidden_size: 256
       depth: 2
       activation: 'relu'
-
   discount: 0.99
   target_temperature: -1
   learning_rate: 0.0003
-  weight_decay: 0
   polyak_factor: 0.995
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:

@@ -4,4 +4,10 @@ env_name: hopper-expert-v2
 
 algorithm: RED
 imitation:
+  model:
+    hidden_size: 256
+    depth: 2
+    activation: 'relu'
+    input_dropout: 0
+    dropout: 0
   pretraining_epochs: 25
