@@ -12,7 +12,6 @@ pretraining:
   iterations: 0
   batch_size: 256
   learning_rate: 0.0001
-  weight_decay: 0
 reinforcement:
   model:
     actor:

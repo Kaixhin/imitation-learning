@@ -58,21 +58,27 @@ def main(cfg: DictConfig) -> None:
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
+  
   # Behavioural cloning pretraining
   if cfg.pretraining.iterations > 0:
     expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
-    actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg.pretraining.learning_rate, weight_decay=cfg.pretraining.weight_decay)  # Create separate pretraining optimiser
+    actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.pretraining.learning_rate)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
       expert_transition = next(expert_dataloader)
       behavioural_cloning_update(actor, expert_transition, actor_pretrain_optimiser)
-    if cfg.algorithm == 'BC':
+    if cfg.algorithm == 'BC':  # Return early if algorithm is BC
+        metrics['pre_training_time'] = time.time() - start_time
         test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
         steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
-        metrics['test_steps'].append(0)
-        metrics['test_returns'].append(test_returns)
-        lineplot(steps, len(steps)*[test_returns], 'test_returns', algo=cfg.algorithm, env=cfg.env_name)
-        reward_returns = sum(test_returns)/len(test_returns)
-        return reward_returns 
+        metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
+        lineplot(steps, len(steps) * [test_returns], 'test_returns', algo=cfg.algorithm, env=cfg.env_name)
+
+        torch.save(dict(actor=actor.state_dict()), 'agent.pth')
+        torch.save(metrics, 'metrics.pth')
+        env.close()
+        return sum(test_returns) / len(test_returns)
+
+  # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
     for _ in tqdm(range(cfg.imitation.pretraining.iterations), leave=False):
       if cfg.algorithm == 'DRIL':
