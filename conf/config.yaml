@@ -19,7 +19,6 @@ reinforcement:
       hidden_size: 256
       depth: 2
       activation: 'relu'
-      dropout: 0
     critic:
       hidden_size: 256
       depth: 2

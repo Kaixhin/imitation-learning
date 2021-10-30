@@ -24,7 +24,6 @@ def main(cfg: DictConfig) -> None:
   if cfg.algorithm in ['GAIL', 'PUGAIL']: assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']
   assert cfg.imitation.subsample >= 1
   assert not (cfg.algorithm == 'PUGAIL' and cfg.imitation.mixup_alpha > 0)
-  # TODO: Check that both PUGAIL and Mixup are not selected at the same time
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
