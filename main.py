@@ -122,7 +122,7 @@ def main(cfg: DictConfig) -> None:
       if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SQIL']:
         # Train discriminator
         if cfg.algorithm in ['GAIL', 'PUGAIL']:
-          adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, pos_class_prior=cfg.imitation.get('pos_class_prior', 0.5), nonnegative_margin=cfg.imitation.get('nonnegative_margin', 0))
+          adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, entropy_bonus=cfg.imitation.entropy_bonus, pos_class_prior=cfg.imitation.get('pos_class_prior', 0.5), nonnegative_margin=cfg.imitation.get('nonnegative_margin', 0))
         
         # Predict rewards
         states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
@@ -141,7 +141,6 @@ def main(cfg: DictConfig) -> None:
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'SQIL':
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
-      # Train agent using SAC
       sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)
   
     # Evaluate agent and plot metrics
