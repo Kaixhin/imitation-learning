@@ -12,23 +12,28 @@ pretraining:
   iterations: 0
   batch_size: 256
   learning_rate: 0.0001
-  weight_decay: 0
 reinforcement:
   model:
-    hidden_size: 256
-    depth: 2
-    activation: 'relu'
+    actor:
+      hidden_size: 256
+      depth: 2
+      activation: 'relu'
+    critic:
+      hidden_size: 256
+      depth: 2
+      activation: 'relu'
   discount: 0.99
   target_temperature: -1
   learning_rate: 0.0003
-  weight_decay: 0
   polyak_factor: 0.995
   max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
   model:
-    hidden_size: 128
+    hidden_size: 64 
     depth: 1
     activation: 'relu'
+    input_dropout: 0.5
+    dropout: 0.75 
     reward_shaping: false
     reward_function: 'AIRL'
   trajectories: -1  # -1 to disable; otherwise select number of trajectories

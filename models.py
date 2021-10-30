@@ -7,6 +7,7 @@ from torch.distributions import Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 from torch.nn.utils import parametrizations
+from omegaconf import DictConfig
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -29,11 +30,12 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 # Creates a sequential fully-connected network
-def _create_fcnn(input_size, hidden_size, output_size, activation_function, dropout=0, final_gain=1, spectral_norm=False):
+def _create_fcnn(input_size, hidden_size, depth, output_size, activation_function, input_dropout=0, dropout=0, final_gain=1, spectral_norm=False):
   assert activation_function in ACTIVATION_FUNCTIONS.keys()
   
-  network_dims, layers = (input_size, hidden_size, hidden_size), []
-
+  network_dims, layers = (input_size, *[hidden_size] * depth), []
+  if input_dropout > 0:
+    layers.append(nn.Dropout(p=input_dropout))
   for l in range(len(network_dims) - 1):
     layer = nn.Linear(network_dims[l], network_dims[l + 1])
     nn.init.orthogonal_(layer.weight, gain=nn.init.calculate_gain(activation_function))
@@ -71,10 +73,10 @@ def sqil_sample(transitions, expert_transitions, batch_size):
 
 
 class SoftActor(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, dropout=0):
+  def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
     self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
-    self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout)
+    self.actor = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, output_size=2 * action_size, activation_function=model_cfg.activation, input_dropout=model_cfg.get('input_dropout', 0), dropout=model_cfg.get('dropout', 0))
 
   def forward(self, state):
     mean, log_std_dev = self.actor(state).chunk(2, dim=1)
@@ -110,9 +112,9 @@ class SoftActor(nn.Module):
 
 
 class Critic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function):
+  def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
-    self.critic = _create_fcnn(state_size + action_size, hidden_size, output_size=1, activation_function=activation_function)
+    self.critic = _create_fcnn(state_size + action_size, model_cfg.hidden_size, model_cfg.depth, output_size=1, activation_function=model_cfg.activation)
 
   def forward(self, state, action):
     value = self.critic(_join_state_action(state, action)).squeeze(dim=1)
@@ -120,10 +122,10 @@ class Critic(nn.Module):
 
 
 class TwinCritic(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function):
+  def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
-    self.critic_1 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
-    self.critic_2 = Critic(state_size, action_size, hidden_size, activation_function=activation_function)
+    self.critic_1 = Critic(state_size, action_size, model_cfg)
+    self.critic_2 = Critic(state_size, action_size, model_cfg)
 
   def forward(self, state, action):
     value_1, value_2 = self.critic_1(state, action), self.critic_2(state, action)
@@ -136,15 +138,16 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, discount, state_only=False, reward_shaping=False, reward_function='GAIL', spectral_norm=False):
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig, discount):
     super().__init__()
-    self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, state_only, reward_shaping, reward_function
-    if reward_shaping:
-      self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
-      if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
-      self.h = _create_fcnn(state_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
+    model_cfg = imitation_cfg.model
+    self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.reward_function
+    if self.reward_shaping:
+      self.g = nn.Linear(state_size if self.state_only else state_size + action_size, 1)  # Reward function r
+      if imitation_cfg.spectral_norm: self.g = parametrizations.spectral_norm(self.g)
+      self.h = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)  # Shaping function Φ
     else:
-      self.g = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)
+      self.g = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)
 
   def _reward(self, state, action):
     if self.state_only:
@@ -169,10 +172,10 @@ class GAILDiscriminator(nn.Module):
 
 
 class GMMILDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, self_similarity=True, state_only=True):
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig):
     super().__init__()
-    self.state_only = state_only
-    self.gamma_1, self.gamma_2, self.self_similarity = None, None, self_similarity
+    self.state_only = imitation_cfg.state_only
+    self.gamma_1, self.gamma_2, self.self_similarity = None, None, imitation_cfg.self_similarity
 
   def predict_reward(self, state, action, expert_state, expert_action):
     state_action = state if self.state_only else _join_state_action(state, action)
@@ -189,21 +192,21 @@ class GMMILDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size, hidden_size, activation_function):
+  def __init__(self, input_size, model_cfg: DictConfig):
     super().__init__()
-    self.embedding = _create_fcnn(input_size, hidden_size, input_size, activation_function)
+    self.embedding = _create_fcnn(input_size, model_cfg.hidden_size, model_cfg.depth, input_size, model_cfg.activation)
 
   def forward(self, input):
     return self.embedding(input)
 
 
 class REDDiscriminator(nn.Module):
-  def __init__(self, state_size, action_size, hidden_size, activation_function, state_only=False):
+  def __init__(self, state_size, action_size, imitation_cfg: DictConfig):
     super().__init__()
-    self.state_only = state_only
+    self.state_only = imitation_cfg.state_only
     self.sigma_1 = None
-    self.predictor = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
-    self.target = EmbeddingNetwork(state_size if state_only else state_size + action_size, hidden_size, activation_function)
+    self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
+    self.target = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
     for param in self.target.parameters():
       param.requires_grad = False
 

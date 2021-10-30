@@ -3,5 +3,5 @@ env_type: walker2d
 env_name: walker2d-expert-v2
 
 algorithm: BC
-imitation:
-  pretraining_epochs: 5
+pretraining:
+  iterations: 100000
