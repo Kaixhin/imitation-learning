@@ -44,8 +44,8 @@ imitation:
   subsample: 20
   state_only: false
   absorbing: false
-  learning_rate: 0.0003
-  weight_decay: 0
+  learning_rate: 0.00003
+  weight_decay: 10
 training:
   start: 1000
   interval: 1

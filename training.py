@@ -153,7 +153,7 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   discriminator_optimiser.zero_grad(set_to_none=True)
   if mixup_alpha > 0: #TODO: Support AIRL? (mix_next_state, mix_)
     batch_size = state.size(0)
-    eps = Beta(torch.full((batch_size, ), 1.), torch.full((batch_size, ), 1.)).sample()  # Sample ε ∼ Beta(α, α)  # TODO: Make alpha a hyperparam
+    eps = Beta(torch.full((batch_size, ), mixup_alpha), torch.full((batch_size, ), mixup_alpha)).sample()  # Sample ε ∼ Beta(α, α)
     eps_2d = eps.unsqueeze(dim=1)  # Expand weights for broadcasting
     mix_state, mix_action, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data  # TODO: Adapt for AIRL
     if algorithm == "AIRL":
@@ -189,5 +189,7 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
     grads = autograd.grad(D_mix, (mix_state, mix_action), torch.ones_like(D_mix), create_graph=True)  # Calculate gradients wrt inputs (does not accumulate parameter gradients)
     grad_penalty_loss = grad_penalty * mix_weight * sum([grad.norm(2, dim=1) ** 2 for grad in grads])  # Penalise norm of input gradients (assumes 1D inputs)
     grad_penalty_loss.mean(dim=0).backward()
+
+    # TODO: Entropy bonus?
 
   discriminator_optimiser.step()
