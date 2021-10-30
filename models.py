@@ -73,12 +73,13 @@ def sqil_sample(transitions, expert_transitions, batch_size):
 class SoftActor(nn.Module):
   def __init__(self, state_size, action_size, hidden_size, activation_function, dropout=0):
     super().__init__()
+    self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
     self.actor = _create_fcnn(state_size, hidden_size, output_size=2 * action_size, activation_function=activation_function, dropout=dropout)
 
   def forward(self, state):
-    mean, pre_std_dev = self.actor(state).chunk(2, dim=1)
-    std_dev = F.softplus(pre_std_dev) + 0.001  # Constrain standard deviation to be positive
-    policy = TransformedDistribution(Independent(Normal(mean, std_dev), 1), TanhTransform(cache_size=1))  # Restrict action range to (-1, 1)
+    mean, log_std_dev = self.actor(state).chunk(2, dim=1)
+    log_std_dev = torch.clamp(log_std_dev, min=self.log_std_dev_min, max=self.log_std_dev_max)
+    policy = TransformedDistribution(Independent(Normal(mean, log_std_dev.exp()), 1), TanhTransform(cache_size=1))  # Restrict action range to (-1, 1)
     return policy
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
