@@ -21,7 +21,7 @@ def main(cfg: DictConfig) -> None:
   # Configuration check
   assert cfg.algorithm in ['BC', 'DRIL', 'GAIL', 'GMMIL', 'PUGAIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
-  assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']  # TODO: Only assert if adv imitation
+  if cfg.algorithm in ['GAIL', 'PUGAIL']: assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']
   assert cfg.imitation.subsample >= 1
   # TODO: Check that both PUGAIL and Mixup are not selected at the same time
   # General setup
