@@ -18,5 +18,6 @@ imitation:
   grad_penalty: 1
   spectral_norm: true
   mixup_alpha: 0
+  entropy_bonus: 0.03
 training:
   start: 10000
