@@ -76,7 +76,7 @@ class SoftActor(nn.Module):
   def __init__(self, state_size, action_size, model_cfg: DictConfig):
     super().__init__()
     self.log_std_dev_min, self.log_std_dev_max = -20, 2  # Constrain range of standard deviations to prevent very deterministic/stochastic policies
-    self.actor = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, output_size=2 * action_size, activation_function=model_cfg.activation, dropout=model_cfg.dropout, input_dropout=model_cfg.get('input_dropout', 0))
+    self.actor = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, output_size=2 * action_size, activation_function=model_cfg.activation, dropout=model_cfg.get('dropout', 0), input_dropout=model_cfg.get('input_dropout', 0))
 
   def forward(self, state):
     mean, log_std_dev = self.actor(state).chunk(2, dim=1)
