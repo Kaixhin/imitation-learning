@@ -138,44 +138,16 @@ class TwinCritic(nn.Module):
 
 
 class GAILDiscriminator(nn.Module):
-<<<<<<< HEAD
-  def __init__(self, state_size, action_size, imitation_cfg: DictConfig,  reward_shaping=False, forward_kl=False):  # TODO: If reward shaping, then do AIRL algo
-    super().__init__()
-    self.state_only, self.forward_kl = imitation_cfg.state_only, forward_kl
-    model_cfg = imitation_cfg.model
-    self.discriminator = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1,  model_cfg.activation, dropout=model_cfg.dropout, input_dropout=model_cfg.get('input_dropout', 0), spectral_norm=imitation_cfg.spectral_norm)
-
-  def forward(self, state, action):
-    D = self.discriminator(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
-    return D
-  
-  def predict_reward(self, state, action):
-    D = torch.sigmoid(self.forward(state, action))
-    h = torch.log(D + 1e-6) - torch.log1p(-D + 1e-6) # Add epsilon to improve numerical stability given limited floating point precision
-    return torch.exp(h) * -h if self.forward_kl else h
-
-
-# TODO: Make generic adversarial discriminator model class (putting reward shaping + subtract log-pi together as an option which effectively = AIRL)
-class AIRLDiscriminator(nn.Module):
   def __init__(self, state_size, action_size, imitation_cfg: DictConfig, discount):
     super().__init__()
-    self.state_only = imitation_cfg.state_only
-    self.discount = discount
-    self.g = nn.Linear(state_size if imitation_cfg.state_only else state_size + action_size, 1)  # Reward function r
-    if imitation_cfg.spectral_norm: self.g = parametrizations.spectral_norm(self.g)
     model_cfg = imitation_cfg.model
-    self.h = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)  # Shaping function Φ
-=======
-  def __init__(self, state_size, action_size, hidden_size, activation_function, discount, state_only=False, reward_shaping=False, reward_function='GAIL', spectral_norm=False):
-    super().__init__()
-    self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, state_only, reward_shaping, reward_function
-    if reward_shaping:
-      self.g = nn.Linear(state_size if state_only else state_size + action_size, 1)  # Reward function r
+    self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.reward_function
+    if self.reward_shaping:
+      self.g = nn.Linear(state_size if self.state_only else state_size + action_size, 1)  # Reward function r
       if spectral_norm: self.g = parametrizations.spectral_norm(self.g)
-      self.h = _create_fcnn(state_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)  # Shaping function Φ
+      self.h = _create_fcnn(state_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)  # Shaping function Φ
     else:
-      self.g = _create_fcnn(state_size if state_only else state_size + action_size, hidden_size, 1, activation_function, spectral_norm=spectral_norm)
->>>>>>> master
+      self.g = _create_fcnn(state_size if self.state_only else state_size + action_size, model_cfg.hidden_size, model_cfg.depth, 1, activation_function=model_cfg.activation, spectral_norm=imitation_cfg.spectral_norm)
 
   def _reward(self, state, action):
     if self.state_only:

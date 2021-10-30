@@ -46,7 +46,7 @@ def main(cfg: DictConfig) -> None:
     if cfg.algorithm == 'DRIL':
       discriminator = SoftActor(state_size, action_size, cfg.imitation.model)  # TODO: Check model HPs
     elif cfg.algorithm in ['GAIL', 'PUGAIL']:
-      discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation, forward_kl=cfg.algorithm == 'FAIRL')  # TODO: Account for model hidden size and depth + Account for model hidden size and depth
+      discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation, cfg.reinforcement.discount)  # TODO: Account for model hidden size and depth + Account for model hidden size and depth
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size, action_size, cfg.imitation)
     elif cfg.algorithm == 'RED':
@@ -96,7 +96,6 @@ def main(cfg: DictConfig) -> None:
   t, state, terminal, train_return = 0, env.reset(), False, 0
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
-    if cfg.algorithm != 'BC':  # TODO: Remove
     # Collect set of transitions by running policy π in the environment
     with torch.inference_mode():
       action = actor(state).sample()
