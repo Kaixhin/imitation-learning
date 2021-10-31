@@ -90,7 +90,7 @@ def main(cfg: DictConfig) -> None:
       if cfg.algorithm == 'DRIL':
         behavioural_cloning_update(discriminator, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)
       elif cfg.algorithm == 'RED':
-        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)  # Train predictor network to match random target network TODO: Fix
+        target_estimation_update(discriminator, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
     
     with torch.inference_mode():
       if cfg.algorithm == 'DRIL':

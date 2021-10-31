@@ -116,17 +116,14 @@ def behavioural_cloning_update(actor, expert_transition, actor_optimiser):
 
 
 # Performs a target estimation update
-def target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, batch_size):
-  expert_dataloader = DataLoader(expert_trajectories, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=4)
+def target_estimation_update(discriminator, expert_transition, discriminator_optimiser):
+  expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
 
-  for expert_transition in expert_dataloader:
-    expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
-
-    discriminator_optimiser.zero_grad(set_to_none=True)
-    prediction, target = discriminator(expert_state, expert_action)
-    regression_loss = (weight * (prediction - target).pow(2).mean(dim=1)).mean()
-    regression_loss.backward()
-    discriminator_optimiser.step()
+  discriminator_optimiser.zero_grad(set_to_none=True)
+  prediction, target = discriminator(expert_state, expert_action)
+  regression_loss = (weight * (prediction - target).pow(2).mean(dim=1)).mean()
+  regression_loss.backward()
+  discriminator_optimiser.step()
 
 
 # Performs an adversarial imitation learning update

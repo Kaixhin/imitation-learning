@@ -10,4 +10,4 @@ imitation:
     activation: 'relu'
     input_dropout: 0
     dropout: 0
-  pretraining_epochs: 25
+  pretraining_iterations: 100000
