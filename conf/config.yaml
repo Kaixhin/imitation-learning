@@ -34,8 +34,6 @@ imitation:
     activation: 'relu'
     input_dropout: 0.5
     dropout: 0.75 
-    reward_shaping: false
-    reward_function: 'AIRL'
   trajectories: -1  # -1 to disable; otherwise select number of trajectories
   subsample: 20
   state_only: false
