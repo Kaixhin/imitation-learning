@@ -69,6 +69,7 @@ def main(cfg: DictConfig) -> None:
     for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
       expert_transition = next(expert_dataloader)
       behavioural_cloning_update(actor, expert_transition, actor_pretrain_optimiser)
+
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
         metrics['pre_training_time'] = time.time() - start_time
         test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
@@ -83,18 +84,19 @@ def main(cfg: DictConfig) -> None:
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
-    for _ in tqdm(range(cfg.imitation.pretraining.iterations), leave=False):
+    expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
+    for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):
+      expert_transition = next(expert_dataloader)
       if cfg.algorithm == 'DRIL':
-        raise NotImplementedError  # TODO: Adapt HPs to run for certain number of iterations
-        # Perform behavioural cloning updates offline on policy ensemble (dropout version)
-        behavioural_cloning_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size, max_grad_norm=cfg.reinforcement.max_grad_norm)
-        with torch.no_grad():  # TODO: Check why inference mode fails?
-          discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
+        behavioural_cloning_update(discriminator, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)
       elif cfg.algorithm == 'RED':
-        # Train predictor network to match random target network
-        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)
-        with torch.inference_mode():
-          discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
+        target_estimation_update(discriminator, expert_trajectories, discriminator_optimiser, cfg.training.batch_size)  # Train predictor network to match random target network TODO: Fix
+    
+    with torch.inference_mode():
+      if cfg.algorithm == 'DRIL':
+        discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
+      elif cfg.algorithm == 'RED':
+        discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
 
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
@@ -149,7 +151,7 @@ def main(cfg: DictConfig) -> None:
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'SQIL':
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
-      sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor, max_grad_norm=cfg.reinforcement.max_grad_norm)
+      sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
   
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:

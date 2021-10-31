@@ -3,7 +3,6 @@ import torch
 from torch import autograd
 from torch.distributions import Beta, Bernoulli
 from torch.nn import functional as F
-from torch.nn.utils import clip_grad_norm_
 from torch.utils.data import DataLoader, Dataset
 
 from models import update_target_network
@@ -64,7 +63,7 @@ class ReplayMemory(Dataset):
 
 
 # Performs one SAC update
-def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor, max_grad_norm=0):
+def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor):
   states, actions, rewards, next_states, terminals, weights, absorbing = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['weights'], transitions['absorbing']
   alpha = log_alpha.exp()
   
@@ -81,7 +80,6 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update critic
   critic_optimiser.zero_grad(set_to_none=True)
   value_loss.backward()
-  if max_grad_norm > 0: clip_grad_norm_(critic.parameters(), max_grad_norm)
   critic_optimiser.step()
 
   # Compute policy loss
@@ -93,7 +91,6 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update actor
   actor_optimiser.zero_grad(set_to_none=True)
   policy_loss.backward()
-  if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
   actor_optimiser.step()
 
   # Compute temperature loss
@@ -101,7 +98,6 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update temperature
   temperature_optimiser.zero_grad(set_to_none=True)
   temperature_loss.backward()
-  if max_grad_norm > 0: clip_grad_norm_(log_alpha, max_grad_norm)
   temperature_optimiser.step()
 
   # Update target critic
@@ -109,14 +105,13 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
 
 
 # Performs a behavioural cloning update
-def behavioural_cloning_update(actor, expert_transition, actor_optimiser, max_grad_norm=0):
+def behavioural_cloning_update(actor, expert_transition, actor_optimiser):
   expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
   expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
 
   actor_optimiser.zero_grad(set_to_none=True)
   behavioural_cloning_loss = (weight * -actor.log_prob(expert_state, expert_action)).mean()  # Maximum likelihood objective
   behavioural_cloning_loss.backward()
-  if max_grad_norm > 0: clip_grad_norm_(actor.parameters(), max_grad_norm)
   actor_optimiser.step()
 
 

@@ -26,7 +26,6 @@ reinforcement:
   target_temperature: -1
   learning_rate: 0.0003
   polyak_factor: 0.995
-  max_grad_norm: 0  # 0 to disable; only applies to RL/BC updates
 imitation:
   model:
     hidden_size: 64 
