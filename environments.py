@@ -6,7 +6,7 @@ from gym.spaces import Box
 import numpy as np
 import torch
 
-from training import ReplayMemory
+from memory import ReplayMemory
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 

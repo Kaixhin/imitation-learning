@@ -11,8 +11,9 @@ from tqdm import tqdm
 
 from environments import D4RLEnv
 from evaluation import evaluate_agent
+from memory import ReplayMemory
 from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, sqil_sample
-from training import ReplayMemory, adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
+from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
 
 
