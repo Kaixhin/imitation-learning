@@ -1,6 +1,6 @@
 # @package _global_
 env_type: hopper
-env_name: walker2d-expert-v2
+env_name: hopper-expert-v2
 
 algorithm: GAIL
 replay:
