@@ -1,5 +1,5 @@
 # @package hydra.sweeper.ax_config
-max_trials: 20
+max_trials: 30
 experiment:
   minimize: false
 early_stop:
