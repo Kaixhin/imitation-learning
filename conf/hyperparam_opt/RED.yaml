@@ -1,32 +1,53 @@
 # @package hydra.sweeper.ax_config
-max_trials: 20
+max_trials: 30
 experiment:
   minimize: false
 early_stop:
   max_epochs_without_improvement: 5
 is_noisy: true
 params:
-  training.batch_size:
+  reinforcement.discount:
     type: choice
-    values: [1024, 2048, 4096]
-    value_type: 'int'
-  reinforcement.learning_rate:
-    type: choice
-    values: [0.00003, 0.0003]
+    values: [0.97, 0.99]
     value_type: 'float'
-  reinforcement.ppo_epochs:
+    sort_values: true
+  reinforcement.polyak_factor:
     type: choice
-    values: [5, 10, 20]
-    value_type: 'int'
-  reinforcement.entropy_loss_coeff:
-    type: choice
-    values: [0, 0.001, 0.01]
+    values: [0.99, 0.995]
     value_type: 'float'
-  imitation.epochs:
+    sort_values: true
+  imitation.model.hidden_size:
     type: choice
-    values: [5, 15, 25]
+    values: [64, 256, 512]
     value_type: 'int'
+    sort_values: true
+  imitation.model.depth:
+    type: choice
+    values: [1, 2]
+    value_type: 'int'
+    sort_values: true
+  imitation.model.input_dropout:
+    type: choice
+    values: [0.0, 0.1, 0.5]
+    value_type: 'float'
+    sort_values: true
+  imitation.model.dropout:
+    type: choice
+    values: [0.1, 0.5, 0.75]
+    value_type: 'float'
+    sort_values: true
+  imitation.pretraining_iterations:
+    type: choice
+    values: [10000, 100000]
+    value_type: 'int'
+    sort_values: true
   imitation.learning_rate:
     type: choice
     values: [0.00003, 0.0003]
     value_type: 'float'
+    sort_values: true
+  imitation.weight_decay:
+    type: choice
+    values: [0, 1, 10]
+    value_type: 'float'
+    sort_values: true
