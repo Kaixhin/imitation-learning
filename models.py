@@ -25,7 +25,7 @@ def _squared_distance(x, y):
 
 
 # Gaussian/radial basis function/exponentiated quadratic kernel
-def _gaussian_kernel(x, y, gamma=1):
+def _gaussian_kernel(x, y, gamma=1, weight=None):
   return torch.exp(-gamma * _squared_distance(x, y))
 
 
@@ -53,6 +53,20 @@ def _create_fcnn(input_size, hidden_size, depth, output_size, activation_functio
 
   return nn.Sequential(*layers)
 
+def _weighted_median(x: torch.Tensor, weight: torch.Tensor):
+  n_1, d = x.size(0), x.size(1)
+  weight_exp = weight.expand(n_1, d).flatten()
+  x_sorted, indices = torch.sort(x.flatten())
+
+  # normalize weight
+  norm_sorted_weight = (weight_exp / weight_exp.sum())[indices]
+  sum_weights=torch.cumsum(norm_sorted_weight, dim=0)
+  median_index = torch.min((sum_weights >= 0.5).nonzero())
+  return x_sorted[median_index]
+  
+
+
+  raise NotImplementedError
 
 def create_target_network(network):
   target_network = copy.deepcopy(network)
@@ -177,18 +191,28 @@ class GMMILDiscriminator(nn.Module):
     self.state_only = imitation_cfg.state_only
     self.gamma_1, self.gamma_2, self.self_similarity = None, None, imitation_cfg.self_similarity
 
-  def predict_reward(self, state, action, expert_state, expert_action):
+  def predict_reward(self, state, action, expert_state, expert_action, weight=None, expert_weight=None):
     state_action = state if self.state_only else _join_state_action(state, action)
     expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
     
     # Use median heuristics to set data-dependent bandwidths
     if self.gamma_1 is None:
-      self.gamma_1 = 1 / (_squared_distance(state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
-      self.gamma_2 = 1 / (_squared_distance(expert_state_action.transpose(0, 1), expert_state_action.transpose(0, 1)).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
-
+      if expert_weight is not None:
+        self.gamma_1 =  1/ (_weighted_median(_squared_distance(state_action, expert_state_action), weight).item() + 1e-8)
+        self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), expert_weight).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+      else:
+        self.gamma_1 = 1 / (_squared_distance(state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+        self.gamma_2 = 1 / (_squared_distance(expert_state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
     # Calculate negative of witness function (based on kernel mean embeddings)
-    similarity = (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0))
-    return similarity - (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0)) if self.self_similarity else similarity
+    import pdb; pdb.set_trace()
+    if expert_weight is not None:
+      weight_norm, exp_weight_norm = weight / weight.sum(), expert_weight / expert_weight.sum()
+      similarity =exp_weight_norm *(( _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1)).sum(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).sum(dim=0))
+      self_similarity = weight_norm * (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).sum(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).sum(dim=0))
+    else:
+      similarity = (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0))
+      self_similarity = (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0))
+    return similarity - self_similarity if self.self_similarity else similarity
 
 
 class EmbeddingNetwork(nn.Module):
