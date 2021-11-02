@@ -55,9 +55,8 @@ def _create_fcnn(input_size, hidden_size, depth, output_size, activation_functio
 
 def _weighted_median(x: torch.Tensor, weight: torch.Tensor):
   n_1, d = x.size(0), x.size(1)
-  weight_exp = weight.expand(n_1, d).flatten()
+  weight_exp = weight.flatten()
   x_sorted, indices = torch.sort(x.flatten())
-
   # normalize weight
   norm_sorted_weight = (weight_exp / weight_exp.sum())[indices]
   sum_weights=torch.cumsum(norm_sorted_weight, dim=0)
@@ -188,26 +187,23 @@ class GMMILDiscriminator(nn.Module):
     self.state_only = imitation_cfg.state_only
     self.gamma_1, self.gamma_2, self.self_similarity = None, None, imitation_cfg.self_similarity
 
+  def _similarity_function(self, w1, x, y, w2):
+    return torch.einsum('i, ij, j -> i ', [w1, _gaussian_kernel(x, y, gamma=self.gamma_1), w2]) \
+         + torch.einsum('i, ij, j -> i ', [w1, _gaussian_kernel(x, y, gamma=self.gamma_2), w2])
+
   def predict_reward(self, state, action, expert_state, expert_action, weight=None, expert_weight=None):
     state_action = state if self.state_only else _join_state_action(state, action)
     expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
-    
+    if expert_weight is None: #use uniform weight if not given
+      weight, expert_weight = torch.ones(state_action.size(0)), torch.ones(expert_state_action.size(0)) 
     # Use median heuristics to set data-dependent bandwidths
     if self.gamma_1 is None:
-      if expert_weight is not None:
-        self.gamma_1 =  1/ (_weighted_median(_squared_distance(state_action, expert_state_action), weight).item() + 1e-8)
-        self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), expert_weight).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
-      else:
-        self.gamma_1 = 1 / (_squared_distance(state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
-        self.gamma_2 = 1 / (_squared_distance(expert_state_action, expert_state_action).median().item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+        self.gamma_1 =  1/ (_weighted_median(_squared_distance(state_action, expert_state_action), torch.einsum('i, j -> ij' ,[weight, expert_weight])).item() + 1e-8)
+        self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), torch.einsum('i, j -> ij' ,[expert_weight, expert_weight])).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
     # Calculate negative of witness function (based on kernel mean embeddings)
-    if expert_weight is not None:
-      weight_norm, exp_weight_norm = weight / weight.sum(), expert_weight / expert_weight.sum()
-      similarity =exp_weight_norm *(( _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1)).sum(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).sum(dim=0))
-      self_similarity = weight_norm * (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).sum(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).sum(dim=0))
-    else:
-      similarity = (_gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(expert_state_action, state_action, gamma=self.gamma_2).mean(dim=0))
-      self_similarity = (_gaussian_kernel(state_action, state_action, gamma=self.gamma_1).mean(dim=0) + _gaussian_kernel(state_action, state_action, gamma=self.gamma_2).mean(dim=0))
+    weight_norm, exp_weight_norm  = weight / weight.sum(), expert_weight / expert_weight.sum()
+    similarity = self.similarity_function(exp_weight_norm, expert_state_action, state_action, weight_norm) 
+    self_similarity = self.similarity_function(weight_norm, state_action, state_action, weight_norm) 
     return similarity - self_similarity if self.self_similarity else similarity
 
 
