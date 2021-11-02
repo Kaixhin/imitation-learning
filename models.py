@@ -25,7 +25,7 @@ def _squared_distance(x, y):
 
 
 # Gaussian/radial basis function/exponentiated quadratic kernel
-def _gaussian_kernel(x, y, gamma=1, weight=None):
+def _gaussian_kernel(x, y, gamma=1):
   return torch.exp(-gamma * _squared_distance(x, y))
 
 
@@ -63,10 +63,7 @@ def _weighted_median(x: torch.Tensor, weight: torch.Tensor):
   sum_weights=torch.cumsum(norm_sorted_weight, dim=0)
   median_index = torch.min((sum_weights >= 0.5).nonzero())
   return x_sorted[median_index]
-  
 
-
-  raise NotImplementedError
 
 def create_target_network(network):
   target_network = copy.deepcopy(network)
