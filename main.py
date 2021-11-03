@@ -145,12 +145,8 @@ def main(cfg: DictConfig) -> None:
             discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
             transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
           elif cfg.algorithm == 'GMMIL':
-            expert_states, expert_actions = expert_transitions['states'], expert_transitions['actions']  # Note that using the entire dataset is prohibitively slow in off-policy case
-            weights, expert_weights = None, None 
-            if cfg.imitation.absorbing:
-              weights, expert_weights = transitions['weights'], expert_transitions['weights'] 
+            weights, expert_states, expert_actions, expert_weights = transitions['weights'], expert_transitions['states'], expert_transitions['actions'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
-            # TODO: Importance weight expert absorbing states?
           elif cfg.algorithm == 'RED':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'SQIL':
