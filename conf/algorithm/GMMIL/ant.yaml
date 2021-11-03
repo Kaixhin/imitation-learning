@@ -4,4 +4,4 @@ env_name: ant-expert-v2
 
 algorithm: GMMIL
 imitation:
-  self_similarity: false
+  self_similarity: true

@@ -4,4 +4,4 @@ env_name: walker2d-expert-v2
 
 algorithm: GMMIL
 imitation:
-  self_similarity: false
+  self_similarity: true
