@@ -29,6 +29,10 @@ def _gaussian_kernel(x, y, gamma=1):
   return torch.exp(-gamma * _squared_distance(x, y))
 
 
+def _weighted_similarity(X, Y, w_x, w_y, gamma=1):
+  return torch.einsum('i,ij,j->i', [w_x, _gaussian_kernel(X, Y, gamma=gamma), w_y])
+
+
 def _weighted_median(x: torch.Tensor, weights: torch.Tensor):
   x_sorted, indices = torch.sort(x.flatten())
   weights_norm_sorted = (weights.flatten() / weights.sum())[indices]  # Normalise and rearrange weights according to sorting
@@ -184,10 +188,6 @@ class GMMILDiscriminator(nn.Module):
     self.state_only = imitation_cfg.state_only
     self.gamma_1, self.gamma_2, self.self_similarity = None, None, imitation_cfg.self_similarity
 
-  def _similarity_function(self, x, y, w_x, w_y):
-    return torch.einsum('i, ij, j -> i', [w_x, _gaussian_kernel(x, y, gamma=self.gamma_1), w_y]) \
-         + torch.einsum('i, ij, j -> i', [w_x, _gaussian_kernel(x, y, gamma=self.gamma_2), w_y])
-
   def predict_reward(self, state, action, expert_state, expert_action, weight, expert_weight):
     state_action = state if self.state_only else _join_state_action(state, action)
     expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
@@ -197,8 +197,9 @@ class GMMILDiscriminator(nn.Module):
         self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), torch.outer(expert_weight, expert_weight)).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
     # Calculate negative of witness function (based on kernel mean embeddings)
     weight_norm, exp_weight_norm  = weight / weight.sum(), expert_weight / expert_weight.sum()
-    similarity = self._similarity_function(state_action, expert_state_action, weight_norm, exp_weight_norm) 
-    return similarity - self._similarity_function(state_action, state_action, weight_norm, weight_norm) if self.self_similarity else similarity
+    similarity = _weighted_similarity(state_action, expert_state_action, weight_norm, exp_weight_norm, gamma=self.gamma_1) + _weighted_similarity(state_action, expert_state_action, weight_norm, exp_weight_norm, gamma=self.gamma_2)
+    if self.self_similarity: self_similarity = _weighted_similarity(state_action, state_action, weight_norm, weight_norm, gamma=self.gamma_1) + _weighted_similarity(state_action, state_action, weight_norm, weight_norm, gamma=self.gamma_2)
+    return similarity - self_similarity if self.self_similarity else similarity
 
 
 class EmbeddingNetwork(nn.Module):
