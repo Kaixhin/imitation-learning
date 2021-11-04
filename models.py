@@ -199,7 +199,7 @@ class GMMILDiscriminator(nn.Module):
         self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), torch.outer(expert_weight, expert_weight)).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
     # Calculate negative of witness function (based on kernel mean embeddings)
     weight_norm, exp_weight_norm  = weight / weight.sum(), expert_weight / expert_weight.sum()
-    similarity = self._similarity_function(expert_state_action, state_action, exp_weight_norm, weight_norm) 
+    similarity = self._similarity_function(state_action, expert_state_action, weight_norm, exp_weight_norm) 
     return similarity - self._similarity_function(state_action, state_action, weight_norm, weight_norm) if self.self_similarity else similarity
 
 

@@ -128,7 +128,7 @@ def main(cfg: DictConfig) -> None:
     # Train agent and imitation learning component
     if step >= cfg.training.start and step % cfg.training.interval == 0:
       # Sample a batch of transitions
-      transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
+      transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.imitation.expert_batch_size if cfg.algorithm == 'GMMIL' else cfg.training.batch_size)
 
       if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
         # Train discriminator

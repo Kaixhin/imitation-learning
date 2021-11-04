@@ -5,3 +5,4 @@ env_name: halfcheetah-expert-v2
 algorithm: GMMIL
 imitation:
   self_similarity: true
+  expert_batch_size: 1024
