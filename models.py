@@ -30,11 +30,9 @@ def _gaussian_kernel(x, y, gamma=1):
 
 
 def _weighted_median(x: torch.Tensor, weights: torch.Tensor):
-  weights_exp = weights.flatten()
   x_sorted, indices = torch.sort(x.flatten())
-  norm_sorted_weights = (weights_exp / weights_exp.sum())[indices]  # Normalise and sort weights
-  sum_weights = torch.cumsum(norm_sorted_weights, dim=0)
-  median_index = torch.min((sum_weights >= 0.5).nonzero())
+  weights_norm_sorted = (weights.flatten() / weights.sum())[indices]  # Normalise and rearrange weights according to sorting
+  median_index = torch.min((torch.cumsum(weights_norm_sorted, dim=0) >= 0.5).nonzero())
   return x_sorted[median_index]
 
 
