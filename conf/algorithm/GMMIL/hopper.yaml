@@ -5,4 +5,4 @@ env_name: hopper-expert-v2
 algorithm: GMMIL
 imitation:
   self_similarity: true
-  expert_batch_size: 1024
+  expert_batch_size: 256
