@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from datetime import datetime
 from matplotlib import pyplot as plt
 import numpy as np
 import torch
@@ -10,14 +11,13 @@ import math
 """A simple plotting script. Change the global variable depending on setting"""
 #sns.set(style='white')
 
-algorithms = ['PPO', 'BC', 'GAIL', 'AIRL', 'FAIRL', 'GMMIL', 'RED', 'DRIL']
+algorithms = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL']
 #algorithms = ['PPO']
 envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
-colors = ['green', 'tab:olive', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
+colors = ['green', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
 output_folder = './outputs/' # Folder with all the seed sweeper results
 seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
 fontsize=14
-
 # Baseline results
 BASELINE = dict()  # [mean, std]
 BASELINE['ant'] = [570.80, 104.82]; BASELINE['halfcheetah'] = [787.35, 104.31]
@@ -26,10 +26,37 @@ ENV_NAMES = dict()
 ENV_NAMES['ant'] = 'Ant'; ENV_NAMES['halfcheetah'] = 'HalfCheetah';
 ENV_NAMES['hopper'] = 'Hopper'; ENV_NAMES['walker2d'] = "Walker2D"
 
-def load_data(env, alg):
+folder_dateformat ="%m-%d_%H-%M-%S"
+def load_data(env, alg, date_from=None, date_to=None):
     seed_folder_name = seed_prefix + env + '_' + alg
     seed_folder = os.path.join(output_folder, seed_folder_name)
     assert os.path.isdir(seed_folder)
+    date_folder = [x[1] for x in os.walk(seed_folder)][0] #the date formatted folder in env_algo
+    if date_from is not None:
+        try:
+            datetime_folder = [datetime.strptime(x, folder_dateformat) for x in date_folder]
+            try:
+                datetime_from = datetime.strptime(date_from, folder_dateformat)
+                if date_to is not None:
+                    datetime_to = datetime.strptime(date_to, folder_dateformat)
+                    date_folder = [folder for folder, folder_dt in zip(date_folder, datetime_folder) if folder_dt > datetime_from and folder_dt < datetime_to]
+                else:
+                    date_folder = [folder for folder, folder_dt in zip(date_folder, datetime_folder) if folder_dt > date_from]
+            except Exception as e:
+                datetime_from = None
+            date_folder = [os.path.join(seed_folder, folder) for folder in date_folder]
+            data_folders = []
+            data = []
+            for folder in date_folder:
+                seeds = [x[1] for x in os.walk(folder)][0]
+                for seed in seeds:
+                    data_folder_name = os.path.join(folder, seed)
+                    data.append(torch.load(os.path.join(data_folder_name, 'metrics.pth')))
+            return data
+        
+        except Exception as e:
+            print(f"Couldn't load {env} {algo} datetime format folder. trying to load as seed fodler...")
+     
     seeds = [x[1] for x in os.walk(seed_folder)][0]
     seeds = [os.path.join(seed_folder, x) for x in seeds]
     data = []
@@ -38,13 +65,13 @@ def load_data(env, alg):
     return data
 
 
-def load_all_data():
+def load_all_data(date_from=None, date_to=None):
     data = dict()
     for env in envs:
         metrics = dict()
         for alg in algorithms:
             try:
-                metrics[alg] = load_data(env, alg)
+                metrics[alg] = load_data(env, alg, date_from=date_from, date_to=date_to)
             except Exception as e:
                 print("Error: Could not load data from environment: " + env + ' and algorithm: ' + alg)
         data[env] = metrics
@@ -104,13 +131,13 @@ def plot_environment_result(data, ax, env):
 
 
 
-def create_all_plots(x, y, save_fig=False):
+def create_all_plots(x, y, save_fig=False, date_from=None, date_to=None):
     fig, ax = plt.subplots(x, y, sharex=True)
     ax = ax.reshape(-1)
     #fig.tight_layout()
     #fig.set_size_inches((11, 8.5), forward=False) # A4 paper size apparently. INCHES, UGH
     fig.set_size_inches((14, 6), forward=False) # A4 paper size apparently. INCHES, UGH
-    data = load_all_data()
+    data = load_all_data(date_from, date_to)
     for env, axis in zip(envs, ax):
         env_data = data[env]
         if env_data: #Empty if data couldn't be loaded
@@ -303,13 +330,14 @@ def create_hyperparam_plot(x, y, save_fig=False):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser(description='DCNNAE_for_selfdetection')
+    parser = argparse.ArgumentParser(description='.')
     parser.add_argument('--n-col', type=int, default=2)
     parser.add_argument('--n-row', type=int, default=2)
     parser.add_argument('--plot-hyperparam', action='store_true', default=False)
     parser.add_argument('--save-fig', action='store_true', default=False)
+    parser.add_argument('--date-from', type=str, default=None)
     args = parser.parse_args()
     if args.plot_hyperparam:
         create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
     else:
-        create_all_plots(args.n_row, args.n_col, args.save_fig)
+        create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from)
