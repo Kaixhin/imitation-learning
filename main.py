@@ -137,7 +137,7 @@ def main(cfg: DictConfig) -> None:
         
         # Predict rewards
         states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']
-        weights, expert_states, expert_actions, expert_next_state, expert_weights = transitions['weights'], expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case
+        weights, expert_states, expert_actions, expert_next_states, expert_weights = transitions['weights'], expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case
         expert_rewards = None
         with torch.inference_mode():
           if cfg.algorithm == 'DRIL':
@@ -147,7 +147,7 @@ def main(cfg: DictConfig) -> None:
           elif cfg.algorithm == 'GAIL':
             discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
             transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
-            discriminator_expert_input = (expert_states, expert_actions, next_states, actor.log_prob(expert_states, expert_actions), terminals) if cfg.imitation.model.reward_shaping else (expert_states, expert_actions)
+            discriminator_expert_input = (expert_states, expert_actions, expert_next_states, actor.log_prob(expert_states, expert_actions), terminals) if cfg.imitation.model.reward_shaping else (expert_states, expert_actions)
             expert_rewards = discriminator.predict_reward(*discriminator_expert_input)
           elif cfg.algorithm == 'GMMIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
