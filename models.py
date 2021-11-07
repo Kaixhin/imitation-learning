@@ -103,10 +103,9 @@ class SoftActor(nn.Module):
     return torch.tanh(self.forward(state).base_dist.mean)
 
   def _get_action_uncertainty(self, state, action):
-    ensemble_policies = []
-    for _ in range(5):  # Perform Monte-Carlo dropout for an implicit ensemble
-      ensemble_policies.append(self.log_prob(state, action).exp())
-    return torch.stack(ensemble_policies).var(dim=0)
+    state, action = torch.repeat_interleave(state, 5, dim=0), torch.repeat_interleave(action, 5, dim=0)  # Repeat state and actions x ensemble size
+    prob = self.log_prob(state, action).exp()  # Perform Monte-Carlo dropout for an implicit ensemble; PyTorch implementation does not share masks across a batch (all independent)
+    return prob.view(-1, 5).var(dim=1)  # Resized tensor is batch size x ensemble size
 
   # Set uncertainty threshold at the 98th quantile of uncertainty costs calculated over the expert data
   def set_uncertainty_threshold(self, expert_state, expert_action):
