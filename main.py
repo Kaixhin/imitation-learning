@@ -105,7 +105,7 @@ def main(cfg: DictConfig) -> None:
 
   # Training
   t, state, terminal, train_return = 0, env.reset(), False, 0
-  discriminator.eval()  # Set all discriminators to evaluation mode
+  if cfg.algorithm in ['GAIL', 'RED']: discriminator.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
     # Collect set of transitions by running policy π in the environment
@@ -143,7 +143,6 @@ def main(cfg: DictConfig) -> None:
         with torch.inference_mode():
           if cfg.algorithm == 'DRIL':
             # TODO: By default DRIL also includes behavioural cloning online?
-            discriminator.train()  # DRIL implicit ensemble utilises dropout
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'GAIL':
             discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
