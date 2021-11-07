@@ -3,6 +3,8 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: RED
+pretraining:                                                                                                                                                                                    
+  iterations: 100000
 imitation:
   model:
     hidden_size: 256
