@@ -1,5 +1,6 @@
 #!/bin/bash
 
+date
 echo "OMP_NUM_THREADS=$OMP_NUM_THREADS"
 SEEDS_PER_PROCESS=2
 TOTAL_SEEDS=10
@@ -13,8 +14,8 @@ for env in ${envs[@]}; do
   for seed_num in ${LOOP[@]}; do
   seed_end=$((seed_num + SEEDS_PER_PROCESS - 1))
   seeds="$(seq -s ',' $seed_num 1 $seed_end)"
-  #python3 main.py -m algorithm=$1/$env hyperparam_opt=empty seed=$seeds hydra/sweeper=basic hydra.sweep.dir=./outputs/par_seed_sweeper_$1_$env/$seed_num &
-  echo "python3 main.py -m algorithm=$1/$env hyperparam_opt=empty seed=$seeds hydra/sweeper=basic hydra.sweep.dir=./outputs/par_seed_sweeper_$1_$env/$seed_num &"
+  #python3 main.py -m algorithm=$1/$env hyperparam_opt=empty seed=$seeds hydra/sweeper=basic hydra.sweep.dir=./outputs/par_seed_sweeper_$1_$env/$seed_num > log/$1_${env}_$seed_num.txt &
+  echo "python3 main.py -m algorithm=$1/$env hyperparam_opt=empty seed=$seeds hydra/sweeper=basic hydra.sweep.dir=./outputs/par_seed_sweeper_$1_$env/$seed_num > log/$1_${env}_$seed_num.txt &"
   done
 done
 wait 
