@@ -164,7 +164,7 @@ def main(cfg: DictConfig) -> None:
       if cfg.plot_predicted_reward and cfg.algorithm != 'SAC':
         metrics['predict_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), metrics['predicted_expert_returns'].append(expert_rewards.numpy())
       if cfg.plot_sac_alpha:
-        metrics['alpha'].append(log_alpha.exp().numpy())
+        metrics['alpha'].append(log_alpha.exp().detach().numpy())
         if not cfg.plot_predicted_reward or cfg.algorithm == 'SAC':
           metrics['predict_steps'].append(step)
   
