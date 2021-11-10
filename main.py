@@ -167,10 +167,11 @@ def main(cfg: DictConfig) -> None:
         if cfg.algorithm != 'SAC':
           metrics['predicted_expert_returns'].append(expert_rewards.numpy())
         metrics['alpha'].append(log_alpha.exp().detach().numpy())
-        log_prob = actor.log_prob(state, action)
-        entropy = -torch.sum(log_prob.exp() * log_prob)
+        with torch.inference_mode():
+            log_prob = actor.log_prob(state, action)
+            Q_value = torch.min(*critic(state, action))
+        entropy = -log_prob.exp() * log_prob
         metrics['entropy'].append(entropy.numpy())
-        Q_value = torch.min(critic(state, action))
         metrics['Q_value'].append(Q_value.numpy())
   
     # Evaluate agent and plot metrics
@@ -182,7 +183,7 @@ def main(cfg: DictConfig) -> None:
       lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', algo=cfg.algorithm, env=cfg.env_name)
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', algo=cfg.algorithm, env=cfg.env_name)
-        if cfg.save_aux_metrics:
+        if cfg.save_aux_metrics and len(metrics['aux_steps']) > 0:
           lineplot(metrics['aux_steps'], metrics['predicted_returns'], metrics['predicted_expert_returns'], filename='predicted_returns', algo=cfg.algorithm, env=cfg.env_name)
           lineplot(metrics['aux_steps'], metrics['alpha'], filename='sac_alpha', algo=cfg.algorithm, env=cfg.env_name)
           lineplot(metrics['aux_steps'], metrics['entropy'], filename='sac_entropy', algo=cfg.algorithm, env=cfg.env_name)
