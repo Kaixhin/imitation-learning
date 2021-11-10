@@ -50,6 +50,8 @@ evaluation:
 save_trajectories: false
 render: false
 check_time_usage: false
+plot_predicted_reward: True
+plot_sac_alpha: True
 
 # Run/sweep directories
 hydra:
