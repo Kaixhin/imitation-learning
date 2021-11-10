@@ -57,7 +57,8 @@ def main(cfg: DictConfig) -> None:
       discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 
   # Metrics
-  metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], predict_steps=[], predicted_returns=[], predicted_expert_returns=[], alpha=[])
+  metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], 
+  aux_steps=[], predicted_returns=[], predicted_expert_returns=[], alpha=[], entropy=[], Q_value=[])
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
@@ -142,31 +143,35 @@ def main(cfg: DictConfig) -> None:
           if cfg.algorithm == 'DRIL':
             # TODO: By default DRIL also includes behavioural cloning online?
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-            if cfg.plot_predicted_reward:
+            if cfg.save_aux_metrics:
               expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
             discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
             transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
-            if cfg.plot_predicted_reward:
+            if cfg.save_aux_metrics:
               discriminator_expert_input = (expert_states, expert_actions, expert_next_states, actor.log_prob(expert_states, expert_actions), terminals) if cfg.imitation.model.reward_shaping else (expert_states, expert_actions)
               expert_rewards = discriminator.predict_reward(*discriminator_expert_input)
           elif cfg.algorithm == 'GMMIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
-            if cfg.plot_predicted_reward:
+            if cfg.save_aux_metrics:
               expert_rewards = discriminator.predict_reward(expert_states, expert_actions, expert_states, expert_actions, expert_weights, expert_weights)
           elif cfg.algorithm == 'RED':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-            if cfg.plot_predicted_reward:
+            if cfg.save_aux_metrics:
               expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'SQIL':
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
       sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
-      if cfg.plot_predicted_reward and cfg.algorithm != 'SAC':
-        metrics['predict_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), metrics['predicted_expert_returns'].append(expert_rewards.numpy())
-      if cfg.plot_sac_alpha:
+      if cfg.save_aux_metrics:
+        metrics['aux_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), 
+        if cfg.algorithm != 'SAC':
+          metrics['predicted_expert_returns'].append(expert_rewards.numpy())
         metrics['alpha'].append(log_alpha.exp().detach().numpy())
-        if not cfg.plot_predicted_reward or cfg.algorithm == 'SAC':
-          metrics['predict_steps'].append(step)
+        log_prob = actor.log_prob(state, action)
+        entropy = -torch.sum(log_prob.exp() * log_prob)
+        metrics['entropy'].append(entropy.numpy())
+        Q_value = torch.min(critic(state, action))
+        metrics['Q_value'].append(Q_value.numpy())
   
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
@@ -177,10 +182,12 @@ def main(cfg: DictConfig) -> None:
       lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', algo=cfg.algorithm, env=cfg.env_name)
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', algo=cfg.algorithm, env=cfg.env_name)
-        if cfg.plot_predicted_reward and cfg.algorithm != 'SAC':
-          lineplot(metrics['predict_steps'], metrics['predicted_returns'], metrics['predicted_expert_returns'], filename='Predicted_returns', algo=cfg.algorithm, env=cfg.env_name)
-        if cfg.plot_sac_alpha:
-          lineplot(metrics['predict_steps'], metrics['alpha'], filename='sac_alpha', algo=cfg.algorithm, env=cfg.env_name)
+        if cfg.save_aux_metrics:
+          lineplot(metrics['aux_steps'], metrics['predicted_returns'], metrics['predicted_expert_returns'], filename='predicted_returns', algo=cfg.algorithm, env=cfg.env_name)
+          lineplot(metrics['aux_steps'], metrics['alpha'], filename='sac_alpha', algo=cfg.algorithm, env=cfg.env_name)
+          lineplot(metrics['aux_steps'], metrics['entropy'], filename='sac_entropy', algo=cfg.algorithm, env=cfg.env_name)
+          lineplot(metrics['aux_steps'], metrics['Q_value'], filename='Q_value', algo=cfg.algorithm, env=cfg.env_name)
+
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
