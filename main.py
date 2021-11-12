@@ -164,7 +164,7 @@ def main(cfg: DictConfig) -> None:
       sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       if cfg.save_aux_metrics:
         metrics['aux_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), 
-        if cfg.algorithm != 'SAC':
+        if cfg.algorithm not in ['SAC', 'SQIL']:
           metrics['predicted_expert_returns'].append(expert_rewards.numpy())
         metrics['alpha'].append(log_alpha.exp().detach().numpy())
         with torch.inference_mode():
@@ -184,7 +184,8 @@ def main(cfg: DictConfig) -> None:
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', algo=cfg.algorithm, env=cfg.env_name)
         if cfg.save_aux_metrics and len(metrics['aux_steps']) > 0:
-          lineplot(metrics['aux_steps'], metrics['predicted_returns'], metrics['predicted_expert_returns'], filename='predicted_returns', algo=cfg.algorithm, env=cfg.env_name)
+          if cfg.algorithm not in ['SAC', 'SQIL']:
+              lineplot(metrics['aux_steps'], metrics['predicted_returns'], metrics['predicted_expert_returns'], filename='predicted_returns', algo=cfg.algorithm, env=cfg.env_name)
           lineplot(metrics['aux_steps'], metrics['alpha'], filename='sac_alpha', algo=cfg.algorithm, env=cfg.env_name)
           lineplot(metrics['aux_steps'], metrics['entropy'], filename='sac_entropy', algo=cfg.algorithm, env=cfg.env_name)
           lineplot(metrics['aux_steps'], metrics['Q_value'], filename='Q_value', algo=cfg.algorithm, env=cfg.env_name)
