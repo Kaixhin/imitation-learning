@@ -32,7 +32,7 @@ def main(cfg: DictConfig) -> None:
   torch.manual_seed(cfg.seed)
 
   # Set up environment
-  env = D4RLEnv(cfg.env_name, cfg.imitation.absorbing)
+  env = D4RLEnv(cfg.env_name, cfg.imitation.absorbing, load_data=True)
   env.seed(cfg.seed)
   expert_trajectories = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
