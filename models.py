@@ -25,12 +25,12 @@ def _squared_distance(x, y):
 
 
 # Gaussian/radial basis function/exponentiated quadratic kernel
-def _gaussian_kernel(x, y, gamma=1):
-  return torch.exp(-gamma * _squared_distance(x, y))
+def _gaussian_kernel(x, gamma=1):
+  return torch.exp(-gamma * x)
 
 
-def _weighted_similarity(X, Y, w_x, w_y, gamma=1):
-  return torch.einsum('i,ij,j->i', [w_x, _gaussian_kernel(X, Y, gamma=gamma), w_y])
+def _weighted_similarity(XY, w_x, w_y, gamma=1):
+  return torch.einsum('i,ij,j->i', [w_x, _gaussian_kernel(XY, gamma=gamma), w_y])
 
 
 def _weighted_median(x: torch.Tensor, weights: torch.Tensor):
@@ -103,10 +103,9 @@ class SoftActor(nn.Module):
     return torch.tanh(self.forward(state).base_dist.mean)
 
   def _get_action_uncertainty(self, state, action):
-    ensemble_policies = []
-    for _ in range(5):  # Perform Monte-Carlo dropout for an implicit ensemble
-      ensemble_policies.append(self.log_prob(state, action).exp())
-    return torch.stack(ensemble_policies).var(dim=0)
+    state, action = torch.repeat_interleave(state, 5, dim=0), torch.repeat_interleave(action, 5, dim=0)  # Repeat state and actions x ensemble size
+    prob = self.log_prob(state, action).exp()  # Perform Monte-Carlo dropout for an implicit ensemble; PyTorch implementation does not share masks across a batch (all independent)
+    return prob.view(-1, 5).var(dim=1)  # Resized tensor is batch size x ensemble size
 
   # Set uncertainty threshold at the 98th quantile of uncertainty costs calculated over the expert data
   def set_uncertainty_threshold(self, expert_state, expert_action):
@@ -193,12 +192,15 @@ class GMMILDiscriminator(nn.Module):
     expert_state_action = expert_state if self.state_only else _join_state_action(expert_state, expert_action)
     # Use median heuristics to set data-dependent bandwidths
     if self.gamma_1 is None:
-        self.gamma_1 = 1 / (_weighted_median(_squared_distance(state_action, expert_state_action), torch.outer(weight, expert_weight)).item() + 1e-8)
-        self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), torch.outer(expert_weight, expert_weight)).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
+      self.gamma_1 = 1 / (_weighted_median(_squared_distance(state_action, expert_state_action), torch.outer(weight, expert_weight)).item() + 1e-8)
+      self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), torch.outer(expert_weight, expert_weight)).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
     # Calculate negative of witness function (based on kernel mean embeddings)
     weight_norm, exp_weight_norm  = weight / weight.sum(), expert_weight / expert_weight.sum()
-    similarity = _weighted_similarity(state_action, expert_state_action, weight_norm, exp_weight_norm, gamma=self.gamma_1) + _weighted_similarity(state_action, expert_state_action, weight_norm, exp_weight_norm, gamma=self.gamma_2)
-    if self.self_similarity: self_similarity = _weighted_similarity(state_action, state_action, weight_norm, weight_norm, gamma=self.gamma_1) + _weighted_similarity(state_action, state_action, weight_norm, weight_norm, gamma=self.gamma_2)
+    s_a_e_s_a_sq_dist = _squared_distance(state_action, expert_state_action)
+    similarity = _weighted_similarity(s_a_e_s_a_sq_dist, weight_norm, exp_weight_norm, gamma=self.gamma_1) + _weighted_similarity(s_a_e_s_a_sq_dist, weight_norm, exp_weight_norm, gamma=self.gamma_2)
+    if self.self_similarity:
+      s_a_s_a_sq_dist = _squared_distance(state_action, state_action)
+      self_similarity = _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_1) + _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_2)
     return similarity - self_similarity if self.self_similarity else similarity
 
 
@@ -233,4 +235,4 @@ class REDDiscriminator(nn.Module):
 
   def predict_reward(self, state, action):
     prediction, target = self.forward(state, action)
-    return _gaussian_kernel(prediction, target, gamma=self.sigma_1).mean(dim=1)
+    return _gaussian_kernel(_squared_distance(prediction, target), gamma=self.sigma_1).mean(dim=1)

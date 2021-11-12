@@ -105,6 +105,7 @@ def main(cfg: DictConfig) -> None:
 
   # Training
   t, state, terminal, train_return = 0, env.reset(), False, 0
+  if cfg.algorithm in ['GAIL', 'RED']: discriminator.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
   for step in pbar:
     # Collect set of transitions by running policy π in the environment
@@ -128,12 +129,14 @@ def main(cfg: DictConfig) -> None:
     # Train agent and imitation learning component
     if step >= cfg.training.start and step % cfg.training.interval == 0:
       # Sample a batch of transitions
-      transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.imitation.expert_batch_size if cfg.algorithm == 'GMMIL' else cfg.training.batch_size)
+      transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
 
       if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
         # Train discriminator
         if cfg.algorithm == 'GAIL':
+          discriminator.train()
           adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation.model.reward_shaping, cfg.imitation.loss_function, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, entropy_bonus=cfg.imitation.entropy_bonus, pos_class_prior=cfg.imitation.pos_class_prior, nonnegative_margin=cfg.imitation.nonnegative_margin)
+          discriminator.eval()
         
         # Predict rewards
         states, actions, next_states, terminals = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals']

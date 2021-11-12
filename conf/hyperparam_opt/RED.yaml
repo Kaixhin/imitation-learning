@@ -10,44 +10,43 @@ params:
     type: choice
     values: [0.97, 0.99]
     value_type: 'float'
-    sort_values: true
+  reinforcement.target_temperature:
+    type: choice
+    values: [-1, -0.5]
+    value_type: 'float'
   reinforcement.polyak_factor:
     type: choice
     values: [0.99, 0.995]
     value_type: 'float'
-    sort_values: true
   imitation.model.hidden_size:
     type: choice
     values: [64, 256, 512]
     value_type: 'int'
-    sort_values: true
   imitation.model.depth:
     type: choice
     values: [1, 2]
     value_type: 'int'
-    sort_values: true
   imitation.model.input_dropout:
     type: choice
     values: [0.0, 0.1, 0.5]
     value_type: 'float'
-    sort_values: true
   imitation.model.dropout:
     type: choice
     values: [0.1, 0.5, 0.75]
     value_type: 'float'
-    sort_values: true
   imitation.pretraining_iterations:
     type: choice
     values: [10000, 100000]
     value_type: 'int'
-    sort_values: true
   imitation.learning_rate:
     type: choice
     values: [0.00003, 0.0003]
     value_type: 'float'
-    sort_values: true
   imitation.weight_decay:
     type: choice
     values: [0, 1, 10]
     value_type: 'float'
-    sort_values: true
+  training.start:
+    type: choice
+    values: [1000, 10000]
+    value_type: 'int'
