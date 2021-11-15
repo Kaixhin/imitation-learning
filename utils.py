@@ -19,7 +19,7 @@ def flatten_list_dicts(list_dicts):
 
 
 # Makes a lineplot with scalar x and statistics of vector y
-def lineplot(x, y, y2=None, filename='', xaxis='Steps', yaxis='Returns', algo='', env=''):
+def lineplot(x, y, y2=None, filename='', xaxis='Steps', yaxis='Returns', title=''):
   y = np.array(y)
   y_mean, y_std = y.mean(axis=1), y.std(axis=1)
   sns.lineplot(x=x, y=y_mean, color='coral')
@@ -33,6 +33,6 @@ def lineplot(x, y, y2=None, filename='', xaxis='Steps', yaxis='Returns', algo=''
   plt.xlim(left=0, right=x[-1])
   plt.xlabel(xaxis)
   plt.ylabel(yaxis)
-  plt.title(f'{env} : {algo}')
+  plt.title(title)
   plt.savefig(f'{filename}.png')
   plt.close()

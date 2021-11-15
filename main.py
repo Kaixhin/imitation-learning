@@ -58,7 +58,7 @@ def main(cfg: DictConfig) -> None:
 
   # Metrics
   metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], 
-  aux_steps=[], predicted_returns=[], predicted_expert_returns=[], alpha=[], entropy=[], Q_value=[])
+  update_steps=[], predicted_returns=[], predicted_expert_returns=[], alphas=[], entropy=[], Q_values=[])
   recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
@@ -76,7 +76,7 @@ def main(cfg: DictConfig) -> None:
         test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
         steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
         metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
-        lineplot(steps, len(steps) * [test_returns], filename='test_returns', algo=cfg.algorithm, env=cfg.env_name)
+        lineplot(steps, len(steps) * [test_returns], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
 
         torch.save(dict(actor=actor.state_dict()), 'agent.pth')
         torch.save(metrics, 'metrics.pth')
@@ -166,16 +166,16 @@ def main(cfg: DictConfig) -> None:
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
       sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       if cfg.save_aux_metrics:
-        metrics['aux_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), 
+        metrics['update_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), 
         if cfg.algorithm not in ['SAC', 'SQIL']:
           metrics['predicted_expert_returns'].append(expert_rewards.numpy())
-        metrics['alpha'].append(log_alpha.exp().detach().numpy())
+        metrics['alphas'].append(log_alpha.exp().detach().numpy())
         with torch.inference_mode():
             log_prob = actor.log_prob(state, action)
             Q_value = torch.min(*critic(state, action))
         entropy = -log_prob.exp() * log_prob
         metrics['entropy'].append(entropy.numpy())
-        metrics['Q_value'].append(Q_value.numpy())
+        metrics['Q_values'].append(Q_value.numpy())
   
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
@@ -183,16 +183,15 @@ def main(cfg: DictConfig) -> None:
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
-      lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', algo=cfg.algorithm, env=cfg.env_name)
+      lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
-        lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', algo=cfg.algorithm, env=cfg.env_name)
-        if cfg.save_aux_metrics and len(metrics['aux_steps']) > 0:
+        lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+        if cfg.save_aux_metrics and len(metrics['update_steps'][::10]) > 0:
           if cfg.algorithm not in ['SAC', 'SQIL']:
-              lineplot(metrics['aux_steps'], metrics['predicted_returns'], metrics['predicted_expert_returns'], filename='predicted_returns', algo=cfg.algorithm, env=cfg.env_name)
-          lineplot(metrics['aux_steps'], metrics['alpha'], filename='sac_alpha', algo=cfg.algorithm, env=cfg.env_name)
-          lineplot(metrics['aux_steps'], metrics['entropy'], filename='sac_entropy', algo=cfg.algorithm, env=cfg.env_name)
-          lineplot(metrics['aux_steps'], metrics['Q_value'], filename='Q_value', algo=cfg.algorithm, env=cfg.env_name)
-
+              lineplot(metrics['update_steps'][::10], metrics['predicted_returns'][::10], metrics['predicted_expert_returns'][::10], filename='predicted_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+          lineplot(metrics['update_steps'][::10], metrics['alphas'][::10], filename='sac_alpha', title=f'{cfg.env_name} : {cfg.algorithm}')
+          lineplot(metrics['update_steps'][::10], metrics['entropy'][::10], filename='sac_entropy', title=f'{cfg.env_name} : {cfg.algorithm}')
+          lineplot(metrics['update_steps'][::10], metrics['Q_values'][::10], filename='Q_values', title=f'{cfg.env_name} : {cfg.algorithm}')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
