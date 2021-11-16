@@ -171,8 +171,8 @@ def main(cfg: DictConfig) -> None:
           metrics['predicted_expert_returns'].append(expert_rewards.numpy())
         metrics['alphas'].append(log_alpha.exp().detach().numpy())
         with torch.inference_mode():
-            log_prob = actor.log_prob(state, action)
-            Q_value = torch.min(*critic(state, action))
+            log_prob = actor.log_prob(states, actions)
+            Q_value = torch.min(*critic(states, actions))
         entropy = -log_prob.exp() * log_prob
         metrics['entropy'].append(entropy.numpy())
         metrics['Q_values'].append(Q_value.numpy())
