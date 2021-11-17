@@ -164,15 +164,12 @@ def main(cfg: DictConfig) -> None:
               expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'SQIL':
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
-      sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
+      log_prob, Q_value = sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       if cfg.save_aux_metrics:
         metrics['update_steps'].append(step), metrics['predicted_returns'].append(transitions['rewards'].numpy()), 
         if cfg.algorithm not in ['SAC', 'SQIL']:
           metrics['predicted_expert_returns'].append(expert_rewards.numpy())
         metrics['alphas'].append(log_alpha.exp().detach().numpy())
-        with torch.inference_mode():
-            log_prob = actor.log_prob(states, actions)
-            Q_value = torch.min(*critic(states, actions))
         entropy = -log_prob.exp() * log_prob
         metrics['entropy'].append(entropy.numpy())
         metrics['Q_values'].append(Q_value.numpy())
