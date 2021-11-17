@@ -183,15 +183,15 @@ def main(cfg: DictConfig) -> None:
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
-      lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+      lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', title=f'Test {cfg.env_name} : {cfg.algorithm}')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
-        lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+        lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', title=f'Training {cfg.env_name} : {cfg.algorithm}')
         if cfg.save_aux_metrics and len(metrics['update_steps'][::10]) > 0:
           if cfg.algorithm not in ['SAC', 'SQIL']:
               lineplot(metrics['update_steps'][::10], metrics['predicted_returns'][::10], metrics['predicted_expert_returns'][::10], filename='predicted_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
-          lineplot(metrics['update_steps'][::10], metrics['alphas'][::10], filename='sac_alpha', title=f'{cfg.env_name} : {cfg.algorithm}')
-          lineplot(metrics['update_steps'][::10], metrics['entropy'][::10], filename='sac_entropy', title=f'{cfg.env_name} : {cfg.algorithm}')
-          lineplot(metrics['update_steps'][::10], metrics['Q_values'][::10], filename='Q_values', title=f'{cfg.env_name} : {cfg.algorithm}')
+          lineplot(metrics['update_steps'][::10], metrics['alphas'][::10], filename='sac_alpha', yaxis='alpha', title=f'{cfg.env_name} : {cfg.algorithm} alpha')
+          lineplot(metrics['update_steps'][::10], metrics['entropy'][::10], filename='sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
+          lineplot(metrics['update_steps'][::10], metrics['Q_values'][::10], filename='Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q_values')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
