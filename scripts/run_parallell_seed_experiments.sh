@@ -4,7 +4,8 @@ date
 echo "OMP_NUM_THREADS=$OMP_NUM_THREADS"
 SEEDS_PER_PROCESS=2
 TOTAL_SEEDS=10
-LOOP=($(seq 0 $SEEDS_PER_PROCESS $((TOTAL_SEEDS - SEEDS_PER_PROCESS))))
+FROM_SEED=0
+LOOP=($(seq $FROM_SEED $SEEDS_PER_PROCESS $((TOTAL_SEEDS + FROM_SEED - SEEDS_PER_PROCESS))))
 envs=('ant' 'halfcheetah' 'hopper' 'walker2d')
 algos=("BC"  "DRIL" "GAIL" "GMMIL"  "RED", "SAC" "SQIL")
 [[ " ${algos[@]} " =~ " $1 " ]] && echo "algorithm=$1" || { echo "invalid input, first input must be one of ${algos[*]} "; exit 1; }
