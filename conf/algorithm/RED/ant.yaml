@@ -3,7 +3,7 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: RED
-pretraining:                                                                                                                                                                                    
+pretraining:
   iterations: 100000
 imitation:
   model:
