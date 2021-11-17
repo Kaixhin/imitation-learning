@@ -47,10 +47,11 @@ evaluation:
   interval: 10000
   episodes: 30
   average_window: 5
+check_time_usage: false
+save_aux_metrics: true
 save_trajectories: false
 render: false
-check_time_usage: false
-save_aux_metrics: True
+
 # Run/sweep directories
 hydra:
   run:
