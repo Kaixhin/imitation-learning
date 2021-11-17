@@ -12,9 +12,9 @@ gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
 
 class D4RLEnv():
-  def __init__(self, env_name, absorbing):
+  def __init__(self, env_name, absorbing, load_data=False):
     self.env = gym.make(env_name)
-    self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
+    if load_data: self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
     self.absorbing = absorbing

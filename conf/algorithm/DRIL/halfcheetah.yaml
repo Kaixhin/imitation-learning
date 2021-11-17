@@ -3,7 +3,7 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: DRIL
-pretraining:                                                                                                                                                                                    
+pretraining:
   iterations: 100000
 imitation:
   model:

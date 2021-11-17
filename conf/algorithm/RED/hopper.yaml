@@ -3,7 +3,7 @@ env_type: hopper
 env_name: hopper-expert-v2
 
 algorithm: RED
-pretraining:                                                                                                                                                                                    
+pretraining:
   iterations: 100000
 imitation:
   model:

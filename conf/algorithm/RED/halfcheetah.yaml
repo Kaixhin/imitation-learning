@@ -3,7 +3,7 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: RED
-pretraining:                                                                                                                                                                                    
+pretraining:
   iterations: 100000
 imitation:
   model:

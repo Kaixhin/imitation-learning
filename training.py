@@ -47,6 +47,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   # Update target critic
   update_target_network(critic, target_critic, polyak_factor)
 
+  return new_log_probs.detach(), torch.min(values_1, values_2).detach()
 
 # Performs a behavioural cloning update
 def behavioural_cloning_update(actor, expert_transition, actor_optimiser):

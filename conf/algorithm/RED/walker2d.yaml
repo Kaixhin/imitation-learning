@@ -3,7 +3,7 @@ env_type: walker2d
 env_name: walker2d-expert-v2
 
 algorithm: RED
-pretraining:                                                                                                                                                                                    
+pretraining:
   iterations: 100000
 imitation:
   model:
