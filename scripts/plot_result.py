@@ -27,13 +27,12 @@ ENV_NAMES['ant'] = 'Ant'; ENV_NAMES['halfcheetah'] = 'HalfCheetah';
 ENV_NAMES['hopper'] = 'Hopper'; ENV_NAMES['walker2d'] = "Walker2D"
 
 folder_dateformat ="%m-%d_%H-%M-%S"
-def load_data(env, alg, date_from=None, date_to=None):
+def load_data(env, alg, date_from=None, date_to=None, par_sweep=True):
     seed_folder_name = seed_prefix + env + '_' + alg
     seed_folder = os.path.join(output_folder, seed_folder_name)
-    assert os.path.isdir(seed_folder)
-    date_folder = [x[1] for x in os.walk(seed_folder)][0] #the date formatted folder in env_algo
     if date_from is not None:
         try:
+            date_folder = [x[1] for x in os.walk(seed_folder)][0] #the date formatted folder in env_algo
             datetime_folder = [datetime.strptime(x, folder_dateformat) for x in date_folder]
             try:
                 datetime_from = datetime.strptime(date_from, folder_dateformat)
@@ -55,23 +54,27 @@ def load_data(env, alg, date_from=None, date_to=None):
             return data
         
         except Exception as e:
-            print(f"Couldn't load {env} {algo} datetime format folder. trying to load as seed fodler...")
-     
-    seeds = [x[1] for x in os.walk(seed_folder)][0]
-    seeds = [os.path.join(seed_folder, x) for x in seeds]
+            print(f"Couldn't load {env} {alg} datetime format folder. trying to load as seed folder...")
+    if par_sweep:
+        seed_folder_name = 'par_' + seed_prefix + alg + '_' + env
+        print(seed_folder_name)
+        seed_folder = os.path.join(output_folder, seed_folder_name)
+    assert os.path.isdir(seed_folder)
+    seeds = [x[0] for x in os.walk(seed_folder) if 'metrics.pth' in x[2]]
     data = []
     for s in seeds:
         data.append(torch.load(os.path.join(s, 'metrics.pth')))
     return data
 
 
-def load_all_data(date_from=None, date_to=None):
+def load_all_data(date_from=None, date_to=None, par_sweep=False):
     data = dict()
+    if date_from: print(f'Checking seed data from... {date_from}')
     for env in envs:
         metrics = dict()
         for alg in algorithms:
             try:
-                metrics[alg] = load_data(env, alg, date_from=date_from, date_to=date_to)
+                metrics[alg] = load_data(env, alg, date_from=date_from, date_to=date_to, par_sweep=par_sweep)
             except Exception as e:
                 print("Error: Could not load data from environment: " + env + ' and algorithm: ' + alg)
         data[env] = metrics
@@ -131,13 +134,13 @@ def plot_environment_result(data, ax, env):
 
 
 
-def create_all_plots(x, y, save_fig=False, date_from=None, date_to=None):
+def create_all_plots(x, y, save_fig=False, date_from=None, date_to=None, par_sweep=False):
     fig, ax = plt.subplots(x, y, sharex=True)
     ax = ax.reshape(-1)
     #fig.tight_layout()
     #fig.set_size_inches((11, 8.5), forward=False) # A4 paper size apparently. INCHES, UGH
     fig.set_size_inches((14, 6), forward=False) # A4 paper size apparently. INCHES, UGH
-    data = load_all_data(date_from, date_to)
+    data = load_all_data(date_from, date_to, par_sweep=par_sweep)
     for env, axis in zip(envs, ax):
         env_data = data[env]
         if env_data: #Empty if data couldn't be loaded
@@ -336,8 +339,9 @@ if __name__ == '__main__':
     parser.add_argument('--plot-hyperparam', action='store_true', default=False)
     parser.add_argument('--save-fig', action='store_true', default=False)
     parser.add_argument('--date-from', type=str, default=None)
+    parser.add_argument('--par-file', action='store_true', default=False)
     args = parser.parse_args()
     if args.plot_hyperparam:
         create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
     else:
-        create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from)
+        create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from, par_sweep=args.par_file)
