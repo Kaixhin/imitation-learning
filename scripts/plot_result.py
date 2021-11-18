@@ -57,7 +57,6 @@ def load_data(env, alg, date_from=None, date_to=None, par_sweep=True):
             print(f"Couldn't load {env} {alg} datetime format folder. trying to load as seed folder...")
     if par_sweep:
         seed_folder_name = 'par_' + seed_prefix + alg + '_' + env
-        print(seed_folder_name)
         seed_folder = os.path.join(output_folder, seed_folder_name)
     assert os.path.isdir(seed_folder)
     seeds = [x[0] for x in os.walk(seed_folder) if 'metrics.pth' in x[2]]
