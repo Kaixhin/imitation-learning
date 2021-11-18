@@ -20,8 +20,8 @@ seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
 fontsize=14
 # Baseline results
 BASELINE = dict()  # [mean, std]
-BASELINE['ant'] = [570.80, 104.82]; BASELINE['halfcheetah'] = [787.35, 104.31]
-BASELINE['hopper'] = [1078.36, 325.52]; BASELINE['walker2d'] = [1106.68, 417.79]
+BASELINE['ant'] = [4620.81, 1408.87]; BASELINE['halfcheetah'] = [10656.89, 441.45]
+BASELINE['hopper'] = [3510.46, 328.38]; BASELINE['walker2d'] = [4922.14, 136.68]
 ENV_NAMES = dict()
 ENV_NAMES['ant'] = 'Ant'; ENV_NAMES['halfcheetah'] = 'HalfCheetah';
 ENV_NAMES['hopper'] = 'Hopper'; ENV_NAMES['walker2d'] = "Walker2D"
@@ -96,7 +96,7 @@ def process_test_data(data):
     return np.array(x), mean_of_means, std_err, std_of_means
 
 def plot_env_baseline(ax, env):
-    x = np.linspace(0.0, 2.0 , num=100)
+    x = np.linspace(0.0, 10.0 , num=100)
     mean, std = BASELINE[env]
     std_err = std / np.sqrt(5) # Hardcoded I know
     mean = np.repeat(mean, 100)
