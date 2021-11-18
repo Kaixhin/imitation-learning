@@ -143,7 +143,7 @@ if __name__ == '__main__':
       s, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
       pbar = tqdm(range(1, num_steps + 1), unit_scale=1, smoothing=0)
       for i in pbar:
-        s, r, terminal, _= env.env.step(env.env.action_space.sample())
+        s, r, terminal, _= env.step(env.action_space.sample())
         step_counter += 1
         reward += r
         if terminal or i == num_steps or step_counter >= env._max_episode_steps:
