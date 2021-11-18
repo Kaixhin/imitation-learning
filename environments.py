@@ -149,7 +149,7 @@ if __name__ == '__main__':
         if terminal or i == num_steps or step_counter >= env._max_episode_steps:
           rewards.append(reward)
           env.seed(i)
-          s, terminal, reward, step_counter = env.env.reset(), False, 0, 0
+          s, terminal, reward, step_counter = env.reset(), False, 0, 0
       np_rewards = np.array(rewards)
       mean, std = np.mean(np_rewards), np.std(np_rewards)
       print(f"From random agent: {mean} +/- {std}")
