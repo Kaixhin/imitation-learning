@@ -96,7 +96,7 @@ def main(cfg: DictConfig) -> None:
       if cfg.algorithm == 'DRIL':
         discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
       elif cfg.algorithm == 'RED':
-        discriminator.set_sigma(expert_trajectories['states'], expert_trajectories['actions'])
+        discriminator.set_sigma(expert_trajectories['states'][:cfg.pretraining.batch_size], expert_trajectories['actions'][:cfg.pretraining.batch_size])  # Estimate on a minibatch for computational feasibility
 
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
