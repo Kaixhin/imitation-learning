@@ -128,7 +128,7 @@ if __name__ == '__main__':
     def get_expert_baseline(env):
       data = env.get_dataset()
       rewards, terminals = data['rewards'], data['terminals'] + data['timeouts'] # D4RL divide terminals and timeouts 
-      terminal_idx = np.nonzero(terminals) # assumes absorbing = fasle
+      terminal_idx = np.nonzero(terminals) # assumes absorbing = false
       cumrewards = np.cumsum(rewards)
       terminal_cumrewards = cumrewards[terminal_idx]
       trajectory_cumrewards = terminal_cumrewards - np.concatenate([np.array([0]), terminal_cumrewards[:-1]])
@@ -138,12 +138,10 @@ if __name__ == '__main__':
       return mean, std, num_data 
 
     def get_random_agent_baseline(env, num_steps):
-      rewards = []
-      i = 0
+      rewards, i = [], 0
       env.seed(i)
-      s, terminal, reward = env.env.reset(), False, 0
+      s, terminal, reward, step_counter = env.env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
       pbar = tqdm(range(1, num_steps + 1), unit_scale=1, smoothing=0)
-      step_counter = 0 #Keeps track of _max_episodes
       for i in pbar:
         s, r, terminal, _= env.env.step(env.env.action_space.sample())
         step_counter += 1
@@ -151,8 +149,7 @@ if __name__ == '__main__':
         if terminal or i == num_steps or step_counter >= env._max_episode_steps:
           rewards.append(reward)
           env.seed(i)
-          s, terminal, reward = env.env.reset(), False, 0
-          step_counter = 0
+          s, terminal, reward, step_counter = env.env.reset(), False, 0, 0
       np_rewards = np.array(rewards)
       mean, std = np.mean(np_rewards), np.std(np_rewards)
       print(f"From random agent: {mean} +/- {std}")
