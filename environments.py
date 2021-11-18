@@ -140,7 +140,7 @@ if __name__ == '__main__':
     def get_random_agent_baseline(env, num_steps):
       rewards, i = [], 0
       env.seed(i)
-      s, terminal, reward, step_counter = env.env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
+      s, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
       pbar = tqdm(range(1, num_steps + 1), unit_scale=1, smoothing=0)
       for i in pbar:
         s, r, terminal, _= env.env.step(env.env.action_space.sample())
