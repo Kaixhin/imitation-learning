@@ -202,4 +202,4 @@ class REDDiscriminator(nn.Module):
 
   def predict_reward(self, state, action):
     prediction, target = self.forward(state, action)
-    return _gaussian_kernel(prediction, target, gamma=self.sigma_1).mean(dim=1)
+    return torch.exp(-self.sigma_1 * (target-prediction).pow(2).mean(axis=1))
