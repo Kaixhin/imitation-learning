@@ -202,4 +202,4 @@ class REDDiscriminator(nn.Module):
 
   def predict_reward(self, state, action):
     prediction, target = self.forward(state, action)
-    return torch.exp(-self.sigma_1 * (prediction - target).pow(2).mean(axis=1))
+    return torch.exp(-self.sigma_1 * (prediction - target).pow(2).mean(dim=1))
