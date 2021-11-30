@@ -29,6 +29,7 @@ def main(cfg: DictConfig) -> None:
     if cfg.imitation.loss_function == 'Mixup': assert cfg.imitation.mixup_alpha > 0
     if cfg.imitation.loss_function == 'PUGAIL': assert 0 <= cfg.imitation.pos_class_prior <= 1 and cfg.imitation.nonnegative_margin >= 0
   assert cfg.metric_log_interval >= 0
+
   # General setup
   np.random.seed(cfg.seed)
   torch.manual_seed(cfg.seed)
