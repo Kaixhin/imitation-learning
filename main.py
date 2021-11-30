@@ -71,16 +71,16 @@ def main(cfg: DictConfig) -> None:
       behavioural_cloning_update(actor, expert_transition, actor_pretrain_optimiser)
 
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
-        metrics['pre_training_time'] = time.time() - start_time
-        test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
-        steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
-        metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
-        lineplot(steps, len(steps) * [test_returns], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+      if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
+      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
+      steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
+      metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
+      lineplot(steps, len(steps) * [test_returns], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
 
-        torch.save(dict(actor=actor.state_dict()), 'agent.pth')
-        torch.save(metrics, 'metrics.pth')
-        env.close()
-        return sum(test_returns) / len(test_returns)
+      torch.save(dict(actor=actor.state_dict()), 'agent.pth')
+      torch.save(metrics, 'metrics.pth')
+      env.close()
+      return sum(test_returns) / len(test_returns)
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
