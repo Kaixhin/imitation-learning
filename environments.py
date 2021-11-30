@@ -54,7 +54,7 @@ class D4RLEnv():
   def max_episode_steps(self):
     return self.env._max_episode_steps
 
-  def get_dataset(self, trajectories=-1, subsample=20):
+  def get_dataset(self, trajectories=0, subsample=20):
     # Extract data
     states = torch.as_tensor(self.dataset['observations'], dtype=torch.float32)
     actions = torch.as_tensor(self.dataset['actions'], dtype=torch.float32)
@@ -74,7 +74,7 @@ class D4RLEnv():
       weights_list.append(torch.ones_like(terminals_list[-1]))  # Add an importance weight of 1 to every transition
       timeout_list.append(ep_end_idxs[i + 1] in timeout_idxs)  # Store if episode terminated due to timeout
     # Pick number of trajectories
-    if trajectories > -1:
+    if trajectories > 0:
       states_list = states_list[:trajectories]
       actions_list = actions_list[:trajectories]
       next_states_list = next_states_list[:trajectories]
