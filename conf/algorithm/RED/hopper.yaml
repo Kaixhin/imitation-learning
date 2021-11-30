@@ -7,8 +7,8 @@ pretraining:
   iterations: 100000
 imitation:
   model:
-    hidden_size: 256
-    depth: 2
+    hidden_size: 32
+    depth: 1
     activation: 'relu'
     input_dropout: 0
     dropout: 0

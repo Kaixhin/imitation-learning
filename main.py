@@ -71,16 +71,16 @@ def main(cfg: DictConfig) -> None:
       behavioural_cloning_update(actor, expert_transition, actor_pretrain_optimiser)
 
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
-        metrics['pre_training_time'] = time.time() - start_time
-        test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
-        steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
-        metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
-        lineplot(steps, len(steps) * [test_returns], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+      if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
+      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
+      steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
+      metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
+      lineplot(steps, len(steps) * [test_returns], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
 
-        torch.save(dict(actor=actor.state_dict()), 'agent.pth')
-        torch.save(metrics, 'metrics.pth')
-        env.close()
-        return sum(test_returns) / len(test_returns)
+      torch.save(dict(actor=actor.state_dict()), 'agent.pth')
+      torch.save(metrics, 'metrics.pth')
+      env.close()
+      return sum(test_returns) / len(test_returns)
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
@@ -106,6 +106,7 @@ def main(cfg: DictConfig) -> None:
   t, state, terminal, train_return = 0, env.reset(), False, 0
   if cfg.algorithm in ['GAIL', 'RED']: discriminator.eval()  # Set the "discriminator" to evaluation mode (except for DRIL, which explicitly uses dropout)
   pbar = tqdm(range(1, cfg.steps + 1), unit_scale=1, smoothing=0)
+  save_aux_interval = 100
   for step in pbar:
     # Collect set of transitions by running policy π in the environment
     with torch.inference_mode():
@@ -145,24 +146,24 @@ def main(cfg: DictConfig) -> None:
           if cfg.algorithm == 'DRIL':
             # TODO: By default DRIL also includes behavioural cloning online?
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-            if cfg.save_aux_metrics: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
+            if cfg.metric_log_interval and not step % cfg.metric_log_interval: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
             discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
             transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
-            if cfg.save_aux_metrics:
+            if cfg.metric_log_interval and not step % cfg.metric_log_interval:
               discriminator_expert_input = (expert_states, expert_actions, expert_next_states, actor.log_prob(expert_states, expert_actions), expert_terminals) if cfg.imitation.model.reward_shaping else (expert_states, expert_actions)
               expert_rewards = discriminator.predict_reward(*discriminator_expert_input)
           elif cfg.algorithm == 'GMMIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
-            if cfg.save_aux_metrics: expert_rewards = discriminator.predict_reward(expert_states, expert_actions, expert_states, expert_actions, expert_weights, expert_weights)
+            if cfg.metric_log_interval and not step % cfg.metric_log_interval: expert_rewards = discriminator.predict_reward(expert_states, expert_actions, expert_states, expert_actions, expert_weights, expert_weights)
           elif cfg.algorithm == 'RED':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-            if cfg.save_aux_metrics: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
+            if cfg.metric_log_interval and not step % cfg.metric_log_interval: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'SQIL':
             sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
       log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       # Save auxiliary metrics
-      if cfg.save_aux_metrics:
+      if cfg.metric_log_interval  and not step % cfg.metric_log_interval:
         metrics['update_steps'].append(step)
         metrics['predicted_rewards'].append(transitions['rewards'].numpy())
         if cfg.algorithm not in ['SAC', 'SQIL']: metrics['predicted_expert_rewards'].append(expert_rewards.numpy())
@@ -179,12 +180,12 @@ def main(cfg: DictConfig) -> None:
       lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm} Test Returns')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
-      if cfg.save_aux_metrics and len(metrics['update_steps'][::10]) > 0:  # Downsample the amount of data for plotting
+      if cfg.metric_log_interval and len(metrics['update_steps']) > 0:
         if cfg.algorithm not in ['SAC', 'SQIL']:
-            lineplot(metrics['update_steps'][::10], metrics['predicted_rewards'][::10], metrics['predicted_expert_rewards'][::10], filename='predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
-        lineplot(metrics['update_steps'][::10], metrics['alphas'][::10], filename='sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
-        lineplot(metrics['update_steps'][::10], metrics['entropies'][::10], filename='sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
-        lineplot(metrics['update_steps'][::10], metrics['Q_values'][::10], filename='Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
+            lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename='predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
+        lineplot(metrics['update_steps'], metrics['alphas'], filename='sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
+        lineplot(metrics['update_steps'], metrics['entropies'], filename='sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
+        lineplot(metrics['update_steps'], metrics['Q_values'], filename='Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
