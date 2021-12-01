@@ -33,7 +33,7 @@ imitation:
     activation: 'relu'
     input_dropout: 0.5
     dropout: 0.75 
-  trajectories: -1  # -1 to disable; otherwise select number of trajectories
+  trajectories: 0  # 0 to disable; otherwise select number of trajectories
   subsample: 20
   state_only: false
   absorbing: false
@@ -48,7 +48,7 @@ evaluation:
   episodes: 30
   average_window: 5
 check_time_usage: false
-metric_log_interval: 10 # Set to -1 to disable; logging too frequently can crash plotting/result in a large metric file
+metric_log_interval: 10  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
 save_trajectories: false
 render: false
 

@@ -1,18 +1,21 @@
 from logging import ERROR
+from typing import List, Tuple
 
 import d4rl
 import gym
-from gym.spaces import Box
+from gym.spaces import Box, Space
 import numpy as np
 import torch
+from torch import Tensor
 from tqdm import tqdm
+
 from memory import ReplayMemory
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
 
 class D4RLEnv():
-  def __init__(self, env_name, absorbing, load_data=False):
+  def __init__(self, env_name: str, absorbing: bool, load_data: bool=False):
     self.env = gym.make(env_name)
     if load_data: self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
@@ -20,20 +23,20 @@ class D4RLEnv():
     self.absorbing = absorbing
     if absorbing: self.env.observation_space = Box(low=np.concatenate([self.env.observation_space.low, np.zeros(1)]), high=np.concatenate([self.env.observation_space.high, np.ones(1)]))  # Append absorbing indicator bit to state dimension (assumes 1D state space)
 
-  def reset(self):
+  def reset(self) -> Tensor:
     state = self.env.reset()
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
     if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
     return state 
 
-  def step(self, action):
+  def step(self, action: Tensor) -> Tuple[Tensor, float, bool]:
     action = action.clamp(min=self.env.action_space.low, max=self.env.action_space.high)  # Clip actions
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
     if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
     return state, reward, terminal
 
-  def seed(self, seed):
+  def seed(self, seed: int) -> List[int]:
     return self.env.seed(seed)
 
   def render(self):
@@ -43,18 +46,18 @@ class D4RLEnv():
     self.env.close()
 
   @property
-  def observation_space(self):
+  def observation_space(self) -> Space:
     return self.env.observation_space
 
   @property
-  def action_space(self):
+  def action_space(self) -> Space:
     return self.env.action_space
 
   @property
-  def max_episode_steps(self):
+  def max_episode_steps(self) -> int:
     return self.env._max_episode_steps
 
-  def get_dataset(self, trajectories=-1, subsample=20):
+  def get_dataset(self, trajectories: int=0, subsample: int=20) -> ReplayMemory:
     # Extract data
     states = torch.as_tensor(self.dataset['observations'], dtype=torch.float32)
     actions = torch.as_tensor(self.dataset['actions'], dtype=torch.float32)
@@ -74,7 +77,7 @@ class D4RLEnv():
       weights_list.append(torch.ones_like(terminals_list[-1]))  # Add an importance weight of 1 to every transition
       timeout_list.append(ep_end_idxs[i + 1] in timeout_idxs)  # Store if episode terminated due to timeout
     # Pick number of trajectories
-    if trajectories > -1:
+    if trajectories > 0:
       states_list = states_list[:trajectories]
       actions_list = actions_list[:trajectories]
       next_states_list = next_states_list[:trajectories]
