@@ -124,22 +124,22 @@ def _get_expert_baseline(env):
   trajectory_cumrewards = terminal_cumrewards - np.concatenate([np.array([0]), terminal_cumrewards[:-1]])
   mean, std = np.mean(trajectory_cumrewards), np.std(trajectory_cumrewards)
   print(f"From expert demonstration: {mean} +/- {std}")
-  num_data = rewards.shape[0]
-  return mean, std, num_data 
+  num_episodes=np.sum(terminal_idx)
+  return mean, std, num_episodes
 
-def _get_random_agent_baseline(env, num_steps):
+def _get_random_agent_baseline(env, num_episodes):
   rewards, i = [], 0
   env.seed(i)
   s, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
-  pbar = tqdm(range(1, num_steps + 1), unit_scale=1, smoothing=0)
-  for i in pbar:
+  while i < num_episodes:
     s, r, terminal, _= env.step(env.action_space.sample())
     step_counter += 1
     reward += r
-    if terminal or i == num_steps or step_counter >= env._max_episode_steps:
+    if terminal or i == num_episodes or step_counter >= env._max_episode_steps:
       rewards.append(reward)
       env.seed(i)
       s, terminal, reward, step_counter = env.reset(), False, 0, 0
+      i += 1
   np_rewards = np.array(rewards)
   mean, std = np.mean(np_rewards), np.std(np_rewards)
   print(f"From random agent: {mean} +/- {std}")
@@ -150,11 +150,11 @@ def _get_env_baseline(env, save_result=False):
     print(f"Running random agent for {num_data} steps....")
     random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_steps=num_data)
     if save_result: np.savez(env_name, expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+    return expert_mean, expert_std, random_agent_mean, random_agent_std
 
 if __name__ == '__main__':
     supported_envs = dict(ant='ant-expert-v2', hopper='hopper-expert-v2', halfcheetah='halfcheetah-expert-v2', walker2d='walker2d-expert-v2')
     import argparse
-    from tqdm import tqdm
     parser = argparse.ArgumentParser(description='Get env baselines')
     parser.add_argument('--save-result', action='store_true', default=False)
     parser.add_argument('--env', type=str, default='all')
@@ -164,12 +164,12 @@ if __name__ == '__main__':
 
     if args.env is 'all':
       for env_name in supported_envs.keys():
-        env = gym.make(supported_envs[env_name]) # skip using D4RL because action_space.sample() does not exist
+        env = gym.make(supported_envs[env_name]) # skip using D4RL class because action_space.sample() does not exist
         print(f"For env: {env_name} with data: {supported_envs[env_name]}")
         _get_env_baseline(env, args.save_result)
     else:
         env_name = args.env
-        env = gym.make(supported_envs[env_name]) # skip using D4RL because action_space.sample() does not exist
+        env = gym.make(supported_envs[env_name]) # skip using D4RL class because action_space.sample() does not exist
         print(f"For env: {env_name} with data: {supported_envs[env_name]}")
         _get_env_baseline(env, args.save_result)
       
