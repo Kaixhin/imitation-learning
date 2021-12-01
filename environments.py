@@ -118,7 +118,6 @@ class D4RLEnv():
 def _get_expert_baseline(env):
   data = env.get_dataset()
   rewards, terminals = data['rewards'], data['terminals'] + data['timeouts']  # D4RL separates terminals and timeouts 
-  num_steps = rewards.shape[0]
   cum_rewards, terminal_idxs = np.cumsum(rewards), np.nonzero(terminals)
   terminal_cum_rewards = cum_rewards[terminal_idxs]
   trajectory_cum_rewards = terminal_cum_rewards - np.concatenate([np.array([0]), terminal_cum_rewards[:-1]])
@@ -132,7 +131,7 @@ def _get_random_agent_baseline(env, num_episodes):
   env.seed(i)
   _, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
   while i < num_episodes:
-    _, r, terminal, _= env.step(env.action_space.sample())
+    _, r, terminal, _ = env.step(env.action_space.sample())
     step_counter += 1
     reward += r
     if terminal or i == num_episodes or step_counter >= env._max_episode_steps:
