@@ -5,7 +5,7 @@ import gym
 from gym.spaces import Box
 import numpy as np
 import torch
-
+from tqdm import tqdm
 from memory import ReplayMemory
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
@@ -123,22 +123,22 @@ def _get_expert_baseline(env):
   trajectory_cum_rewards = terminal_cum_rewards - np.concatenate([np.array([0]), terminal_cum_rewards[:-1]])
   mean, std = np.mean(trajectory_cum_rewards), np.std(trajectory_cum_rewards)
   print(f'From expert demonstration: {mean} +/- {std}')
-  num_episodes=np.sum(terminal_idxs)
+  num_episodes=terminal_idxs[0].shape[0]
   return mean, std, num_episodes
 
 def _get_random_agent_baseline(env, num_episodes):
-  rewards, i = [], 0
-  env.seed(i)
+  rewards = []
+  env.seed(0)
   _, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
-  while i < num_episodes:
-    _, r, terminal, _ = env.step(env.action_space.sample())
-    step_counter += 1
-    reward += r
-    if terminal or i == num_episodes or step_counter >= env._max_episode_steps:
-      rewards.append(reward)
-      env.seed(i)
-      _, terminal, reward, step_counter = env.reset(), False, 0, 0
-      i += 1
+  pbar = tqdm(range(1, num_episodes+1), unit_scale=1, smoothing=0)
+  for i in pbar:
+    while not terminal or step_counter < env._max_episode_steps:
+      _, r, terminal, _ = env.step(env.action_space.sample())
+      step_counter += 1
+      reward += r
+    rewards.append(reward)
+    env.seed(i)
+    _, terminal, reward, step_counter = env.reset(), False, 0, 0
   np_rewards = np.array(rewards)
   mean, std = np.mean(np_rewards), np.std(np_rewards)
   print(f'From random agent: {mean} +/- {std}')
@@ -146,9 +146,9 @@ def _get_random_agent_baseline(env, num_episodes):
 
 
 def _get_env_baseline(env, save_result=False):
-    expert_mean, expert_std, num_steps = _get_expert_baseline(env)
-    print(f'Running random agent for {num_steps} steps....')
-    random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_steps=num_steps)
+    expert_mean, expert_std, num_episodes = _get_expert_baseline(env)
+    print(f'Running random agent for {num_episodes} episodes....')
+    random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
     if save_result: np.savez(env_name, expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
     return expert_mean, expert_std, random_agent_mean, random_agent_std
 
