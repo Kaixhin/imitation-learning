@@ -118,63 +118,63 @@ class D4RLEnv():
     return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)
 
 
-def _get_expert_baseline(env):
-  data = env.get_dataset()
-  rewards, terminals = data['rewards'], data['terminals'] + data['timeouts']  # D4RL separates terminals and timeouts 
+def _get_expert_baseline(env: gym.Env):
+  dataset = env.get_dataset()
+  rewards, terminals = dataset['rewards'], dataset['terminals'] + dataset['timeouts']  # D4RL separates terminals and timeouts 
   cum_rewards, terminal_idxs = np.cumsum(rewards), np.nonzero(terminals)
   terminal_cum_rewards = cum_rewards[terminal_idxs]
   trajectory_cum_rewards = terminal_cum_rewards - np.concatenate([np.array([0]), terminal_cum_rewards[:-1]])
   mean, std = np.mean(trajectory_cum_rewards), np.std(trajectory_cum_rewards)
-  print(f'From expert demonstration: {mean} +/- {std}')
+  print(f'Expert demonstration returns: {mean} +/- {std}')
   num_episodes=terminal_idxs[0].shape[0]
   return mean, std, num_episodes
 
-def _get_random_agent_baseline(env, num_episodes):
-  rewards = []
+
+def _get_random_agent_baseline(env: gym.Env, num_episodes: int):
   env.seed(0)
-  _, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
-  pbar = tqdm(range(1, num_episodes+1), unit_scale=1, smoothing=0)
+  _, terminal, total_reward, returns, step_counter = env.reset(), False, 0, [], 0  # Step counter used for manual timeouts
+  pbar = tqdm(range(1, num_episodes + 1), unit_scale=1, smoothing=0)
   for i in pbar:
     while not terminal or step_counter < env._max_episode_steps:
-      _, r, terminal, _ = env.step(env.action_space.sample())
+      _, reward, terminal, _ = env.step(env.action_space.sample())
       step_counter += 1
-      reward += r
-    rewards.append(reward)
+      total_reward += reward
+    returns.append(total_reward)
     env.seed(i)
-    _, terminal, reward, step_counter = env.reset(), False, 0, 0
-  np_rewards = np.array(rewards)
-  mean, std = np.mean(np_rewards), np.std(np_rewards)
-  print(f'From random agent: {mean} +/- {std}')
+    _, terminal, total_reward, step_counter = env.reset(), False, 0, 0
+  returns = np.array(returns)
+  mean, std = np.mean(returns), np.std(returns)
+  print(f'Random agent returns: {mean} +/- {std}')
   return mean, std
 
 
-def _get_env_baseline(env):
-    expert_mean, expert_std, num_episodes = _get_expert_baseline(env)
-    print(f'Running random agent for {num_episodes} episodes....')
-    random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
-    return expert_mean, expert_std, random_agent_mean, random_agent_std
+def _get_env_baseline(env: gym.Env):
+  expert_mean, expert_std, num_episodes = _get_expert_baseline(env)
+  print(f'Running random agent for {num_episodes} episodes...')
+  random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
+  return expert_mean, expert_std, random_agent_mean, random_agent_std
 
 
 if __name__ == '__main__':
-    import argparse
-    supported_envs = dict(ant='ant-expert-v2', hopper='hopper-expert-v2', halfcheetah='halfcheetah-expert-v2', walker2d='walker2d-expert-v2')
-    parser = argparse.ArgumentParser(description='Get env baselines')
-    parser.add_argument('--save-result', action='store_true', default=False)
-    parser.add_argument('--env', type=str, default='all')
-    args = parser.parse_args()
-    assert args.env is 'all' or args.env in supported_envs.keys()
+  import argparse
+  supported_envs = dict(ant='ant-expert-v2', hopper='hopper-expert-v2', halfcheetah='halfcheetah-expert-v2', walker2d='walker2d-expert-v2')
+  parser = argparse.ArgumentParser(description='Env baselines')
+  parser.add_argument('--save-result', action='store_true', default=False)
+  parser.add_argument('--env', type=str, default='all')
+  args = parser.parse_args()
+  assert args.env is 'all' or args.env in supported_envs.keys()
 
-    if args.env is 'all':
-      filename, data = 'normalization_data', dict()
-      for env_name in supported_envs.keys():
-        env = gym.make(supported_envs[env_name]) # skip using D4RL class because action_space.sample() does not exist
-        print(f"For env: {env_name} with data: {supported_envs[env_name]}")
-        expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
-        data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
-      if args.save_result: np.savez(filename, **data)
-    else:
-        env_name = args.env
-        env = gym.make(supported_envs[env_name]) # skip using D4RL class because action_space.sample() does not exist
-        print(f"For env: {env_name} with data: {supported_envs[env_name]}")
-        expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
-        if args.save_result: np.savez(env_name, expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+  if args.env is 'all':
+    filename, data = 'normalization_data', dict()
+    for env_name in supported_envs.keys():
+      env = gym.make(supported_envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
+      print(f"For env: {env_name} with data: {supported_envs[env_name]}")
+      expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
+      data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+    if args.save_result: np.savez(filename, **data)
+  else:
+    env_name = args.env
+    env = gym.make(supported_envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
+    print(f"For env: {env_name} with data: {supported_envs[env_name]}")
+    expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
+    if args.save_result: np.savez(env_name, expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
