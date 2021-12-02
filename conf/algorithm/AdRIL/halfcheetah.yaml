@@ -3,7 +3,5 @@ env_type: halfcheetah
 env_name: halfcheetah-expert-v2
 
 algorithm: AdRIL
-pretraining:
-  iterations: 0
 imitation:
   update_freq: 1250

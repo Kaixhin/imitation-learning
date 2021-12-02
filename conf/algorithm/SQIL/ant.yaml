@@ -3,5 +3,3 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: SQIL
-pretraining:
-  iterations: 0
