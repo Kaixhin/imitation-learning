@@ -1,9 +1,16 @@
+from typing import Dict
+
 import torch
-from torch import autograd
+from torch import Tensor, autograd
 from torch.distributions import Beta, Bernoulli
 from torch.nn import functional as F
 
 from models import update_target_network
+
+
+# Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place TODO: Add sampling ratio option?
+def mix_policy_expert_transitions(transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], batch_size: int):
+  transitions['states'][:batch_size // 2], transitions['actions'][:batch_size // 2], transitions['next_states'][:batch_size // 2], transitions['terminals'][:batch_size // 2], transitions['weights'][:batch_size // 2], transitions['absorbing'][:batch_size // 2]  = expert_transitions['states'][:batch_size // 2], expert_transitions['actions'][:batch_size // 2], expert_transitions['next_states'][:batch_size // 2], expert_transitions['terminals'][:batch_size // 2], expert_transitions['weights'][:batch_size // 2], expert_transitions['absorbing'][:batch_size // 2]  # Replace half of the batch with expert data
 
 
 # Performs one SAC update

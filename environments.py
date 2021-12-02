@@ -1,18 +1,21 @@
 from logging import ERROR
+from typing import List, Tuple
 
 import d4rl
 import gym
-from gym.spaces import Box
+from gym.spaces import Box, Space
 import numpy as np
 import torch
+from torch import Tensor
 from tqdm import tqdm
+
 from memory import ReplayMemory
 
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
 
 class D4RLEnv():
-  def __init__(self, env_name, absorbing, load_data=False):
+  def __init__(self, env_name: str, absorbing: bool, load_data: bool=False):
     self.env = gym.make(env_name)
     if load_data: self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
@@ -20,20 +23,20 @@ class D4RLEnv():
     self.absorbing = absorbing
     if absorbing: self.env.observation_space = Box(low=np.concatenate([self.env.observation_space.low, np.zeros(1)]), high=np.concatenate([self.env.observation_space.high, np.ones(1)]))  # Append absorbing indicator bit to state dimension (assumes 1D state space)
 
-  def reset(self):
+  def reset(self) -> Tensor:
     state = self.env.reset()
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
     if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state
     return state 
 
-  def step(self, action):
+  def step(self, action: Tensor) -> Tuple[Tensor, float, bool]:
     action = action.clamp(min=self.env.action_space.low, max=self.env.action_space.high)  # Clip actions
     state, reward, terminal, _ = self.env.step(action[0].detach().numpy())  # Remove batch dimension from action
     state = torch.tensor(state, dtype=torch.float32).unsqueeze(dim=0)  # Add batch dimension to state
     if self.absorbing: state = torch.cat([state, torch.zeros(state.size(0), 1)], dim=1)  # Add absorbing indicator (zero) to state (absorbing state rewriting done in replay memory)
     return state, reward, terminal
 
-  def seed(self, seed):
+  def seed(self, seed: int) -> List[int]:
     return self.env.seed(seed)
 
   def render(self):
@@ -43,18 +46,18 @@ class D4RLEnv():
     self.env.close()
 
   @property
-  def observation_space(self):
+  def observation_space(self) -> Space:
     return self.env.observation_space
 
   @property
-  def action_space(self):
+  def action_space(self) -> Space:
     return self.env.action_space
 
   @property
-  def max_episode_steps(self):
+  def max_episode_steps(self) -> int:
     return self.env._max_episode_steps
 
-  def get_dataset(self, trajectories=-1, subsample=20):
+  def get_dataset(self, trajectories: int=0, subsample: int=20) -> ReplayMemory:
     # Extract data
     states = torch.as_tensor(self.dataset['observations'], dtype=torch.float32)
     actions = torch.as_tensor(self.dataset['actions'], dtype=torch.float32)
@@ -74,7 +77,7 @@ class D4RLEnv():
       weights_list.append(torch.ones_like(terminals_list[-1]))  # Add an importance weight of 1 to every transition
       timeout_list.append(ep_end_idxs[i + 1] in timeout_idxs)  # Store if episode terminated due to timeout
     # Pick number of trajectories
-    if trajectories > -1:
+    if trajectories > 0:
       states_list = states_list[:trajectories]
       actions_list = actions_list[:trajectories]
       next_states_list = next_states_list[:trajectories]
@@ -115,63 +118,63 @@ class D4RLEnv():
     return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)
 
 
-def _get_expert_baseline(env):
-  data = env.get_dataset()
-  rewards, terminals = data['rewards'], data['terminals'] + data['timeouts']  # D4RL separates terminals and timeouts 
+def _get_expert_baseline(env: gym.Env):
+  dataset = env.get_dataset()
+  rewards, terminals = dataset['rewards'], dataset['terminals'] + dataset['timeouts']  # D4RL separates terminals and timeouts 
   cum_rewards, terminal_idxs = np.cumsum(rewards), np.nonzero(terminals)
   terminal_cum_rewards = cum_rewards[terminal_idxs]
   trajectory_cum_rewards = terminal_cum_rewards - np.concatenate([np.array([0]), terminal_cum_rewards[:-1]])
   mean, std = np.mean(trajectory_cum_rewards), np.std(trajectory_cum_rewards)
-  print(f'From expert demonstration: {mean} +/- {std}')
+  print(f'Expert demonstration returns: {mean} +/- {std}')
   num_episodes=terminal_idxs[0].shape[0]
   return mean, std, num_episodes
 
-def _get_random_agent_baseline(env, num_episodes):
-  rewards = []
+
+def _get_random_agent_baseline(env: gym.Env, num_episodes: int):
   env.seed(0)
-  _, terminal, reward, step_counter = env.reset(), False, 0, 0 #step counter keeps track of _max_episode_steps
-  pbar = tqdm(range(1, num_episodes+1), unit_scale=1, smoothing=0)
+  _, terminal, total_reward, returns, step_counter = env.reset(), False, 0, [], 0  # Step counter used for manual timeouts
+  pbar = tqdm(range(1, num_episodes + 1), unit_scale=1, smoothing=0)
   for i in pbar:
     while not terminal or step_counter < env._max_episode_steps:
-      _, r, terminal, _ = env.step(env.action_space.sample())
+      _, reward, terminal, _ = env.step(env.action_space.sample())
       step_counter += 1
-      reward += r
-    rewards.append(reward)
+      total_reward += reward
+    returns.append(total_reward)
     env.seed(i)
-    _, terminal, reward, step_counter = env.reset(), False, 0, 0
-  np_rewards = np.array(rewards)
-  mean, std = np.mean(np_rewards), np.std(np_rewards)
-  print(f'From random agent: {mean} +/- {std}')
+    _, terminal, total_reward, step_counter = env.reset(), False, 0, 0
+  returns = np.array(returns)
+  mean, std = np.mean(returns), np.std(returns)
+  print(f'Random agent returns: {mean} +/- {std}')
   return mean, std
 
 
-def _get_env_baseline(env):
-    expert_mean, expert_std, num_episodes = _get_expert_baseline(env)
-    print(f'Running random agent for {num_episodes} episodes....')
-    random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
-    return expert_mean, expert_std, random_agent_mean, random_agent_std
+def _get_env_baseline(env: gym.Env):
+  expert_mean, expert_std, num_episodes = _get_expert_baseline(env)
+  print(f'Running random agent for {num_episodes} episodes...')
+  random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
+  return expert_mean, expert_std, random_agent_mean, random_agent_std
 
 
 if __name__ == '__main__':
-    import argparse
-    supported_envs = dict(ant='ant-expert-v2', hopper='hopper-expert-v2', halfcheetah='halfcheetah-expert-v2', walker2d='walker2d-expert-v2')
-    parser = argparse.ArgumentParser(description='Get env baselines')
-    parser.add_argument('--save-result', action='store_true', default=False)
-    parser.add_argument('--env', type=str, default='all')
-    args = parser.parse_args()
-    assert args.env is 'all' or args.env in supported_envs.keys()
+  import argparse
+  supported_envs = dict(ant='ant-expert-v2', hopper='hopper-expert-v2', halfcheetah='halfcheetah-expert-v2', walker2d='walker2d-expert-v2')
+  parser = argparse.ArgumentParser(description='Env baselines')
+  parser.add_argument('--save-result', action='store_true', default=False)
+  parser.add_argument('--env', type=str, default='all')
+  args = parser.parse_args()
+  assert args.env is 'all' or args.env in supported_envs.keys()
 
-    if args.env is 'all':
-      filename, data = 'normalization_data', dict()
-      for env_name in supported_envs.keys():
-        env = gym.make(supported_envs[env_name]) # skip using D4RL class because action_space.sample() does not exist
-        print(f"For env: {env_name} with data: {supported_envs[env_name]}")
-        expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
-        data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
-      if args.save_result: np.savez(filename, **data)
-    else:
-        env_name = args.env
-        env = gym.make(supported_envs[env_name]) # skip using D4RL class because action_space.sample() does not exist
-        print(f"For env: {env_name} with data: {supported_envs[env_name]}")
-        expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
-        if args.save_result: np.savez(env_name, expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+  if args.env is 'all':
+    filename, data = 'normalization_data', dict()
+    for env_name in supported_envs.keys():
+      env = gym.make(supported_envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
+      print(f"For env: {env_name} with data: {supported_envs[env_name]}")
+      expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
+      data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+    if args.save_result: np.savez(filename, **data)
+  else:
+    env_name = args.env
+    env = gym.make(supported_envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
+    print(f"For env: {env_name} with data: {supported_envs[env_name]}")
+    expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
+    if args.save_result: np.savez(env_name, expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
