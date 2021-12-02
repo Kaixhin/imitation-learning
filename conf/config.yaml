@@ -42,7 +42,7 @@ imitation:
   bc: false
 training:
   start: 1000
-  interval: 1
+  interval: 1  # TODO: gradient_steps?
   batch_size: 256
 evaluation:
   interval: 10000
