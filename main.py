@@ -151,7 +151,7 @@ def run(cfg: DictConfig, file_prefix=''):
         with torch.inference_mode():
           if cfg.algorithm == 'AdRIL':
             mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
-            transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, -1  # TODO: Set a constant +1 reward for expert data and -1/k for policy data
+            transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, -1 / torch.ceil(transitions['step'][cfg.training.batch_size // 2:] / cfg.imitation.update_freq)  # Set a constant +1 reward for expert data and -1/k for policy data
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
