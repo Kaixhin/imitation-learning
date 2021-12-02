@@ -18,10 +18,10 @@ from utils import cycle, flatten_list_dicts, lineplot
 
 
 @hydra.main(config_path='conf', config_name='config')
-def main_wrapper(cfg: DictConfig, file_prefix=''):
-  return main(cfg, file_prefix=file_prefix)
+def main(cfg: DictConfig):
+  return run(cfg)
 
-def main(cfg: DictConfig, file_prefix=''):
+def run(cfg: DictConfig, file_prefix=''):
   # Configuration check
   assert cfg.algorithm in ['BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size

@@ -154,6 +154,14 @@ def _get_env_baseline(env: gym.Env):
   random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
   return expert_mean, expert_std, random_agent_mean, random_agent_std
 
+def get_all_env_baseline(envs: dict):
+    data =  dict()
+    for env_name in envs.keys():
+      env = gym.make(envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
+      print(f"For env: {env_name} with data: {envs[env_name]}")
+      expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
+      data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+    return data
 
 if __name__ == '__main__':
   import argparse
@@ -165,12 +173,8 @@ if __name__ == '__main__':
   assert args.env is 'all' or args.env in supported_envs.keys()
 
   if args.env is 'all':
-    filename, data = 'normalization_data', dict()
-    for env_name in supported_envs.keys():
-      env = gym.make(supported_envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
-      print(f"For env: {env_name} with data: {supported_envs[env_name]}")
-      expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
-      data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+    filename = 'normalization_data'
+    data = get_all_env_baseline(supported_envs)
     if args.save_result: np.savez(filename, **data)
   else:
     env_name = args.env
