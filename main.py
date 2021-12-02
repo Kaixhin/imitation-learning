@@ -190,7 +190,7 @@ def run(cfg: DictConfig, file_prefix=''):
         lineplot(metrics['train_steps'], metrics['train_returns'], filename=file_prefix+'train_returns', title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
       if cfg.metric_log_interval and len(metrics['update_steps']) > 0:
         if cfg.algorithm not in ['SAC', 'SQIL']:
-            lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=file_prefix+'predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
+          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=file_prefix+'predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
         lineplot(metrics['update_steps'], metrics['alphas'], filename=file_prefix+'sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
         lineplot(metrics['update_steps'], metrics['entropies'], filename=file_prefix+'sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
         lineplot(metrics['update_steps'], metrics['Q_values'], filename=file_prefix+'Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
