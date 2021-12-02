@@ -120,7 +120,7 @@ def run(cfg: DictConfig, file_prefix=''):
       next_state, reward, terminal = env.step(action)
       t += 1
       train_return += reward
-      memory.append(state, action, reward, next_state, terminal and t != env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal
+      memory.append(step, state, action, reward, next_state, terminal and t != env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal
       state = next_state
 
     # Reset environment and track metrics on episode termination
