@@ -71,8 +71,8 @@ def main(cfg: DictConfig) -> None:
     expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
     actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.pretraining.learning_rate)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
-      expert_transition = next(expert_dataloader)
-      behavioural_cloning_update(actor, expert_transition, actor_pretrain_optimiser)
+      expert_transitions = next(expert_dataloader)
+      behavioural_cloning_update(actor, expert_transitions, actor_pretrain_optimiser)
 
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
       if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
@@ -147,7 +147,6 @@ def main(cfg: DictConfig) -> None:
 
         with torch.inference_mode():
           if cfg.algorithm == 'DRIL':
-            # TODO: By default DRIL also includes behavioural cloning online?
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
@@ -165,7 +164,9 @@ def main(cfg: DictConfig) -> None:
           elif cfg.algorithm == 'SQIL':
             mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
             transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, 0  # Set a constant +1 reward for expert data and 0 for policy data
-      
+      # Perform a behavioural cloning update (optional)
+      if cfg.imitation.bc: behavioural_cloning_update(actor, expert_transitions, actor_optimiser)
+      # Perform a SAC update
       log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       # Save auxiliary metrics
       if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:

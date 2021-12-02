@@ -6,7 +6,7 @@ Imitation learning algorithms (with SAC [[1, 2]](#references)):
 
 - AIRL [[3]](#references)
 - BC [[4]](#references)
-- DRIL [[5]](#references) (without BC)
+- DRIL [[5]](#references)
 - FAIRL [[6]](#references)
 - GAIL [[7]](#references)
 - GMMIL [[8]](#references) (including an optional self-similarity term [[9]](#references))
