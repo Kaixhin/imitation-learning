@@ -23,7 +23,7 @@ def main(cfg: DictConfig):
 
 def run(cfg: DictConfig, file_prefix=''):
   # Configuration check
-  assert cfg.algorithm in ['BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1
@@ -82,17 +82,17 @@ def run(cfg: DictConfig, file_prefix=''):
       test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
       metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
-      lineplot(steps, len(steps) * [test_returns], filename=f"{file_prefix}test_returns", title=f'{cfg.env_name} : {cfg.algorithm}')
+      lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
 
-      torch.save(dict(actor=actor.state_dict()), f"{file_prefix}agent.pth")
-      torch.save(metrics, f"{file_prefix}metrics.pth")
+      torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
+      torch.save(metrics, f'{file_prefix}metrics.pth')
       env.close()
       return sum(test_returns) / len(test_returns)
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
     expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
-    for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):
+    for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):  # TODO: Change the naming of "imitation.pretraining_iterations"
       expert_transition = next(expert_dataloader)
       if cfg.algorithm == 'DRIL':
         behavioural_cloning_update(discriminator, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)
@@ -137,7 +137,7 @@ def run(cfg: DictConfig, file_prefix=''):
       # Sample a batch of transitions
       transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
 
-      if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
+      if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
         # Train discriminator
         if cfg.algorithm == 'GAIL':
           discriminator.train()
@@ -149,7 +149,10 @@ def run(cfg: DictConfig, file_prefix=''):
         expert_states, expert_actions, expert_next_states, expert_terminals, expert_weights = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case
 
         with torch.inference_mode():
-          if cfg.algorithm == 'DRIL':
+          if cfg.algorithm == 'AdRIL':
+            mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
+            transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, -1  # TODO: Set a constant +1 reward for expert data and -1/k for policy data
+          elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
@@ -175,7 +178,7 @@ def run(cfg: DictConfig, file_prefix=''):
       if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:
         metrics['update_steps'].append(step)
         metrics['predicted_rewards'].append(transitions['rewards'].numpy())
-        if cfg.algorithm not in ['SAC', 'SQIL']: metrics['predicted_expert_rewards'].append(expert_rewards.numpy())
+        if cfg.algorithm not in ['AdRIL', 'SAC', 'SQIL']: metrics['predicted_expert_rewards'].append(expert_rewards.numpy())
         metrics['alphas'].append(log_alpha.exp().detach().numpy())
         metrics['entropies'].append((-log_probs).numpy())  # Actions are sampled from the policy distribution, so "p" is already included
         metrics['Q_values'].append(Q_values.numpy())
@@ -190,11 +193,11 @@ def run(cfg: DictConfig, file_prefix=''):
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
       if cfg.metric_log_interval > 0 and len(metrics['update_steps']) > 0:
-        if cfg.algorithm not in ['SAC', 'SQIL']:
-          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f"{file_prefix}predicted_rewards", yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
-        lineplot(metrics['update_steps'], metrics['alphas'], filename=f"{file_prefix}sac_alpha", yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
-        lineplot(metrics['update_steps'], metrics['entropies'], filename=f"{file_prefix}sac_entropy", yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
-        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f"{file_prefix}Q_values", yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
+        if cfg.algorithm not in ['AdRIL', 'SAC', 'SQIL']:
+          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
+        lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
+        lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
+        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
@@ -202,11 +205,11 @@ def run(cfg: DictConfig, file_prefix=''):
   if cfg.save_trajectories:
     # Store trajectories from agent after training
     _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed, return_trajectories=True, render=cfg.render)
-    torch.save(trajectories, f"{file_prefix}trajectories.pth")
+    torch.save(trajectories, f'{file_prefix}trajectories.pth')
   # Save agent and metrics
-  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f"{file_prefix}agent.pth")
-  if cfg.algorithm in ['DRIL', 'GAIL', 'RED']: torch.save(discriminator.state_dict(), f"{file_prefix}discriminator.pth")
-  torch.save(metrics, f"{file_prefix}metrics.pth")
+  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f'{file_prefix}agent.pth')
+  if cfg.algorithm in ['DRIL', 'GAIL', 'RED']: torch.save(discriminator.state_dict(), f'{file_prefix}discriminator.pth')
+  torch.save(metrics, f'{file_prefix}metrics.pth')
 
   env.close()
   return sum(recent_returns) / float(cfg.evaluation.average_window)
