@@ -11,7 +11,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from main import run, main_wrapper
+from main import run 
 from environments import get_all_env_baseline
 
 def pool_wrapper(cfg):
