@@ -12,9 +12,10 @@ from tqdm import tqdm
 from environments import D4RLEnv
 from evaluation import evaluate_agent
 from memory import ReplayMemory
-from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, sqil_sample
-from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
+from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network
+from training import adversarial_imitation_update, behavioural_cloning_update, mix_policy_expert_transitions, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
+
 
 @hydra.main(config_path='conf', config_name='config')
 def main(cfg: DictConfig) -> None:
@@ -162,7 +163,9 @@ def main(cfg: DictConfig) -> None:
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'SQIL':
-            sqil_sample(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data with constant reward functions TODO: Add sampling ratio option?
+            mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
+            transitions['rewards'][:cfg.training.batch_size // 2], transitions['rewards'][cfg.training.batch_size // 2:] = 1, 0  # Set a constant +1 reward for expert data and 0 for policy data
+      
       log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       # Save auxiliary metrics
       if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:

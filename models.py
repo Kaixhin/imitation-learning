@@ -78,12 +78,6 @@ def update_target_network(network: nn.Module, target_network: nn.Module, polyak_
     target_param.data.mul_(polyak_factor).add_((1 - polyak_factor) * param.data)
 
 
-# Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place
-def sqil_sample(transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], batch_size: int):
-  transitions['states'][:batch_size // 2], transitions['actions'][:batch_size // 2], transitions['next_states'][:batch_size // 2], transitions['terminals'][:batch_size // 2], transitions['weights'][:batch_size // 2], transitions['absorbing'][:batch_size // 2]  = expert_transitions['states'][:batch_size // 2], expert_transitions['actions'][:batch_size // 2], expert_transitions['next_states'][:batch_size // 2], expert_transitions['terminals'][:batch_size // 2], expert_transitions['weights'][:batch_size // 2], expert_transitions['absorbing'][:batch_size // 2]  # Replace half of the batch with expert data
-  transitions['rewards'][:batch_size // 2], transitions['rewards'][batch_size // 2:] = 1, 0  # Set a constant +1 reward for expert data and 0 for policy data
-
-
 class SoftActor(nn.Module):
   def __init__(self, state_size: int, action_size: int, model_cfg: DictConfig):
     super().__init__()
