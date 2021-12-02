@@ -2,23 +2,29 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-Imitation learning algorithms (with SAC [[1, 2]](#references)):
+Off-policy imitation learning algorithms (with SAC [[1, 2]](#references)):
 
-- AIRL [[3]](#references)
+- AdRIL [[3]](#references)
 - BC [[4]](#references)
 - DRIL [[5]](#references)
-- FAIRL [[6]](#references)
-- GAIL [[7]](#references)
-- GMMIL [[8]](#references) (including an optional self-similarity term [[9]](#references))
-- nn-PUGAIL [[10]](#references)
-- RED [[11]](#references)
-- SQIL [[12]](#references)
+- GAIL [[6]](#references)
+- GMMIL [[7]](#references) (including an optional self-similarity term [[8]](#references))
+- RED [[9]](#references)
+- SQIL [[10]](#references)
 
-Options include:
+General options include:
 
-- State-only imitation learning: `state-only: true/false`
-- Absorbing state indicator [[13]](#references): `absorbing: true/false`
-- R1 gradient regularisation [[14]](#references): `r1-reg-coeff: 0.5`
+- State-only imitation learning: `imitation.state-only: true/false`
+- Absorbing state indicator [[11]](#references): `imitation.absorbing: true/false`
+
+GAIL options include:
+
+- Reward shaping (AIRL) [[12]](#references): `imitation.model.reward_shaping: true/false`
+- Reward functions (GAIL/AIRL/FAIRL) [[6, 12, 13]](#references): `imitation.model.reward_function: AIRL/FAIRL/GAIL`
+- Gradient penalty [[11, 14]](#references): `imitation.grad_penalty: <float>`
+- Spectral normalisation [[15]](#references): `imitation.spectral_norm: true/false`
+- Entropy bonus [[16]](#references): `imitation.entropy_bonus: <float>`
+- Loss functions (BCE/Mixup/nn-PUGAIL) [[6, 17, 18]](#references): `imitation.loss_function: BCE/Mixup/PUGAIL`
 
 ## Requirements
 
@@ -30,13 +36,13 @@ Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](http
 
 ## Run
 
-The training of each imitation learning algorithm can be started with:
+The training of each imitation learning algorithm (or SAC with the real environment reward) can be started with:
 ```sh
 python main.py algorithm=ALG/ENV
 ```
-where `ALG` is one of `[AIRL|BC|DRIL|FAIRL|GAIL|GMMIL|PUGAIL|RED|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
-python main.py algorithm=AIRL/hopper
+python main.py algorithm=GAIL/hopper
 ```
 
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG/ENV.yaml`, with the latter containing algorithm- and environment-specific hyperparameters that were tuned with Ax.
@@ -55,7 +61,7 @@ python main.py -m algorithm=AIRL/hopper hydra/sweeper=ax hyperparam_opt=AIRL
 
 A seed sweep can be performed as follows:
 ```sh
-python main.py -m algorithm=AIRL/hopper seed=1,2,3,4,5 
+python main.py -m algorithm=GAIL/hopper seed=1,2,3,4,5 
 ```
 or via the existing bash script:
 ```sh
@@ -89,15 +95,19 @@ If you find this work useful and would like to cite it, please use the following
 
 [1] [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)  
 [2] [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/abs/1812.05905)  
-[3] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
+[3] [Of Moments and Matching: A Game-Theoretic Framework for Closing the Imitation Gap](https://arxiv.org/abs/2103.03236)  
 [4] [Efficient Training of Artificial Neural Networks for Autonomous Navigation](https://www.mitpressjournals.org/doi/abs/10.1162/neco.1991.3.1.88?journalCode=neco)  
 [5] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  
-[6] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
-[7] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
-[8] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
-[9] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
-[10] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
-[11] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[12] [SQIL: Imitation Learning via Reinforcement Learning with Sparse Rewards](https://arxiv.org/abs/1905.11108)  
-[13] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[14] [Which Training Methods for GANs do actually Converge?](https://arxiv.org/abs/1801.04406)  
+[6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
+[7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
+[8] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
+[9] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[10] [SQIL: Imitation Learning via Reinforcement Learning with Sparse Rewards](https://arxiv.org/abs/1905.11108)  
+[11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[12] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
+[13] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
+[14] [Sample-Efficient Imitation Learning via Generative Adversarial Nets](https://arxiv.org/abs/1809.02064)  
+[15] [Lipschitzness Is All You Need To Tame Off-policy Generative Adversarial Imitation Learning](https://arxiv.org/abs/2006.16785)  
+[16] [What Matters for Adversarial Imitation Learning?](https://arxiv.org/abs/2106.00672)  
+[17] [Batch Exploration with Examples for Scalable Robotic Reinforcement Learning](https://arxiv.org/abs/2010.11917)  
+[18] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
