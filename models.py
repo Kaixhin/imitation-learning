@@ -92,7 +92,7 @@ class SoftActor(nn.Module):
 
   # Calculates the log probability of an action a with the policy π(·|s) given state s
   def log_prob(self, state: Tensor, action: Tensor) -> Tensor:
-    action = action.clamp(-1 + 1e-6, 1 - 1e-6)  # Clamp actions to (-1, 1) to prevent NaNs in log likelihood calculation of TanhGaussian policy
+    action = action.clamp(-1 + 1e-6, 1 - 1e-6)  # Clamp actions to (-1, 1) to prevent NaNs in log likelihood calculation of TanhGaussian policy; predominantly an issue with DRIL uncertainty calculation
     return self.forward(state).log_prob(action)
 
   def get_greedy_action(self, state: Tensor) -> Tensor:
