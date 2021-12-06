@@ -50,7 +50,7 @@ class ReplayMemory(Dataset):
   def sample(self, n: int) -> Dict[str, Tensor]:
     idxs = [self._sample_idx() for _ in range(n)]
     transitions = [self[idx] for idx in idxs]
-    transitions = dict(step=torch.stack([t['step'] for t in transitions]), states=torch.stack([t['states'] for t in transitions]), actions=torch.stack([t['actions'] for t in transitions]), rewards=torch.stack([t['rewards'] for t in transitions]), next_states=torch.stack([t['next_states'] for t in transitions]), terminals=torch.stack([t['terminals'] for t in transitions]), weights=torch.stack([t['weights'] for t in transitions]))  # Note that stack creates new memory so mix_policy_expert_transitions does not overwrite original data
+    transitions = {key: torch.stack([t[key] for t in transitions]) for key in transitions[0].keys()}  # Note that stack creates new memory so mix_policy_expert_transitions does not overwrite original data
     transitions['absorbing'] = transitions['states'][:, -1] if self.absorbing else torch.zeros_like(transitions['terminals'])  # Indicate absorbing states if absorbing env
     return transitions
 
