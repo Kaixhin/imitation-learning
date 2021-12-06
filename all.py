@@ -30,7 +30,7 @@ def all(cfg: DictConfig):
     tmp_cfg = copy.copy(cfg); tmp_cfg.env_type, tmp_cfg.env_name = key, value
     if not os.path.exists(key): os.mkdir(key)
     all_env_cfgs.append(tmp_cfg)
-  with mp.Pool(processes=4) as pool:
+  with mp.pool.ThreadPool(processes=4) as pool:
     unnormalized_result = {item[0]: item[1] for item in pool.map(pool_wrapper, all_env_cfgs)}
   for key, value in unnormalized_result.items():
     max_reward, min_reward = normalization_data[key]['expert_mean'], normalization_data[key]['random_agent_mean']
