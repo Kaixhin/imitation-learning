@@ -7,8 +7,6 @@ pretraining:
   iterations: 100000
 reinforcement:
   discount: 0.97
-  target_temperature: -0.5
-  polyak_factor: 0.99
 imitation:
   model:
     hidden_size: 256
@@ -18,5 +16,3 @@ imitation:
     dropout: 0.1
   pretraining_iterations: 100000
   bc: true
-training:
-  start: 10000
