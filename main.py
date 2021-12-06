@@ -18,7 +18,10 @@ from utils import cycle, flatten_list_dicts, lineplot
 
 
 @hydra.main(config_path='conf', config_name='config')
-def main(cfg: DictConfig) -> None:
+def main(cfg: DictConfig):
+  return run(cfg)
+
+def run(cfg: DictConfig, file_prefix=''):
   # Configuration check
   assert cfg.algorithm in ['BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
@@ -79,10 +82,10 @@ def main(cfg: DictConfig) -> None:
       test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
       metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
-      lineplot(steps, len(steps) * [test_returns], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+      lineplot(steps, len(steps) * [test_returns], filename=f"{file_prefix}test_returns", title=f'{cfg.env_name} : {cfg.algorithm}')
 
-      torch.save(dict(actor=actor.state_dict()), 'agent.pth')
-      torch.save(metrics, 'metrics.pth')
+      torch.save(dict(actor=actor.state_dict()), f"{file_prefix}agent.pth")
+      torch.save(metrics, f"{file_prefix}metrics.pth")
       env.close()
       return sum(test_returns) / len(test_returns)
 
@@ -183,15 +186,15 @@ def main(cfg: DictConfig) -> None:
       recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
-      lineplot(metrics['test_steps'], metrics['test_returns'], filename='test_returns', title=f'{cfg.env_name} : {cfg.algorithm} Test Returns')
+      lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.env_name} : {cfg.algorithm} Test Returns')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
-        lineplot(metrics['train_steps'], metrics['train_returns'], filename='train_returns', title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
+        lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
       if cfg.metric_log_interval > 0 and len(metrics['update_steps']) > 0:
         if cfg.algorithm not in ['SAC', 'SQIL']:
-          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename='predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
-        lineplot(metrics['update_steps'], metrics['alphas'], filename='sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
-        lineplot(metrics['update_steps'], metrics['entropies'], filename='sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
-        lineplot(metrics['update_steps'], metrics['Q_values'], filename='Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
+          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f"{file_prefix}predicted_rewards", yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
+        lineplot(metrics['update_steps'], metrics['alphas'], filename=f"{file_prefix}sac_alpha", yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
+        lineplot(metrics['update_steps'], metrics['entropies'], filename=f"{file_prefix}sac_entropy", yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
+        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f"{file_prefix}Q_values", yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
@@ -199,11 +202,11 @@ def main(cfg: DictConfig) -> None:
   if cfg.save_trajectories:
     # Store trajectories from agent after training
     _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed, return_trajectories=True, render=cfg.render)
-    torch.save(trajectories, 'trajectories.pth')
+    torch.save(trajectories, f"{file_prefix}trajectories.pth")
   # Save agent and metrics
-  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), 'agent.pth')
-  if cfg.algorithm in ['DRIL', 'GAIL', 'RED']: torch.save(discriminator.state_dict(), 'discriminator.pth')
-  torch.save(metrics, 'metrics.pth')
+  torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f"{file_prefix}agent.pth")
+  if cfg.algorithm in ['DRIL', 'GAIL', 'RED']: torch.save(discriminator.state_dict(), f"{file_prefix}discriminator.pth")
+  torch.save(metrics, f"{file_prefix}metrics.pth")
 
   env.close()
   return sum(recent_returns) / float(cfg.evaluation.average_window)
