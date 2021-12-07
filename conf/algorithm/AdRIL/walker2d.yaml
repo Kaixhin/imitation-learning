@@ -2,4 +2,6 @@
 env_type: walker2d
 env_name: walker2d-expert-v2
 
-algorithm: SQIL
+algorithm: AdRIL
+imitation:
+  update_freq: 1250
