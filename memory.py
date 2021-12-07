@@ -8,14 +8,15 @@ from torch.utils.data import Dataset
 
 # Replay memory returns transition tuples of the form (s, a, r, s', terminal)
 class ReplayMemory(Dataset):
-  def __init__(self, size: int, state_size: int, action_size: int, absorbing: bool, transitions: Optional[Dict[str, Tensor]]=None):
+  def __init__(self, size: int, state_size: int, action_size: int, absorbing: bool, transitions: Optional[Dict[str, Union[Tensor, int]]]=None):
     super().__init__()
-    self.size, self.idx, self.full = size, 0, False
+    self.size, self.num_trajectories, self.idx, self.full = size, 0, 0, False
     self.absorbing = absorbing
     self.step, self.states, self.actions, self.rewards, self.next_states, self.terminals, self.weights = torch.empty(size), torch.empty(size, state_size), torch.empty(size, action_size), torch.empty(size), torch.empty(size, state_size), torch.empty(size), torch.empty(size)
     if transitions is not None:
       trans_size = min(transitions['states'].size(0), size)  # Take data up to size of replay
       self.step[:trans_size], self.states[:trans_size], self.actions[:trans_size], self.rewards[:trans_size], self.next_states[:trans_size], self.terminals[:trans_size], self.weights[:trans_size] = torch.arange(1, size + 1, dtype=torch.float32), transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['weights']
+      self.num_trajectories = transitions['num_trajectories']  # Note that this assumes all trajectories fit into this memory!
       self.idx = trans_size % self.size
       self.full = self.idx == 0 and trans_size > 0  # Replay is full if index has wrapped around (but not if there was no data)
 
@@ -38,6 +39,7 @@ class ReplayMemory(Dataset):
     self.step[self.idx], self.states[self.idx], self.actions[self.idx], self.rewards[self.idx], self.next_states[self.idx], self.terminals[self.idx], self.weights[self.idx] = step, state, action, reward, next_state, terminal, 1
     self.idx = (self.idx + 1) % self.size
     self.full = self.full or self.idx == 0
+    if terminal: self.num_trajectories += 1
 
   # Returns a uniformly sampled valid transition index
   def _sample_idx(self) -> int:

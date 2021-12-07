@@ -83,6 +83,7 @@ class D4RLEnv():
       next_states_list = next_states_list[:trajectories]
       terminals_list = terminals_list[:trajectories]
       weights_list = weights_list[:trajectories]
+    num_trajectories = len(states_list)
     # Wrap for absorbing states
     if self.absorbing:  
       absorbing_state, absorbing_action = torch.cat([torch.zeros(1, state_size), torch.ones(1, 1)], dim=1), torch.zeros(1, action_size)  # Create absorbing state and absorbing action
@@ -113,7 +114,7 @@ class D4RLEnv():
         terminals_list[i] = terminals_list[i][idxs]
         weights_list[i] = weights_list[i][idxs]
 
-    transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0), 'weights': torch.cat(weights_list, dim=0)}
+    transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0), 'weights': torch.cat(weights_list, dim=0), 'num_trajectories': num_trajectories}
     transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability
     return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)
 
@@ -154,6 +155,7 @@ def _get_env_baseline(env: gym.Env):
   random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
   return expert_mean, expert_std, random_agent_mean, random_agent_std
 
+
 def get_all_env_baseline(envs: dict):
   data =  dict()
   for env_name in envs.keys():
@@ -162,6 +164,7 @@ def get_all_env_baseline(envs: dict):
     expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
     data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
   return data
+
 
 if __name__ == '__main__':
   import argparse

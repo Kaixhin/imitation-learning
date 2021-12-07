@@ -1,4 +1,5 @@
 from collections import deque
+from math import ceil
 import time
 
 import hydra
@@ -41,7 +42,7 @@ def run(cfg: DictConfig, file_prefix=''):
   # Set up environment
   env = D4RLEnv(cfg.env_name, cfg.imitation.absorbing, load_data=True)
   env.seed(cfg.seed)
-  expert_trajectories = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
+  expert_memory = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
   # Set up agent
@@ -71,7 +72,7 @@ def run(cfg: DictConfig, file_prefix=''):
   
   # Behavioural cloning pretraining
   if cfg.pretraining.iterations > 0:
-    expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
     actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.pretraining.learning_rate)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
       expert_transitions = next(expert_dataloader)
@@ -91,7 +92,7 @@ def run(cfg: DictConfig, file_prefix=''):
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
-    expert_dataloader = iter(cycle(DataLoader(expert_trajectories, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=4)))
     for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):  # TODO: Change the naming of "imitation.pretraining_iterations"
       expert_transition = next(expert_dataloader)
       if cfg.algorithm == 'DRIL':
@@ -101,9 +102,9 @@ def run(cfg: DictConfig, file_prefix=''):
     
     with torch.inference_mode():
       if cfg.algorithm == 'DRIL':
-        discriminator.set_uncertainty_threshold(expert_trajectories['states'], expert_trajectories['actions'])
+        discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
       elif cfg.algorithm == 'RED':
-        discriminator.set_sigma(expert_trajectories['states'][:cfg.pretraining.batch_size], expert_trajectories['actions'][:cfg.pretraining.batch_size])  # Estimate on a minibatch for computational feasibility
+        discriminator.set_sigma(expert_memory['states'][:cfg.pretraining.batch_size], expert_memory['actions'][:cfg.pretraining.batch_size])  # Estimate on a minibatch for computational feasibility
 
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
@@ -135,7 +136,7 @@ def run(cfg: DictConfig, file_prefix=''):
     # Train agent and imitation learning component
     if step >= cfg.training.start and step % cfg.training.interval == 0:
       # Sample a batch of transitions
-      transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_trajectories.sample(cfg.training.batch_size)
+      transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_memory.sample(cfg.training.batch_size)
 
       if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
         # Train discriminator
@@ -151,8 +152,9 @@ def run(cfg: DictConfig, file_prefix=''):
         with torch.inference_mode():
           if cfg.algorithm == 'AdRIL':
             mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
-            transitions['rewards'][:cfg.training.batch_size // 2] = 1  # Set a constant +1 reward for expert data
-            transitions['rewards'][cfg.training.batch_size // 2:] = -1 / torch.ceil(transitions['step'][cfg.training.batch_size // 2:] / cfg.imitation.update_freq)  # Set a -1/k reward for policy data
+            transitions['rewards'][:cfg.training.batch_size // 2] = 1 / expert_memory.num_trajectories  # Set a constant +1 reward for expert data, normalised by |trajectories|
+            round_num = ceil(step / cfg.imitation.update_freq)
+            transitions['rewards'][cfg.training.batch_size // 2:] = -1 * (round_num > torch.ceil(transitions['step'][cfg.training.batch_size // 2:] / cfg.imitation.update_freq)).to(dtype=torch.float32) / memory.num_trajectories  # Set a contast 0 reward for current round of policy data, and -1 for old rounds, normalised by |trajectories|
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
