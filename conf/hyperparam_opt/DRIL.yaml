@@ -6,10 +6,6 @@ early_stop:
   max_epochs_without_improvement: 5
 is_noisy: true
 params:
-  reinforcement.discount:
-    type: choice
-    values: [0.97]
-    value_type: 'float'
   reinforcement.target_temperature:
     type: choice
     values: [-1, -0.5]

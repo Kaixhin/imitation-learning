@@ -170,9 +170,9 @@ if __name__ == '__main__':
   parser.add_argument('--save-result', action='store_true', default=False)
   parser.add_argument('--env', type=str, default='all')
   args = parser.parse_args()
-  assert args.env is 'all' or args.env in supported_envs.keys()
+  assert args.env == 'all' or args.env in supported_envs.keys()
 
-  if args.env is 'all':
+  if args.env == 'all':
     filename = 'normalization_data'
     data = get_all_env_baseline(supported_envs)
     if args.save_result: np.savez(filename, **data)
