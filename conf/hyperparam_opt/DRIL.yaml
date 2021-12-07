@@ -8,7 +8,7 @@ is_noisy: true
 params:
   reinforcement.discount:
     type: choice
-    values: [0.97, 0.99]
+    values: [0.97]
     value_type: 'float'
   reinforcement.target_temperature:
     type: choice
@@ -26,6 +26,10 @@ params:
     type: choice
     values: [1, 2]
     value_type: 'int'
+  imitation.model.activation:
+    type: choice
+    values: ['relu', 'tanh']
+    value_type: 'str'
   imitation.model.input_dropout:
     type: choice
     values: [0.0, 0.1, 0.5]
