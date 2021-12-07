@@ -154,7 +154,7 @@ def run(cfg: DictConfig, file_prefix=''):
             mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
             transitions['rewards'][:cfg.training.batch_size // 2] = 1 / expert_memory.num_trajectories  # Set a constant +1 reward for expert data, normalised by |trajectories|
             round_num = ceil(step / cfg.imitation.update_freq)
-            transitions['rewards'][cfg.training.batch_size // 2:] = -1 * (round_num > torch.ceil(transitions['step'][cfg.training.batch_size // 2:] / cfg.imitation.update_freq)).to(dtype=torch.float32) / memory.num_trajectories  # Set a contast 0 reward for current round of policy data, and -1 for old rounds, normalised by |trajectories|
+            transitions['rewards'][cfg.training.batch_size // 2:] = -1 * (round_num > torch.ceil(transitions['step'][cfg.training.batch_size // 2:] / cfg.imitation.update_freq)).to(dtype=torch.float32) / max(memory.num_trajectories, 1)  # Set a contast 0 reward for current round of policy data, and -1 for old rounds, normalised by |trajectories|
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
