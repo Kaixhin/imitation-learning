@@ -3,5 +3,3 @@ env_type: hopper
 env_name: hopper-expert-v2
 
 algorithm: SQIL
-pretraining:
-  iterations: 0
