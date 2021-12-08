@@ -1,11 +1,13 @@
 from typing import Dict
 
+from omegaconf import DictConfig
 import torch
 from torch import Tensor, autograd
 from torch.distributions import Beta, Bernoulli
+from torch.optim import Optimizer
 from torch.nn import functional as F
 
-from models import make_gail_input, update_target_network
+from models import GAILDiscriminator, SoftActor, make_gail_input, update_target_network
 
 
 # Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place TODO: Add sampling ratio option?
@@ -80,7 +82,9 @@ def target_estimation_update(discriminator, expert_transition, discriminator_opt
 
 
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, reward_shaping, subtract_log_policy, loss_function, grad_penalty=1, mixup_alpha=0, entropy_bonus=0, pos_class_prior=1, nonnegative_margin=0):
+def adversarial_imitation_update(actor: SoftActor, discriminator: GAILDiscriminator, transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], discriminator_optimiser: Optimizer, imitation_cfg: DictConfig):
+  reward_shaping, subtract_log_policy, loss_function, grad_penalty, mixup_alpha, entropy_bonus, pos_class_prior, nonnegative_margin = imitation_cfg.model.reward_shaping, imitation_cfg.model.subtract_log_policy, imitation_cfg.loss_function, imitation_cfg.grad_penalty, imitation_cfg.mixup_alpha, imitation_cfg.entropy_bonus, imitation_cfg.pos_class_prior, imitation_cfg.nonnegative_margin
+
   expert_state, expert_action, expert_next_state, expert_terminal, expert_weight = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']
   state, action, next_state, terminal, weight = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']
 

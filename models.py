@@ -2,13 +2,13 @@ import copy
 from typing import Dict, Optional, Tuple
 
 import numpy as np
+from omegaconf import DictConfig
 import torch
 from torch import Tensor, nn
 from torch.distributions import Distribution, Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 from torch.nn.utils import parametrizations
-from omegaconf import DictConfig
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
