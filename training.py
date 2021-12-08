@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 from omegaconf import DictConfig
 import torch
@@ -17,7 +17,7 @@ def mix_policy_expert_transitions(transitions: Dict[str, Tensor], expert_transit
 
 
 # Performs one SAC update
-def sac_update(actor: SoftActor, critic: TwinCritic, log_alpha: Tensor, target_critic, transitions: Dict[str, Tensor], actor_optimiser: Optimizer, critic_optimiser: Optimizer, temperature_optimiser: Optimizer, discount: float, entropy_target: float, polyak_factor: float):
+def sac_update(actor: SoftActor, critic: TwinCritic, log_alpha: Tensor, target_critic, transitions: Dict[str, Tensor], actor_optimiser: Optimizer, critic_optimiser: Optimizer, temperature_optimiser: Optimizer, discount: float, entropy_target: float, polyak_factor: float) -> Tuple[Tensor, Tensor]:
   states, actions, rewards, next_states, terminals, weights, absorbing = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['weights'], transitions['absorbing']
   alpha = log_alpha.exp()
   
