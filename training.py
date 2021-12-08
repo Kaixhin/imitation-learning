@@ -81,6 +81,12 @@ def target_estimation_update(discriminator: REDDiscriminator, expert_transition:
   discriminator_optimiser.step()
 
 
+# Creates a convex combination of 2 variables (e.g. state 1, state 2)
+def _mix_vars(x_1: Tensor, x_2: Tensor, eps: Tensor) -> Tensor:
+  mix = eps.unsqueeze(dim=1) if x_1.ndim == 2 else eps  # Assumes variables are either 1D or 2D
+  return mix * x_1 + (1 - mix) * x_2  # Mix variables with broadcasting weights
+
+
 # Performs an adversarial imitation learning update
 def adversarial_imitation_update(actor: SoftActor, discriminator: GAILDiscriminator, transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], discriminator_optimiser: Optimizer, imitation_cfg: DictConfig):
   reward_shaping, subtract_log_policy, loss_function, grad_penalty, mixup_alpha, entropy_bonus, pos_class_prior, nonnegative_margin = imitation_cfg.model.reward_shaping, imitation_cfg.model.subtract_log_policy, imitation_cfg.loss_function, imitation_cfg.grad_penalty, imitation_cfg.mixup_alpha, imitation_cfg.entropy_bonus, imitation_cfg.pos_class_prior, imitation_cfg.nonnegative_margin
@@ -105,8 +111,7 @@ def adversarial_imitation_update(actor: SoftActor, discriminator: GAILDiscrimina
   elif loss_function == 'Mixup':
     batch_size = state.size(0)
     eps = Beta(torch.full((batch_size, ), float(mixup_alpha)), torch.full((batch_size, ), float(mixup_alpha))).sample()  # Sample ε ∼ Beta(α, α)
-    eps_2d = eps.unsqueeze(dim=1)  # Expand weights for broadcasting
-    mix_state, mix_action, mix_next_state, mix_terminal, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps_2d * expert_next_state + (1 - eps_2d) * next_state, eps * expert_terminal + (1 - eps) * terminal, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data
+    mix_state, mix_action, mix_next_state, mix_terminal, mix_weight = _mix_vars(expert_state, state, eps), _mix_vars(expert_action, action, eps), _mix_vars(expert_next_state, next_state, eps), _mix_vars(expert_terminal, terminal, eps), _mix_vars(expert_weight, weight, eps)  # Create convex combination of expert and policy data
     with torch.no_grad(): mix_input = make_gail_input(mix_state, mix_action, mix_next_state, mix_terminal, actor, reward_shaping, subtract_log_policy)
     D_mix = discriminator(**mix_input)
 
@@ -118,7 +123,7 @@ def adversarial_imitation_update(actor: SoftActor, discriminator: GAILDiscrimina
   if grad_penalty > 0:
     eps = torch.rand_like(terminal)  # Sample ε ∼ U(0, 1)
     eps_2d = eps.unsqueeze(dim=1)  # Expand weights for broadcasting
-    mix_state, mix_action, mix_next_state, mix_terminal, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps_2d * expert_next_state + (1 - eps_2d) * next_state, eps * expert_terminal + (1 - eps) * terminal, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data
+    mix_state, mix_action, mix_next_state, mix_terminal, mix_weight = _mix_vars(expert_state, state, eps), _mix_vars(expert_action, action, eps), _mix_vars(expert_next_state, next_state, eps), _mix_vars(expert_terminal, terminal, eps), _mix_vars(expert_weight, weight, eps)  # Create convex combination of expert and policy data
     mix_state.requires_grad_()
     mix_action.requires_grad_()
     with torch.no_grad(): mix_input = make_gail_input(mix_state, mix_action, mix_next_state, mix_terminal, actor, reward_shaping, subtract_log_policy)
