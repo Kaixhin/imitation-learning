@@ -7,7 +7,7 @@ from torch.distributions import Beta, Bernoulli
 from torch.optim import Optimizer
 from torch.nn import functional as F
 
-from models import GAILDiscriminator, SoftActor, make_gail_input, update_target_network
+from models import GAILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, make_gail_input, update_target_network
 
 
 # Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place TODO: Add sampling ratio option?
@@ -17,7 +17,7 @@ def mix_policy_expert_transitions(transitions: Dict[str, Tensor], expert_transit
 
 
 # Performs one SAC update
-def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor):
+def sac_update(actor: SoftActor, critic: TwinCritic, log_alpha: Tensor, target_critic, transitions: Dict[str, Tensor], actor_optimiser: Optimizer, critic_optimiser: Optimizer, temperature_optimiser: Optimizer, discount: float, entropy_target: float, polyak_factor: float):
   states, actions, rewards, next_states, terminals, weights, absorbing = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['weights'], transitions['absorbing']
   alpha = log_alpha.exp()
   
@@ -60,7 +60,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   return new_log_probs.detach(), torch.min(values_1, values_2).detach()
 
 # Performs a behavioural cloning update
-def behavioural_cloning_update(actor, expert_transition, actor_optimiser):
+def behavioural_cloning_update(actor: SoftActor, expert_transition: Dict[str, Tensor], actor_optimiser: Optimizer):
   expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
   expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
 
@@ -71,7 +71,7 @@ def behavioural_cloning_update(actor, expert_transition, actor_optimiser):
 
 
 # Performs a target estimation update
-def target_estimation_update(discriminator, expert_transition, discriminator_optimiser):
+def target_estimation_update(discriminator: REDDiscriminator, expert_transition: Dict[str, Tensor], discriminator_optimiser: Optimizer):
   expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
 
   discriminator_optimiser.zero_grad(set_to_none=True)
