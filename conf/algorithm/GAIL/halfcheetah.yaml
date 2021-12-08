@@ -14,6 +14,7 @@ reinforcement:
 imitation:
   model:
     reward_shaping: false
+    subtract_log_policy: false
     reward_function: 'AIRL'
   absorbing: true
   grad_penalty: 1
