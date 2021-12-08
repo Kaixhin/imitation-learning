@@ -159,7 +159,6 @@ def run(cfg: DictConfig, file_prefix=''):
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
-            discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
             transitions['rewards'] = discriminator.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:
               expert_rewards = discriminator.predict_reward(**make_gail_input(expert_states, expert_actions, expert_next_states, expert_terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
