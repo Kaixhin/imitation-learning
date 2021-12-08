@@ -13,7 +13,7 @@ from tqdm import tqdm
 from environments import D4RLEnv
 from evaluation import evaluate_agent
 from memory import ReplayMemory
-from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network
+from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, make_gail_input
 from training import adversarial_imitation_update, behavioural_cloning_update, mix_policy_expert_transitions, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
 
@@ -22,7 +22,8 @@ from utils import cycle, flatten_list_dicts, lineplot
 def main(cfg: DictConfig):
   return run(cfg)
 
-def run(cfg: DictConfig, file_prefix=''):
+
+def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
@@ -142,7 +143,7 @@ def run(cfg: DictConfig, file_prefix=''):
         # Train discriminator
         if cfg.algorithm == 'GAIL':
           discriminator.train()
-          adversarial_imitation_update(cfg.algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation.model.reward_shaping, cfg.imitation.loss_function, grad_penalty=cfg.imitation.grad_penalty, mixup_alpha=cfg.imitation.mixup_alpha, entropy_bonus=cfg.imitation.entropy_bonus, pos_class_prior=cfg.imitation.pos_class_prior, nonnegative_margin=cfg.imitation.nonnegative_margin)
+          adversarial_imitation_update(actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation)
           discriminator.eval()
         
         # Predict rewards
@@ -159,11 +160,9 @@ def run(cfg: DictConfig, file_prefix=''):
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
-            discriminator_input = (states, actions, next_states, actor.log_prob(states, actions), terminals) if cfg.imitation.model.reward_shaping else (states, actions)
-            transitions['rewards'] = discriminator.predict_reward(*discriminator_input)
+            transitions['rewards'] = discriminator.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:
-              discriminator_expert_input = (expert_states, expert_actions, expert_next_states, actor.log_prob(expert_states, expert_actions), expert_terminals) if cfg.imitation.model.reward_shaping else (expert_states, expert_actions)
-              expert_rewards = discriminator.predict_reward(*discriminator_expert_input)
+              expert_rewards = discriminator.predict_reward(**make_gail_input(expert_states, expert_actions, expert_next_states, expert_terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
           elif cfg.algorithm == 'GMMIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions, expert_states, expert_actions, expert_weights, expert_weights)

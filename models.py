@@ -2,13 +2,13 @@ import copy
 from typing import Dict, Optional, Tuple
 
 import numpy as np
+from omegaconf import DictConfig
 import torch
 from torch import Tensor, nn
 from torch.distributions import Distribution, Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 from torch.nn.utils import parametrizations
-from omegaconf import DictConfig
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -138,11 +138,19 @@ class TwinCritic(nn.Module):
     return value_1, value_2
 
 
+# Constructs the input for the GAIL discriminator
+def make_gail_input(state: Tensor, action: Tensor, next_state: Tensor, terminal: Tensor, actor: SoftActor, reward_shaping: bool, subtract_log_policy: bool) -> Dict[str, Tensor]:
+  input = {'state': state, 'action': action}
+  if reward_shaping: input.update({'next_state': next_state, 'terminal': terminal})
+  if subtract_log_policy: input.update({'log_policy': actor.log_prob(state, action)})
+  return input
+
+
 class GAILDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, discount):
     super().__init__()
     model_cfg = imitation_cfg.model
-    self.discount, self.state_only, self.reward_shaping, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.reward_function
+    self.discount, self.state_only, self.reward_shaping, self.subtract_log_policy, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.subtract_log_policy, model_cfg.reward_function
     if self.reward_shaping:
       self.g = nn.Linear(state_size if self.state_only else state_size + action_size, 1)  # Reward function r
       if imitation_cfg.spectral_norm: self.g = parametrizations.spectral_norm(self.g)
@@ -159,15 +167,12 @@ class GAILDiscriminator(nn.Module):
   def _value(self, state: Tensor) -> Tensor:
     return self.h(state).squeeze(dim=1)
 
-  def forward(self, state: Tensor, action: Tensor, next_state: Optional[Tensor]=None, log_policy: Optional[Tensor]=None, terminal: Optional[Tensor]=None) -> Tensor:
-    if self.reward_shaping:
-      f = self._reward(state, action) + (1 - terminal) * (self.discount * self._value(next_state) - self._value(state))
-      return f - log_policy  # Note that this is equivalent to sigmoid^-1(e^f / (e^f + π))
-    else:
-      return self.g(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
+  def forward(self, state: Tensor, action: Tensor, next_state: Optional[Tensor]=None, terminal: Optional[Tensor]=None, log_policy: Optional[Tensor]=None) -> Tensor:
+    f = self._reward(state, action) + (1 - terminal) * (self.discount * self._value(next_state) - self._value(state)) if self.reward_shaping else self._reward(state, action)  # Note that vanilla GAIL does not learn a "reward function", but this naming just makes the code simpler to read
+    return f - log_policy if self.subtract_log_policy else f  # Note that the former is equivalent to sigmoid^-1(e^f / (e^f + π))
   
-  def predict_reward(self, state: Tensor, action: Tensor, next_state: Optional[Tensor]=None, log_policy: Optional[Tensor]=None, terminal: Optional[Tensor]=None) -> Tensor:
-    D = torch.sigmoid(self.forward(state, action, next_state=next_state, log_policy=log_policy, terminal=terminal))
+  def predict_reward(self, state: Tensor, action: Tensor, next_state: Optional[Tensor]=None, terminal: Optional[Tensor]=None, log_policy: Optional[Tensor]=None) -> Tensor:
+    D = torch.sigmoid(self.forward(state, action, next_state=next_state, terminal=terminal, log_policy=log_policy))
     h = -torch.log1p(-D + 1e-6) if self.reward_function == 'GAIL' else torch.log(D + 1e-6) - torch.log1p(-D + 1e-6)  # Add epsilon to improve numerical stability given limited floating point precision
     return torch.exp(h) * -h if self.reward_function == 'FAIRL' else h  # FAIRL reward function is based on AIRL reward function
 

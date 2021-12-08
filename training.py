@@ -1,11 +1,13 @@
-from typing import Dict
+from typing import Dict, Tuple
 
+from omegaconf import DictConfig
 import torch
 from torch import Tensor, autograd
 from torch.distributions import Beta, Bernoulli
+from torch.optim import Optimizer
 from torch.nn import functional as F
 
-from models import update_target_network
+from models import GAILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, make_gail_input, update_target_network
 
 
 # Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place TODO: Add sampling ratio option?
@@ -15,7 +17,7 @@ def mix_policy_expert_transitions(transitions: Dict[str, Tensor], expert_transit
 
 
 # Performs one SAC update
-def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, discount, entropy_target, polyak_factor):
+def sac_update(actor: SoftActor, critic: TwinCritic, log_alpha: Tensor, target_critic, transitions: Dict[str, Tensor], actor_optimiser: Optimizer, critic_optimiser: Optimizer, temperature_optimiser: Optimizer, discount: float, entropy_target: float, polyak_factor: float) -> Tuple[Tensor, Tensor]:
   states, actions, rewards, next_states, terminals, weights, absorbing = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['weights'], transitions['absorbing']
   alpha = log_alpha.exp()
   
@@ -58,7 +60,7 @@ def sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optim
   return new_log_probs.detach(), torch.min(values_1, values_2).detach()
 
 # Performs a behavioural cloning update
-def behavioural_cloning_update(actor, expert_transition, actor_optimiser):
+def behavioural_cloning_update(actor: SoftActor, expert_transition: Dict[str, Tensor], actor_optimiser: Optimizer):
   expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
   expert_action = expert_action.clamp(min=-1 + 1e-6, max=1 - 1e-6)  # Clamp expert actions to (-1, 1)
 
@@ -69,7 +71,7 @@ def behavioural_cloning_update(actor, expert_transition, actor_optimiser):
 
 
 # Performs a target estimation update
-def target_estimation_update(discriminator, expert_transition, discriminator_optimiser):
+def target_estimation_update(discriminator: REDDiscriminator, expert_transition: Dict[str, Tensor], discriminator_optimiser: Optimizer):
   expert_state, expert_action, weight = expert_transition['states'], expert_transition['actions'], expert_transition['weights']
 
   discriminator_optimiser.zero_grad(set_to_none=True)
@@ -79,21 +81,24 @@ def target_estimation_update(discriminator, expert_transition, discriminator_opt
   discriminator_optimiser.step()
 
 
+# Creates a convex combination of 2 variables (e.g. state 1, state 2)
+def _mix_vars(x_1: Tensor, x_2: Tensor, eps: Tensor) -> Tensor:
+  mix = eps.unsqueeze(dim=1) if x_1.ndim == 2 else eps  # Assumes variables are either 1D or 2D
+  return mix * x_1 + (1 - mix) * x_2  # Mix variables with broadcasting weights
+
+
 # Performs an adversarial imitation learning update
-def adversarial_imitation_update(algorithm, actor, discriminator, transitions, expert_transitions, discriminator_optimiser, reward_shaping, loss_function, grad_penalty=1, mixup_alpha=0, entropy_bonus=0, pos_class_prior=1, nonnegative_margin=0):
+def adversarial_imitation_update(actor: SoftActor, discriminator: GAILDiscriminator, transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], discriminator_optimiser: Optimizer, imitation_cfg: DictConfig):
+  reward_shaping, subtract_log_policy, loss_function, grad_penalty, mixup_alpha, entropy_bonus, pos_class_prior, nonnegative_margin = imitation_cfg.model.reward_shaping, imitation_cfg.model.subtract_log_policy, imitation_cfg.loss_function, imitation_cfg.grad_penalty, imitation_cfg.mixup_alpha, imitation_cfg.entropy_bonus, imitation_cfg.pos_class_prior, imitation_cfg.nonnegative_margin
+
   expert_state, expert_action, expert_next_state, expert_terminal, expert_weight = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']
   state, action, next_state, terminal, weight = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']
 
   # Discriminator training objective
   discriminator_optimiser.zero_grad(set_to_none=True)
   if loss_function in ['BCE', 'PUGAIL']:
-    if reward_shaping:
-      with torch.no_grad(): expert_log_prob, log_prob = actor.log_prob(expert_state, expert_action), actor.log_prob(state, action)
-      D_expert = discriminator(expert_state, expert_action, expert_next_state, expert_log_prob, expert_terminal)
-      D_policy = discriminator(state, action, next_state, log_prob, terminal)
-    else:
-      D_expert = discriminator(expert_state, expert_action)
-      D_policy = discriminator(state, action)
+    with torch.no_grad(): policy_input, expert_input = make_gail_input(state, action, next_state, terminal, actor, reward_shaping, subtract_log_policy), make_gail_input(expert_state, expert_action, expert_next_state, expert_terminal, actor, reward_shaping, subtract_log_policy)
+    D_policy, D_expert = discriminator(**policy_input), discriminator(**expert_input)
 
     if loss_function == 'BCE':
       expert_loss = F.binary_cross_entropy_with_logits(D_expert, torch.ones_like(D_expert), weight=expert_weight)  # Loss on "real" (expert) data
@@ -106,13 +111,9 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   elif loss_function == 'Mixup':
     batch_size = state.size(0)
     eps = Beta(torch.full((batch_size, ), float(mixup_alpha)), torch.full((batch_size, ), float(mixup_alpha))).sample()  # Sample ε ∼ Beta(α, α)
-    eps_2d = eps.unsqueeze(dim=1)  # Expand weights for broadcasting
-    mix_state, mix_action, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data
-    if reward_shaping:
-      with torch.no_grad(): mix_next_state, mix_log_prob, mix_terminal = eps_2d * expert_next_state + (1 - eps_2d) * next_state, actor.log_prob(mix_state, mix_action), eps * expert_terminal + (1 - eps) * terminal
-      D_mix = discriminator(mix_state, mix_action, mix_next_state, mix_log_prob, mix_terminal)
-    else:
-      D_mix = discriminator(mix_state, mix_action)
+    mix_state, mix_action, mix_next_state, mix_terminal, mix_weight = _mix_vars(expert_state, state, eps), _mix_vars(expert_action, action, eps), _mix_vars(expert_next_state, next_state, eps), _mix_vars(expert_terminal, terminal, eps), _mix_vars(expert_weight, weight, eps)  # Create convex combination of expert and policy data
+    with torch.no_grad(): mix_input = make_gail_input(mix_state, mix_action, mix_next_state, mix_terminal, actor, reward_shaping, subtract_log_policy)
+    D_mix = discriminator(**mix_input)
 
     mix_loss = eps * F.binary_cross_entropy_with_logits(D_mix, torch.ones_like(D_mix), weight=mix_weight, reduction='none') + (1 - eps) * F.binary_cross_entropy_with_logits(D_mix, torch.zeros_like(D_mix), weight=mix_weight, reduction='none') 
     mix_loss.mean(dim=0).backward(retain_graph=True)
@@ -122,14 +123,11 @@ def adversarial_imitation_update(algorithm, actor, discriminator, transitions, e
   if grad_penalty > 0:
     eps = torch.rand_like(terminal)  # Sample ε ∼ U(0, 1)
     eps_2d = eps.unsqueeze(dim=1)  # Expand weights for broadcasting
-    mix_state, mix_action, mix_weight = eps_2d * expert_state + (1 - eps_2d) * state, eps_2d * expert_action + (1 - eps_2d) * action, eps * expert_weight + (1 - eps) * weight  # Create convex combination of expert and policy data
+    mix_state, mix_action, mix_next_state, mix_terminal, mix_weight = _mix_vars(expert_state, state, eps), _mix_vars(expert_action, action, eps), _mix_vars(expert_next_state, next_state, eps), _mix_vars(expert_terminal, terminal, eps), _mix_vars(expert_weight, weight, eps)  # Create convex combination of expert and policy data
     mix_state.requires_grad_()
     mix_action.requires_grad_()
-    if reward_shaping:
-      with torch.no_grad():mix_next_state, mix_log_prob, mix_terminal = eps_2d * expert_next_state + (1 - eps_2d), actor.log_prob(mix_state, mix_action), eps * expert_terminal + (1 - eps) * terminal
-      D_mix = discriminator(mix_state, mix_action, mix_next_state, mix_log_prob, mix_terminal)
-    else:
-      D_mix = discriminator(mix_state, mix_action)
+    with torch.no_grad(): mix_input = make_gail_input(mix_state, mix_action, mix_next_state, mix_terminal, actor, reward_shaping, subtract_log_policy)
+    D_mix = discriminator(**mix_input)
     grads = autograd.grad(D_mix, (mix_state, mix_action), torch.ones_like(D_mix), create_graph=True)  # Calculate gradients wrt inputs (does not accumulate parameter gradients)
     grad_penalty_loss = grad_penalty * mix_weight * sum([grad.norm(2, dim=1) ** 2 for grad in grads])  # Penalise norm of input gradients (assumes 1D inputs)
     grad_penalty_loss.mean(dim=0).backward()

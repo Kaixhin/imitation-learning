@@ -1,10 +1,14 @@
+from typing import Dict, List, Tuple, Union
+
 import torch
+from torch import Tensor
 
 from environments import D4RLEnv
+from models import SoftActor
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(actor, num_episodes, env_name, absorbing, seed, return_trajectories=False, render=False):
+def evaluate_agent(actor: SoftActor, num_episodes: int, env_name: str, absorbing: bool, seed: int, return_trajectories: bool=False, render: bool=False) -> Union[Tuple[List[List[float]], Dict[str, Tensor]], List[List[float]]]:
   env = D4RLEnv(env_name, absorbing)
   env.seed(seed)
 

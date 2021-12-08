@@ -20,6 +20,7 @@ General options include:
 GAIL options include:
 
 - Reward shaping (AIRL) [[12]](#references): `imitation.model.reward_shaping: true/false`
+- Subtract log π(a|s) (AIRL) [[12]](#references): `imitation.model.subtract_log_policy: true/false`
 - Reward functions (GAIL/AIRL/FAIRL) [[6, 12, 13]](#references): `imitation.model.reward_function: AIRL/FAIRL/GAIL`
 - Gradient penalty [[11, 14]](#references): `imitation.grad_penalty: <float>`
 - Spectral normalisation [[15]](#references): `imitation.spectral_norm: true/false`
