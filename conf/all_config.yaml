@@ -38,6 +38,7 @@ imitation:
   absorbing: false
   learning_rate: 0.00003
   weight_decay: 10
+  bc: false
 training:
   start: 1000
   interval: 1
