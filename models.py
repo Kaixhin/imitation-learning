@@ -168,7 +168,7 @@ class GAILDiscriminator(nn.Module):
     return self.h(state).squeeze(dim=1)
 
   def forward(self, state: Tensor, action: Tensor, next_state: Optional[Tensor]=None, terminal: Optional[Tensor]=None, log_policy: Optional[Tensor]=None) -> Tensor:
-    f = self._reward(state, action) + (1 - terminal) * (self.discount * self._value(next_state) - self._value(state)) if self.reward_shaping else self.g(state if self.state_only else _join_state_action(state, action)).squeeze(dim=1)
+    f = self._reward(state, action) + (1 - terminal) * (self.discount * self._value(next_state) - self._value(state)) if self.reward_shaping else self._reward(state, action)  # Note that vanilla GAIL does not learn a "reward function", but this naming just makes the code simpler to read
     return f - log_policy if self.subtract_log_policy else f  # Note that the former is equivalent to sigmoid^-1(e^f / (e^f + π))
   
   def predict_reward(self, state: Tensor, action: Tensor, next_state: Optional[Tensor]=None, terminal: Optional[Tensor]=None, log_policy: Optional[Tensor]=None) -> Tensor:
