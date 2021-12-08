@@ -6,9 +6,9 @@ Off-policy imitation learning algorithms (with SAC [[1, 2]](#references)):
 
 - AdRIL [[3]](#references)
 - BC [[4]](#references)
-- DRIL [[5]](#references)
+- DRIL [[5]](#references) (with optional BC auxiliary loss; default true)
 - GAIL [[6]](#references)
-- GMMIL [[7]](#references) (including an optional self-similarity term [[8]](#references))
+- GMMIL [[7]](#references) (with optional self-similarity term [[8]](#references))
 - RED [[9]](#references)
 - SQIL [[10]](#references)
 
@@ -16,6 +16,7 @@ General options include:
 
 - State-only imitation learning: `imitation.state-only: true/false`
 - Absorbing state indicator [[11]](#references): `imitation.absorbing: true/false`
+- BC auxiliary loss: `imitation.bc: true/false`
 
 GAIL options include:
 
