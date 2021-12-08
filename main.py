@@ -22,7 +22,8 @@ from utils import cycle, flatten_list_dicts, lineplot
 def main(cfg: DictConfig):
   return run(cfg)
 
-def run(cfg: DictConfig, file_prefix=''):
+
+def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
