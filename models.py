@@ -201,7 +201,7 @@ class GMMILDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size: int, model_cfg: DictConfig, input_dropout=0, dropout=0):
+  def __init__(self, input_size: int, model_cfg: DictConfig, input_dropout=0, dropout=0):  # Takes dropout as a separate argument as not be applied to target network
     super().__init__()
     self.embedding = _create_fcnn(input_size, model_cfg.hidden_size, model_cfg.depth, input_size, model_cfg.activation, input_dropout=input_dropout, dropout=dropout)
 
