@@ -3,7 +3,7 @@ import os
 
 import hydra
 from hydra.utils import get_original_cwd
-import multiprocessing.dummy as mp #dummy makes it thread and not subprocesses. workaround
+import torch.multiprocessing as mp 
 import numpy as np
 from omegaconf import DictConfig
 import torch
@@ -13,6 +13,9 @@ from tqdm import tqdm
 
 from main import run 
 from environments import get_all_env_baseline
+
+#torch.set_num_threads(1) This work the best, but probably slower
+if __name__ == '__main__': mp.set_start_method('spawn') #This circumvent deadlock
 
 def pool_wrapper(cfg):
   env_type = cfg.env_type
