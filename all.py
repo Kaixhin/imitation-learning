@@ -45,6 +45,8 @@ def all(cfg: DictConfig):
     max_reward, min_reward = normalization_data[key]['expert_mean'], normalization_data[key]['random_agent_mean']
     normalized_value = (value - min_reward) / (max_reward - min_reward)
     normalized_result.append(normalized_value)
+    print(f"{key} Result(OG | normalized): {value} | {normalized_value}")
+  
   return np.median(normalized_result)
 
 
