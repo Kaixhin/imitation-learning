@@ -201,9 +201,9 @@ class GMMILDiscriminator(nn.Module):
 
 
 class EmbeddingNetwork(nn.Module):
-  def __init__(self, input_size: int, model_cfg: DictConfig):
+  def __init__(self, input_size: int, model_cfg: DictConfig, input_dropout=0, dropout=0):
     super().__init__()
-    self.embedding = _create_fcnn(input_size, model_cfg.hidden_size, model_cfg.depth, input_size, model_cfg.activation)
+    self.embedding = _create_fcnn(input_size, model_cfg.hidden_size, model_cfg.depth, input_size, model_cfg.activation, input_dropout=input_dropout, dropout=dropout)
 
   def forward(self, input: Tensor) -> Tensor:
     return self.embedding(input)
@@ -214,7 +214,7 @@ class REDDiscriminator(nn.Module):
     super().__init__()
     self.state_only = imitation_cfg.state_only
     self.sigma_1 = None
-    self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
+    self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model, input_dropout=imitation_cfg.model.input_dropout, dropout=imitation_cfg.model.dropout)
     self.target = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
     for param in self.target.parameters():
       param.requires_grad = False
