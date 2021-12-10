@@ -6,15 +6,11 @@ early_stop:
   max_epochs_without_improvement: 5
 is_noisy: true
 params:
-  training.batch_size:
+  pretraining.iterations:
     type: choice
-    values: [1024, 2048, 4096]
+    values: [1000, 10000, 100000]
     value_type: 'int'
-  reinforcement.learning_rate:
-    type: choice
-    values: [0.00003, 0.0003]
+  pretraining.learning_rate:
+    type: range
+    bounds: [0.00003, 0.0003]
     value_type: 'float'
-  imitation.epochs:
-    type: choice
-    values: [5, 15, 25]
-    value_type: 'int'
