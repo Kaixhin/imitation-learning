@@ -95,7 +95,7 @@ class D4RLEnv():
           # Replace the final next state with the absorbing state and overwrite terminal status
           next_states_list[i][-1] = absorbing_state
           terminals_list[i][-1] = 0
-          weights_list[i][-1] = 1 / subsample  # Importance weight absorbing state as kept during subsampling
+          weights_list[i][-1] = 1 / max(subsample, 1)  # Importance weight absorbing state as kept during subsampling
           # Add absorbing state to absorbing state transition
           states_list[i] = torch.cat([states_list[i], absorbing_state], dim=0)
           actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
@@ -150,10 +150,8 @@ def _get_random_agent_baseline(env: gym.Env, num_episodes: int):
 
 
 def _get_env_baseline(env: gym.Env):
-  expert_mean, expert_std, num_episodes = _get_expert_baseline(env)
-  print(f'Running random agent for {num_episodes} episodes...')
-  random_agent_mean, random_agent_std = _get_random_agent_baseline(env, num_episodes=num_episodes)
-  return expert_mean, expert_std, random_agent_mean, random_agent_std
+  random_agent_mean, expert_mean = env.ref_max_score, env.ref_min_score
+  return expert_mean, random_agent_mean
 
 
 def get_all_env_baseline(envs: dict):
@@ -161,8 +159,8 @@ def get_all_env_baseline(envs: dict):
   for env_name in envs.keys():
     env = gym.make(envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
     print(f"For env: {env_name} with data: {envs[env_name]}")
-    expert_mean, expert_std, random_agent_mean, random_agent_std = _get_env_baseline(env)
-    data[env_name] = dict(expert_mean=expert_mean, expert_std=expert_std, random_agent_mean=random_agent_mean, random_agent_std=random_agent_std)
+    expert_mean, random_agent_mean = _get_env_baseline(env)
+    data[env_name] = dict(expert_mean=expert_mean, random_agent_mean=random_agent_mean )
   return data
 
 
@@ -178,6 +176,7 @@ if __name__ == '__main__':
   if args.env == 'all':
     filename = 'normalization_data'
     data = get_all_env_baseline(supported_envs)
+    print(data)
     if args.save_result: np.savez(filename, **data)
   else:
     env_name = args.env

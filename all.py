@@ -28,8 +28,7 @@ def pool_wrapper(cfg):
 def all(cfg: DictConfig):
   all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
   filename = os.path.join(get_original_cwd(), 'normalization_data.npz')
-  normalization_data = {key: value.item() for key, value in np.load(filename, allow_pickle=True).items()} if os.path.isfile(filename) else get_all_env_baseline(all_envs) 
-  if not os.path.isfile(filename): np.savez(filename, **normalization_data) # Save normalization data if not exist, to save computation
+  normalization_data = {key: value.item() for key, value in get_all_env_baseline(all_envs) 
   all_env_cfgs, normalized_result = [], []
   seed = random.randint(0, 99)
   Path(f"./seed{seed}.txt").touch()
