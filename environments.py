@@ -150,7 +150,7 @@ def _get_random_agent_baseline(env: gym.Env, num_episodes: int):
 
 
 def _get_env_baseline(env: gym.Env):
-  random_agent_mean, expert_mean = env.ref_max_score, env.ref_min_score
+  random_agent_mean, expert_mean = env.ref_min_score, env.ref_max_score
   return expert_mean, random_agent_mean
 
 
