@@ -28,7 +28,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.imitation.trajectories >= 0
-  assert cfg.imitation.subsample >= 0
+  assert cfg.imitation.subsample >= 1
   if cfg.algorithm == 'GAIL':
     assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']
     assert cfg.imitation.loss_function in ['BCE', 'Mixup', 'PUGAIL']
