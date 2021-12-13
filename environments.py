@@ -57,7 +57,7 @@ class D4RLEnv():
   def max_episode_steps(self) -> int:
     return self.env._max_episode_steps
 
-  def get_dataset(self, trajectories: int=0, subsample: int=20) -> ReplayMemory:
+  def get_dataset(self, trajectories: int=0, subsample: int=1) -> ReplayMemory:
     # Extract data
     states = torch.as_tensor(self.dataset['observations'], dtype=torch.float32)
     actions = torch.as_tensor(self.dataset['actions'], dtype=torch.float32)
@@ -95,7 +95,7 @@ class D4RLEnv():
           # Replace the final next state with the absorbing state and overwrite terminal status
           next_states_list[i][-1] = absorbing_state
           terminals_list[i][-1] = 0
-          weights_list[i][-1] = 1 / max(subsample, 1)  # Importance weight absorbing state as kept during subsampling
+          weights_list[i][-1] = 1 / subsample  # Importance weight absorbing state as kept during subsampling
           # Add absorbing state to absorbing state transition
           states_list[i] = torch.cat([states_list[i], absorbing_state], dim=0)
           actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
@@ -103,7 +103,7 @@ class D4RLEnv():
           terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
           weights_list[i] = torch.cat([weights_list[i], torch.full((1, ), 1 / subsample)], dim=0)  # Importance weight absorbing state as kept during subsampling
     # Subsample within trajectories
-    if subsample > 0:
+    if subsample > 1:
       for i in range(len(states_list)):
         rand_start_idx, T = np.random.choice(subsample), len(states_list[i])  # Subsample from random index in 0 to N-1 (procedure from original GAIL implementation)
         idxs = range(rand_start_idx, T, subsample)
