@@ -12,6 +12,20 @@ ALGORITHMS = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL']
 ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 HYDRA_CONF = ['config', 'overrides', 'hydra']
 
+def remove_same_value_list_dict(list_of_dict: list):
+  unique_dict = dict()
+  for dic in list_of_dict:
+    for key, value in dic.items():
+      if key in unique_dict.keys():
+        unique_dict[key].add(value)
+      else:
+        unique_dict[key]=set([value])
+  for key, value in unique_dict:
+    if len(unique_dict[key]) <= 1:
+      for dic in list_of_dict:
+        dic.pop(key, None)
+  return list_of_dict
+
 def read_hydra_yaml(file_name: str):
   with open(file_name, 'r') as fstream:
     data = yaml.safe_load(fstream)
