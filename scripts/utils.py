@@ -1,4 +1,5 @@
 from datetime import datetime
+from time import strftime
 import hydra
 from matplotlib import pyplot as plt
 import numpy as np
@@ -7,10 +8,17 @@ import os
 import yaml
 import math
 import types
+import gym, d4rl
 OUTPUT_FOLDER='./output/'
 ALGORITHMS = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL']
 ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 HYDRA_CONF = ['config', 'overrides', 'hydra']
+DEFAULT_DATEFORMAT="%m-%d_%H-%M-%S"
+
+def str_float_format(value):
+  if type(value) is float:
+    value = "{:.0e}".format(value)
+  return value
 
 def remove_same_value_list_dict(list_of_dict: list):
   unique_dict = dict()
@@ -29,6 +37,7 @@ def remove_same_value_list_dict(list_of_dict: list):
 def read_hydra_yaml(file_name: str):
   with open(file_name, 'r') as fstream:
     data = yaml.safe_load(fstream)
+  if type(data) == dict: return data
   dict_data = dict()
   for d in data:
     key, value = d.split('=')
@@ -38,13 +47,14 @@ def read_hydra_yaml(file_name: str):
       pass
     dict_data[key] = value
   return dict_data
+
 def read_hydra_configs(folder_name: str):
   hydra_conf = dict()
   for conf_name in HYDRA_CONF:
     hydra_conf[conf_name] = read_hydra_yaml(os.path.join(folder_name, conf_name+'.yaml'))
   return hydra_conf
 
-def filter_datefolder(folder_name, date_from=None, date_to=None, date_format="%m-%d_%H-%M-%S"):
+def filter_datefolder(folder_name, date_from=None, date_to=None, date_format=DEFAULT_DATEFORMAT):
   """Input should be the folder containing the datetime folders. Given input folder_name, returns a list of all the subfolders with date_format between given date_from/date_to. 
      If date_from is None, take all folders up to date_to. If date_to is None, take all folders up from date_from. if both are None, just give back all subfolders"""
   assert os.path.isdir(folder_name)
@@ -118,3 +128,42 @@ def process_test_data(data):
     std_of_means = means.std(axis=0)
     std_err = std_of_means / np.sqrt(n_seed)
     return np.array(x), mean_of_means, std_err, std_of_means
+
+def scan_folder_trajectories(folder):
+  subfolders = [subdir[0] for subdir in os.walk(folder) if 'optimization_results.yaml' in subdir[2]]
+  trajectory_nums = []
+  for subfolder in subfolders:
+    hydra_dict = read_hydra_yaml(os.path.join(subfolder, 'optimization_results.yaml'))
+    for key, value in hydra_dict['ax'].items():
+      if 'trajectories' in key:
+        trajectory_nums.append(int(value))
+  return trajectory_nums 
+
+
+def get_trajectory_subfolder(alg, folder, num_trajectory, include_datetime=False, date_format=DEFAULT_DATEFORMAT):
+  subfolders = [subdir[0] for subdir in os.walk(folder) if 'optimization_results.yaml' in subdir[2]] 
+  for subfolder in subfolders:
+    hydra_dict = read_hydra_yaml(os.path.join(subfolder, 'optimization_results.yaml'))
+    for key, value in hydra_dict['ax'].items():
+      if 'trajectories' in key:
+        if int(value) == num_trajectory:
+          if include_datetime:
+            subfolder_name = os.path.basename(os.path.normpath(subfolder))
+            subfolder_datetime = datetime.strptime(subfolder_name, date_format)
+            date_from, date_to = subfolder_datetime - datetime.timedelta(seconds=1), subfolder_datetime + datetime.timedelta(seconds=1) 
+            return subfolder, date_from.strftime(date_format), date_to.strftime(date_format)
+          else:
+            return subfolder
+      
+def _get_env_baseline(env: gym.Env):
+  random_agent_mean, expert_mean = env.ref_min_score, env.ref_max_score
+  return expert_mean, random_agent_mean
+
+def get_all_env_baseline(envs: dict):
+  data =  dict()
+  for env_name in envs.keys():
+    env = gym.make(envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
+    print(f"For env: {env_name} with data: {envs[env_name]}")
+    expert_mean, random_agent_mean = _get_env_baseline(env)
+    data[env_name] = dict(expert_mean=expert_mean, random_agent_mean=random_agent_mean )
+  return data

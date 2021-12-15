@@ -6,14 +6,11 @@ import torch
 import os
 import yaml
 import math
-#import seaborn as sns
 
+from .utils import process_test_data, load_data, load_all_data, scan_folder_trajectories, get_trajectory_subfolder, read_hydra_configs, str_float_format, ALGORITHMS, ENVS, get_all_env_baseline 
+ 
 """A simple plotting script. Change the global variable depending on setting"""
-#sns.set(style='white')
 
-algorithms = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL']
-#algorithms = ['PPO']
-envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 colors = ['green', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
 output_folder = './outputs/' # Folder with all the seed sweeper results
 seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
@@ -27,73 +24,6 @@ ENV_NAMES['ant'] = 'Ant'; ENV_NAMES['halfcheetah'] = 'HalfCheetah';
 ENV_NAMES['hopper'] = 'Hopper'; ENV_NAMES['walker2d'] = "Walker2D"
 
 folder_dateformat ="%m-%d_%H-%M-%S"
-def load_data(env, alg, date_from=None, date_to=None, par_sweep=True):
-    seed_folder_name = seed_prefix + env + '_' + alg
-    seed_folder = os.path.join(output_folder, seed_folder_name)
-    if date_from is not None:
-        try:
-            date_folder = [x[1] for x in os.walk(seed_folder)][0] #the date formatted folder in env_algo
-            datetime_folder = [datetime.strptime(x, folder_dateformat) for x in date_folder]
-            try:
-                datetime_from = datetime.strptime(date_from, folder_dateformat)
-                if date_to is not None:
-                    datetime_to = datetime.strptime(date_to, folder_dateformat)
-                    date_folder = [folder for folder, folder_dt in zip(date_folder, datetime_folder) if folder_dt > datetime_from and folder_dt < datetime_to]
-                else:
-                    date_folder = [folder for folder, folder_dt in zip(date_folder, datetime_folder) if folder_dt > date_from]
-            except Exception as e:
-                datetime_from = None
-            date_folder = [os.path.join(seed_folder, folder) for folder in date_folder]
-            data_folders = []
-            data = []
-            for folder in date_folder:
-                seeds = [x[1] for x in os.walk(folder)][0]
-                for seed in seeds:
-                    data_folder_name = os.path.join(folder, seed)
-                    data.append(torch.load(os.path.join(data_folder_name, 'metrics.pth')))
-            return data
-        
-        except Exception as e:
-            print(f"Couldn't load {env} {alg} datetime format folder. trying to load as seed folder...")
-    if par_sweep:
-        seed_folder_name = 'par_' + seed_prefix + alg + '_' + env
-        seed_folder = os.path.join(output_folder, seed_folder_name)
-    assert os.path.isdir(seed_folder)
-    seeds = [x[0] for x in os.walk(seed_folder) if 'metrics.pth' in x[2]]
-    data = []
-    for s in seeds:
-        data.append(torch.load(os.path.join(s, 'metrics.pth')))
-    return data
-
-
-def load_all_data(date_from=None, date_to=None, par_sweep=False):
-    data = dict()
-    if date_from: print(f'Checking seed data from... {date_from}')
-    for env in envs:
-        metrics = dict()
-        for alg in algorithms:
-            try:
-                metrics[alg] = load_data(env, alg, date_from=date_from, date_to=date_to, par_sweep=par_sweep)
-            except Exception as e:
-                print("Error: Could not load data from environment: " + env + ' and algorithm: ' + alg)
-        data[env] = metrics
-    return data
-
-def process_test_data(data):
-    x = data[0]['test_steps']
-    means, stds = [], []
-    n_seed = len(data)
-    for metric in data:
-        y = np.array(metric['test_returns'])
-        y_mean, y_std = y.mean(axis=1), y.std(axis=1)
-        means.append(y_mean)
-        stds.append(y_std)
-    means = np.array(means)
-    stds = np.array(stds)
-    mean_of_means = means.mean(axis=0)
-    std_of_means = means.std(axis=0)
-    std_err = std_of_means / np.sqrt(n_seed)
-    return np.array(x), mean_of_means, std_err, std_of_means
 
 def plot_env_baseline(ax, env):
     x = np.linspace(0.0, 10.0 , num=100)
@@ -110,7 +40,7 @@ def plot_environment_result(data, ax, env):
     pre_print = "For env: " + env
     print(pre_print)
     plot_env_baseline(ax, env)
-    for alg, col in zip(algorithms, colors):
+    for alg, col in zip(ALGORITHMS, colors):
         try:
             metric = data[alg]
             x, mean, std_err, std = process_test_data(metric)
@@ -133,20 +63,20 @@ def plot_environment_result(data, ax, env):
 
 
 
-def create_all_plots(x, y, save_fig=False, date_from=None, date_to=None, par_sweep=False):
+def create_all_plots(x, y, save_fig=False, date_from=None, date_to=None):
     fig, ax = plt.subplots(x, y, sharex=True)
     ax = ax.reshape(-1)
     #fig.tight_layout()
     #fig.set_size_inches((11, 8.5), forward=False) # A4 paper size apparently. INCHES, UGH
     fig.set_size_inches((14, 6), forward=False) # A4 paper size apparently. INCHES, UGH
-    data = load_all_data(date_from, date_to, par_sweep=par_sweep)
-    for env, axis in zip(envs, ax):
+    data = load_all_data(date_from, date_to)
+    for env, axis in zip(ENVS, ax):
         env_data = data[env]
         if env_data: #Empty if data couldn't be loaded
             plot_environment_result(env_data, axis, env)
     # Plot the Baseline results
     handles, labels = ax[-1].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='lower center', ncol=len(algorithms)+1, fontsize=fontsize)
+    fig.legend(handles, labels, loc='lower center', ncol=len(ALGORITHMS)+1, fontsize=fontsize)
     fig.add_subplot(111, frameon=False)
     # hide tick and tick label of the big axis
     plt.tick_params(labelcolor='none', which='both', top=False, bottom=False, left=False, right=False)
@@ -182,7 +112,7 @@ def relevant_param(alg):
 
 def get_relevant_param():
     alg_dict = dict()
-    for alg in algorithms:
+    for alg in ALGORITHMS:
         alg_dict[alg] = relevant_param(alg)
     return alg_dict
 
@@ -194,7 +124,7 @@ def plot_hyperparam_alg(ax, alg):
     r1 = np.arange(len(ylabel))
     barWidth = 0.20
     color = ['r', 'g', 'b', 'm']
-    for i, env in enumerate(envs):
+    for i, env in enumerate(ENVS):
         data = read_hyperparam(alg, env)
         xdata = []
         for key in ylabel:
@@ -213,7 +143,7 @@ def plot_hyperparam_env(ax, env):
     ylabel = list(relevant_param('AIRL').keys())
     r1 = np.arange(len(ylabel))
     barWidth = 0.125
-    for i, alg in enumerate(algorithms):
+    for i, alg in enumerate(ALGORITHMS):
         relevant_dict = relevant_param(alg)
         data = read_hyperparam(alg, env)
         xdata = []
@@ -237,7 +167,7 @@ def create_env_hyperparam_plot():
     ax = [ax1[0], ax1[1], ax2[0], ax2[1]]
     fig.tight_layout()
     ylabel = list(relevant_param('AIRL').keys())
-    for i, env in enumerate(envs):
+    for i, env in enumerate(ENVS):
         env_ax = ax[i]
         plot_hyperparam_env(env_ax, env)
         ax[i].set_xticklabels(ylabel)
@@ -250,7 +180,7 @@ def create_alg_hyperparam_plot():
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 2)
     ax = [*ax1, *ax2, *ax3, *ax4]
     fig.tight_layout()
-    for i, alg in enumerate(algorithms):
+    for i, alg in enumerate(ALGORITHMS):
         alg_ax = ax[i]
         plot_hyperparam_alg(alg_ax, alg)
         if alg == "BC":
@@ -262,9 +192,9 @@ def create_alg_hyperparam_plot():
 def plot_hyperparam(ax, alg, param):
     relevant_dict = relevant_param(alg)
     hyperparam_range = relevant_dict[param]
-    r1 = np.arange(len(envs))
+    r1 = np.arange(len(ENVS))
     xdata = []
-    for i, env in enumerate(envs):
+    for i, env in enumerate(ENVS):
         data = read_hyperparam(alg, env)
         hyperparam_value = data[param]
         xdata.append(hyperparam_range.index(hyperparam_value) + 1)
@@ -301,7 +231,7 @@ def create_hyperparam_plot(x, y, save_fig=False):
     # Reordered algorithms in less hyperparam order
     #algorithms = ['BC', 'GMMIL', 'RED', 'DRIL', 'AIRL', 'FAIRL', 'GAIL'][::-1]
     ylabel = [l[5], l[4], l[6], l[7], l[0], l[1], l[2], l[3]]
-    for i, alg in enumerate(algorithms):
+    for i, alg in enumerate(ALGORITHMS):
         relevant_dict = relevant_param(alg)
         alg_ax = ax[i]
         for j, param in enumerate(ylabel):
@@ -309,8 +239,8 @@ def create_hyperparam_plot(x, y, save_fig=False):
                 set_legend = False
                 barlist = plot_hyperparam(alg_ax[j], alg, param)
                 if not j and not i:
-                    ENV = [ENV_NAMES[env] for env in envs]
-                    fig.legend(barlist, ENV, loc='lower center', ncol=len(envs))
+                    ENV = [ENV_NAMES[env] for env in ENVS]
+                    fig.legend(barlist, ENV, loc='lower center', ncol=len(ENVS))
             if param not in relevant_dict.keys():
                 alg_ax[j].axis('off')
                 #alg_ax[j].get_xaxis().set_ticks([])
@@ -329,6 +259,54 @@ def create_hyperparam_plot(x, y, save_fig=False):
     #plt.subplot_tool() #Uncomment when you want to play with the margins between subplots
     plt.show()
 
+def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder_prefix='all_sweep_', date_from=None, date_to=None, normalization_data=None):
+    data_folder = os.path.join(output_folder, folder_prefix+alg)
+    subfolder = get_trajectory_subfolder(alg, data_folder, trajectory)
+    sweep_folders = [sf[0] for sf in os.walk(subfolder) if 'all.log' in sf[2]]
+    fig, axes = plt.subplots(len(sweep_folders)//5, 5)
+    fig.suptitle(f"Trajectory: {trajectory}")
+    axes = axes.reshape(-1)
+    once, key_order = True, []
+    for sweep_folder, ax in zip(sweep_folders, axes):
+      for env, col in zip(ENVS, colors):
+        sweep_env_folder = os.path.join(sweep_folder, env)
+        data = torch.load(os.path.join(sweep_env_folder, 'metrics.pth'))
+        x, mean, std_err, _ = process_test_data([data])
+        if alg is 'BC':
+          x = np.linspace(0.0, 10.0 , num=100)
+          mean, std_err = mean.repeat(100), std_err.repeat(100)
+        if normalization_data:
+          max_reward, min_reward = normalization_data[env]['expert_mean'], normalization_data[env]['random_agent_mean']
+          mean = (mean - min_reward) / (max_reward - min_reward)
+          low_fill, top_fill = (mean - std_err - min_reward) / (max_reward - min_reward), (mean + std_err - min_reward) / (max_reward - min_reward)
+          ax.plot(x, mean, col, label=env)
+          ax.fill_between(x, low_fill, top_fill, alpha=0.3)
+        else:
+          ax.plot(x, mean, col, label=env)
+          ax.fill_between(x, mean - std_err, mean + std_err, alpha=0.3)
+      hydra_conf_folder = os.path.join(sweep_folder, '.hydra')
+      hydra_conf = read_hydra_configs(hydra_conf_folder)
+      if once:
+        fig.legend()
+        once = False
+        key_order = [key for key in hydra_conf['overrides'].keys()]
+        figure_text = '\n'.join(key_order)
+        fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
+      txt ='\n'.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
+      ax.text(-0.4, 0.5 ,txt, fontsize=6)
+      ax.set_ylim([-0.3, 1.3])
+
+
+
+
+def plot_all_trajectory_opt_data(alg, output_folder='./outputs/', folder_prefix='all_sweep_', date_from=None, date_to=None):
+  data_folder = os.path.join(output_folder, folder_prefix+alg)
+  trajectory_nums = scan_folder_trajectories(data_folder)
+  all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
+  normalization_data = get_all_env_baseline(all_envs)
+  for tr in trajectory_nums:
+    plot_trajectory_opt_data(alg, tr, output_folder=output_folder, folder_prefix=folder_prefix, date_from=None, date_to=None, normalization_data=normalization_data)
+    plt.show()
 
 if __name__ == '__main__':
     import argparse
@@ -340,7 +318,8 @@ if __name__ == '__main__':
     parser.add_argument('--date-from', type=str, default=None)
     parser.add_argument('--par-file', action='store_true', default=False)
     args = parser.parse_args()
-    if args.plot_hyperparam:
-        create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
-    else:
-        create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from, par_sweep=args.par_file)
+    plot_all_trajectory_opt_data('BC', output_folder='/home/dan/Documents/', folder_prefix='all_sweep_')
+    #if args.plot_hyperparam:
+    #    create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
+    #else:
+    #    create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from, par_sweep=args.par_file)
