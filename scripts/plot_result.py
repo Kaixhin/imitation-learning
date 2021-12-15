@@ -264,7 +264,6 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
     subfolder = get_trajectory_subfolder(alg, data_folder, trajectory)
     sweep_folders = [sf[0] for sf in os.walk(subfolder) if 'all.log' in sf[2]]
     fig, axes = plt.subplots(len(sweep_folders)//5, 5)
-    fig.suptitle(f"Trajectory: {trajectory}")
     axes = axes.reshape(-1)
     once, key_order = True, []
     for sweep_folder, ax in zip(sweep_folders, axes):
@@ -290,10 +289,13 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
         fig.legend()
         once = False
         key_order = [key for key in hydra_conf['overrides'].keys()]
-        figure_text = '\n'.join(key_order)
-        fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
-      txt ='\n'.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
-      ax.text(-0.4, 0.5 ,txt, fontsize=6)
+        figure_text = ', '.join(key_order)
+        fig.suptitle(f"Trajectory: {trajectory} [ {figure_text} ]")
+        #fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
+      txt =', '.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
+      ax.set_title('[' + txt + ']')
+      ax.get_xaxis().set_ticks([])
+      #ax.text(-0.4, 0.5 ,txt, fontsize=6)
       ax.set_ylim([-0.3, 1.3])
 
 
