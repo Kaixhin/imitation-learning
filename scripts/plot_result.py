@@ -284,7 +284,7 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
           ax.plot(x, mean, col, label=env)
           ax.fill_between(x, mean - std_err, mean + std_err, alpha=0.3)
       hydra_conf_folder = os.path.join(sweep_folder, '.hydra')
-      hydra_conf = read_hydra_configs(hydra_conf_folder)
+      hydra_conf = read_hydra_configs(hydra_conf_folder, exclude_key=True)
       if once:
         fig.legend()
         once = False
@@ -293,7 +293,7 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
         fig.suptitle(f"Trajectory: {trajectory} [ {figure_text} ]")
         #fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
       txt =', '.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
-      ax.set_title('[' + txt + ']')
+      ax.set_title('[' + txt + ']', fontsize='medium')
       ax.get_xaxis().set_ticks([])
       #ax.text(-0.4, 0.5 ,txt, fontsize=6)
       ax.set_ylim([-0.3, 1.3])
@@ -301,27 +301,41 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
 
 
 
-def plot_all_trajectory_opt_data(alg, output_folder='./outputs/', folder_prefix='all_sweep_', date_from=None, date_to=None):
+def plot_all_trajectory_opt_data(alg, output_folder='./outputs/', folder_prefix='all_sweep_', date_from=None, date_to=None, save_fig=False):
+  if alg=='all':
+    for algo in ALGORITHMS:
+      plot_all_trajectory_opt_data(algo, output_folder=output_folder, folder_prefix=folder_prefix, date_from=date_from, date_to=date_to, save_fig=save_fig)
   data_folder = os.path.join(output_folder, folder_prefix+alg)
   trajectory_nums = scan_folder_trajectories(data_folder)
   all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
   normalization_data = get_all_env_baseline(all_envs)
+  print(f"Found data with trajectories: {trajectory_nums}")
   for tr in trajectory_nums:
     plot_trajectory_opt_data(alg, tr, output_folder=output_folder, folder_prefix=folder_prefix, date_from=None, date_to=None, normalization_data=normalization_data)
-    plt.show()
+    fig = plt.gcf()
+    if save_fig:
+      fig.show()
+      fig.set_size_inches((16,9), forward=False)
+      fig_filename = os.path.join(data_folder, f"{alg}_traj{tr}.png")
+      fig.savefig(fig_filename, dpi=500 )
+    else:
+      plt.show()
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='.')
     parser.add_argument('--n-col', type=int, default=2)
     parser.add_argument('--n-row', type=int, default=2)
-    parser.add_argument('--plot-hyperparam', action='store_true', default=False)
+    parser.add_argument('--plot', choices=['hyperparam', 'result', 'trajectories'])
+    parser.add_argument('--alg', choices=ALGORITHMS+['all'])
     parser.add_argument('--save-fig', action='store_true', default=False)
     parser.add_argument('--date-from', type=str, default=None)
     parser.add_argument('--par-file', action='store_true', default=False)
+    parser.add_argument('--data-folder', type=str, default='./outputs/')
     args = parser.parse_args()
-    plot_all_trajectory_opt_data('BC', output_folder='/home/dan/Documents/', folder_prefix='all_sweep_')
-    #if args.plot_hyperparam:
-    #    create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
-    #else:
-    #    create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from, par_sweep=args.par_file)
+    if args.plot == 'trajectories':
+      plot_all_trajectory_opt_data(args.alg, output_folder=args.data_folder, folder_prefix='all_sweep_', save_fig=args.save_fig)
+    elif args.plot == 'hyperparam':
+      create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
+    elif args.plot == 'result':
+      create_all_plots(args.n_row, args.n_col, args.save_fig, date_from=args.date_from, par_sweep=args.par_file)

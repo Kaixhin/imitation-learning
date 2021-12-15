@@ -15,6 +15,7 @@ ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 HYDRA_CONF = ['config', 'overrides', 'hydra']
 DEFAULT_DATEFORMAT="%m-%d_%H-%M-%S"
 
+EXCLUDED_KEYS=['hyperparam_opt', 'imitation.trajectories', 'imitation.subsample']
 def str_float_format(value):
   if type(value) is float:
     value = "{:.0e}".format(value)
@@ -34,7 +35,7 @@ def remove_same_value_list_dict(list_of_dict: list):
         dic.pop(key, None)
   return list_of_dict
 
-def read_hydra_yaml(file_name: str):
+def read_hydra_yaml(file_name: str, exclude_keys=None):
   with open(file_name, 'r') as fstream:
     data = yaml.safe_load(fstream)
   if type(data) == dict: return data
@@ -45,13 +46,16 @@ def read_hydra_yaml(file_name: str):
       value = float(value)
     except ValueError as e:
       pass
-    dict_data[key] = value
+    if exclude_keys:
+       if key not in exclude_keys: dict_data[key] = value
+    else: dict_data[key] = value
   return dict_data
 
-def read_hydra_configs(folder_name: str):
+def read_hydra_configs(folder_name: str, exclude_key=False):
   hydra_conf = dict()
   for conf_name in HYDRA_CONF:
-    hydra_conf[conf_name] = read_hydra_yaml(os.path.join(folder_name, conf_name+'.yaml'))
+    exclude_keys = EXCLUDED_KEYS if exclude_key else None
+    hydra_conf[conf_name] = read_hydra_yaml(os.path.join(folder_name, conf_name+'.yaml'), exclude_keys=exclude_keys)
   return hydra_conf
 
 def filter_datefolder(folder_name, date_from=None, date_to=None, date_format=DEFAULT_DATEFORMAT):
