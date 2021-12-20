@@ -48,7 +48,7 @@ evaluation:
   episodes: 30
   average_window: 5
 check_time_usage: false
-metric_log_interval: 10  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
+metric_log_interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
 save_trajectories: false
 render: false
 num_workers: 0
