@@ -14,3 +14,11 @@ params:
     type: choice
     values: [0.99, 0.995]
     value_type: 'float'
+  reinforcement.target_temperature:
+    type: choice
+    values: [-1, -0.5]
+    value_type: 'float'
+  training.start:
+    type: choice
+    values: [1000, 10000]
+    value_type: 'int'
