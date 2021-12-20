@@ -55,7 +55,7 @@ Results will be saved in `outputs/ENV_ALGO/m-d_H-M-S` with the last subfolder in
 
 Hyperparameter optimisation can be run by adding `-m hydra/sweeper=ax hyperparam_opt=ALG`, for example:
 ```sh
-python main.py -m algorithm=AIRL/hopper hydra/sweeper=ax hyperparam_opt=AIRL 
+python main.py -m algorithm=GAIL/hopper hydra/sweeper=ax hyperparam_opt=GAIL
 ```
 `hyperparam_opt` specifies the hyperparameter search space.
 

@@ -160,7 +160,7 @@ def get_all_env_baseline(envs: dict):
     env = gym.make(envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
     print(f"For env: {env_name} with data: {envs[env_name]}")
     expert_mean, random_agent_mean = _get_env_baseline(env)
-    data[env_name] = dict(expert_mean=expert_mean, random_agent_mean=random_agent_mean )
+    data[env_name] = dict(expert_mean=expert_mean, random_agent_mean=random_agent_mean)
   return data
 
 

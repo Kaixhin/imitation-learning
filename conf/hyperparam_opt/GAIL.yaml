@@ -6,35 +6,55 @@ early_stop:
   max_epochs_without_improvement: 5
 is_noisy: true
 params:
-  training.batch_size:
+  reinforcement.discount:
     type: choice
-    values: [1024, 2048, 4096]
-    value_type: 'int'
-  reinforcement.learning_rate:
-    type: choice
-    values: [0.00003, 0.0003]
+    values: [0.97, 0.99]
     value_type: 'float'
-  reinforcement.ppo_epochs:
+  reinforcement.target_temperature:
     type: choice
-    values: [5, 10, 20]
-    value_type: 'int'
-  reinforcement.entropy_loss_coeff:
-    type: choice
-    values: [0, 0.001, 0.01]
+    values: [-1, -0.5]
     value_type: 'float'
-  imitation.epochs:
+  reinforcement.polyak_factor:
     type: choice
-    values: [5, 15, 25]
+    values: [0.99, 0.995]
+    value_type: 'float'
+  imitation.model.hidden_size:
+    type: choice
+    values: [64, 256, 512]
     value_type: 'int'
+  imitation.model.depth:
+    type: choice
+    values: [1, 2]
+    value_type: 'int'
+  imitation.model.input_dropout:
+    type: choice
+    values: [0.0, 0.1, 0.5]
+    value_type: 'float'
+  imitation.model.dropout:
+    type: choice
+    values: [0.1, 0.5, 0.75]
+    value_type: 'float'
   imitation.learning_rate:
     type: choice
     values: [0.00003, 0.0003]
     value_type: 'float'
-  imitation.replay_size:
+  imitation.weight_decay:
     type: choice
-    values: [1, 3, 5]
-    value_type: 'int'
-  imitation.r1_reg_coeff:
-    type: choice
-    values: [0.1, 0.5, 1.0]
+    values: [0, 1, 10]
     value_type: 'float'
+  imitation.grad_penalty:
+    type: choice
+    values: [0, 0.1, 1]
+    value_type: 'float'
+  imitation.entropy_bonus:
+    type: choice
+    values: [0, 0.003, 0.03, 0.3]
+    value_type: 'float'
+  imitation.loss_function:
+    type: choice
+    values: ['BCE', 'Mixup']
+    value_type: 'str'
+  training.start:
+    type: choice
+    values: [1000, 10000]
+    value_type: 'int'
