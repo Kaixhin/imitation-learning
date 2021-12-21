@@ -7,39 +7,22 @@ import os
 import yaml
 import math
 
-from .utils import process_test_data, load_data, load_all_data, scan_folder_trajectories, get_trajectory_subfolder, read_hydra_configs, str_float_format, ALGORITHMS, ENVS, get_all_env_baseline 
+from .utils import find_optimal_result, process_test_data, load_data, load_all_data, scan_folder_trajectories, get_trajectory_subfolder, read_hydra_configs, str_float_format, ALGORITHMS, ENVS, ENVS_DATA, get_all_env_baseline 
  
 """A simple plotting script. Change the global variable depending on setting"""
 
 colors = ['green', 'tab:blue', 'tab:purple', 'tab:cyan', 'tab:orange', 'tab:red', 'tab:brown']
-output_folder = './outputs/' # Folder with all the seed sweeper results
-seed_prefix = 'seed_sweeper_' #prefix of all seed sweeper folders
 fontsize=14
-# Baseline results
-BASELINE = dict()  # [mean, std]
-BASELINE['ant'] = [4620.81, 1408.87]; BASELINE['halfcheetah'] = [10656.89, 441.45]
-BASELINE['hopper'] = [3510.46, 328.38]; BASELINE['walker2d'] = [4922.14, 136.68]
 ENV_NAMES = dict()
 ENV_NAMES['ant'] = 'Ant'; ENV_NAMES['halfcheetah'] = 'HalfCheetah';
 ENV_NAMES['hopper'] = 'Hopper'; ENV_NAMES['walker2d'] = "Walker2D"
 
 folder_dateformat ="%m-%d_%H-%M-%S"
 
-def plot_env_baseline(ax, env):
-    x = np.linspace(0.0, 10.0 , num=100)
-    mean, std = BASELINE[env]
-    std_err = std / np.sqrt(5) # Hardcoded I know
-    mean = np.repeat(mean, 100)
-    std_err = np.repeat(std_err, 100)
-    ax.plot(x, mean, 'k', label='Dataset')
-    ax.fill_between(x, mean - std_err, mean + std_err, color='k', alpha=0.1)
-
-
-def plot_environment_result(data, ax, env):
+def plot_environment_result(data, ax, env, normalization_data):
     ax.set_title(ENV_NAMES[env], fontsize=fontsize)
     pre_print = "For env: " + env
     print(pre_print)
-    plot_env_baseline(ax, env)
     for alg, col in zip(ALGORITHMS, colors):
         try:
             metric = data[alg]
@@ -52,11 +35,15 @@ def plot_environment_result(data, ax, env):
 
             x_pow = math.floor(math.log(x[-1], 10))
             x = x / 10**x_pow
+            if normalization_data:
+              max_reward, min_reward = normalization_data[env]['expert_mean'], normalization_data[env]['random_agent_mean']
+              mean = (mean - min_reward) / (max_reward - min_reward)
+              low_fill, top_fill = (mean - std_err - min_reward) / (max_reward - min_reward), (mean + std_err - min_reward) / (max_reward - min_reward)
             ax.plot(x, mean, col, label=alg)
-            ax.fill_between(x, mean - std_err, mean + std_err, color=col, alpha=0.3)
+            ax.fill_between(x, low_fill, top_fill, alpha=0.3)
             result = ' ' * len(pre_print) + alg + ", Result: " + "{:.2f}".format(mean[-1]) + " +/- " + "{:.2f}".format(std[-1])
             print(result)
-        except Exception as e:
+        except KeyError as e:
             print('\t no ' + alg +' data for env:' + env)
     plt.setp(ax.yaxis.get_majorticklabels(), rotation=40)
     ax.margins(x=0.0, tight=True)
@@ -262,7 +249,8 @@ def create_hyperparam_plot(x, y, save_fig=False):
 def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder_prefix='all_sweep_', date_from=None, date_to=None, normalization_data=None):
     data_folder = os.path.join(output_folder, folder_prefix+alg)
     subfolder = get_trajectory_subfolder(alg, data_folder, trajectory)
-    sweep_folders = [sf[0] for sf in os.walk(subfolder) if 'all.log' in sf[2]]
+    optimal_run_num = os.path.basename(os.path.dirname(find_optimal_result(subfolder)))
+    sweep_folders = [path for path, dirs, files in os.walk(subfolder) if 'all.log' in files]
     fig, axes = plt.subplots(len(sweep_folders)//5, 5)
     axes = axes.reshape(-1)
     once, key_order = True, []
@@ -271,7 +259,7 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
         sweep_env_folder = os.path.join(sweep_folder, env)
         data = torch.load(os.path.join(sweep_env_folder, 'metrics.pth'))
         x, mean, std_err, _ = process_test_data([data])
-        if alg is 'BC':
+        if 'BC' in alg:
           x = np.linspace(0.0, 10.0 , num=100)
           mean, std_err = mean.repeat(100), std_err.repeat(100)
         if normalization_data:
@@ -293,9 +281,11 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
         fig.suptitle(f"Trajectory: {trajectory} [ {figure_text} ]")
         #fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
       txt =', '.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
-      ax.set_title('[' + txt + ']', fontsize='medium')
+      sweep_num = os.path.basename(os.path.normpath(sweep_folder))
+      if sweep_num == optimal_run_num:
+        ax.set_facecolor('xkcd:light light green') # We all like xkcd
+      ax.set_title(f"{sweep_num}: [{txt} ]", fontsize='medium')
       ax.get_xaxis().set_ticks([])
-      #ax.text(-0.4, 0.5 ,txt, fontsize=6)
       ax.set_ylim([-0.3, 1.3])
 
 
@@ -307,18 +297,22 @@ def plot_all_trajectory_opt_data(alg, output_folder='./outputs/', folder_prefix=
       plot_all_trajectory_opt_data(algo, output_folder=output_folder, folder_prefix=folder_prefix, date_from=date_from, date_to=date_to, save_fig=save_fig)
   data_folder = os.path.join(output_folder, folder_prefix+alg)
   trajectory_nums = scan_folder_trajectories(data_folder)
-  all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
+  all_envs = ENVS_DATA
   normalization_data = get_all_env_baseline(all_envs)
   print(f"Found data with trajectories: {trajectory_nums}")
   for tr in trajectory_nums:
     plot_trajectory_opt_data(alg, tr, output_folder=output_folder, folder_prefix=folder_prefix, date_from=None, date_to=None, normalization_data=normalization_data)
     fig = plt.gcf()
+    fig.xlabel("Normalized Reward")
+    fig.ylabel("Steps")
     if save_fig:
       fig.show()
       fig.set_size_inches((16,9), forward=False)
       fig_filename = os.path.join(data_folder, f"{alg}_traj{tr}.png")
       fig.savefig(fig_filename, dpi=500 )
     else:
+      fig.show()
+      fig.set_size_inches((16,9), forward=False)
       plt.show()
 
 if __name__ == '__main__':
@@ -334,6 +328,7 @@ if __name__ == '__main__':
     parser.add_argument('--data-folder', type=str, default='./outputs/')
     args = parser.parse_args()
     if args.plot == 'trajectories':
+      print(f"reading data from: {args.data_folder}")
       plot_all_trajectory_opt_data(args.alg, output_folder=args.data_folder, folder_prefix='all_sweep_', save_fig=args.save_fig)
     elif args.plot == 'hyperparam':
       create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)

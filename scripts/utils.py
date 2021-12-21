@@ -10,8 +10,9 @@ import math
 import types
 import gym, d4rl
 OUTPUT_FOLDER='./output/'
-ALGORITHMS = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL']
+ALGORITHMS = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL', 'AdRIL']
 ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']
+ENVS_DATA = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
 HYDRA_CONF = ['config', 'overrides', 'hydra']
 DEFAULT_DATEFORMAT="%m-%d_%H-%M-%S"
 
@@ -20,20 +21,6 @@ def str_float_format(value):
   if type(value) is float:
     value = "{:.0e}".format(value)
   return value
-
-def remove_same_value_list_dict(list_of_dict: list):
-  unique_dict = dict()
-  for dic in list_of_dict:
-    for key, value in dic.items():
-      if key in unique_dict.keys():
-        unique_dict[key].add(value)
-      else:
-        unique_dict[key]=set([value])
-  for key, value in unique_dict:
-    if len(unique_dict[key]) <= 1:
-      for dic in list_of_dict:
-        dic.pop(key, None)
-  return list_of_dict
 
 def read_hydra_yaml(file_name: str, exclude_keys=None):
   with open(file_name, 'r') as fstream:
@@ -58,11 +45,20 @@ def read_hydra_configs(folder_name: str, exclude_key=False):
     hydra_conf[conf_name] = read_hydra_yaml(os.path.join(folder_name, conf_name+'.yaml'), exclude_keys=exclude_keys)
   return hydra_conf
 
+def is_right_datetime(str_input, date_format=DEFAULT_DATEFORMAT):
+  try:
+    datetime.strptime(str_input, date_format)
+    return True
+  except ValueError as e:
+    pass
+  return False
+  
+
 def filter_datefolder(folder_name, date_from=None, date_to=None, date_format=DEFAULT_DATEFORMAT):
   """Input should be the folder containing the datetime folders. Given input folder_name, returns a list of all the subfolders with date_format between given date_from/date_to. 
      If date_from is None, take all folders up to date_to. If date_to is None, take all folders up from date_from. if both are None, just give back all subfolders"""
   assert os.path.isdir(folder_name)
-  dirname, subdirname, _ = [dir for dirs in os.walk(folder_name) if  not dirs[2]][0] # Assumes folder with datetime subfolder contain no file.
+  dirname, subdirname = [(path, dirs) for path, dirs, files in os.walk(folder_name) if all([is_right_datetime(d, date_format) for d in dirs])][0] # Assumes folder with datetime subfolder only contain datetime named subfolders.
   if date_from is None and date_to is None:
     return [os.path.join(dirname, sdn) for sdn in subdirname]
   else:
@@ -134,6 +130,7 @@ def process_test_data(data):
     return np.array(x), mean_of_means, std_err, std_of_means
 
 def scan_folder_trajectories(folder):
+  """Scan folder with data"""
   subfolders = [subdir[0] for subdir in os.walk(folder) if 'optimization_results.yaml' in subdir[2]]
   trajectory_nums = []
   for subfolder in subfolders:
@@ -145,6 +142,7 @@ def scan_folder_trajectories(folder):
 
 
 def get_trajectory_subfolder(alg, folder, num_trajectory, include_datetime=False, date_format=DEFAULT_DATEFORMAT):
+  """Returns the subfolder in input:folder with 'optimization_results.yaml' containing given(input:num_trajectory) trajectories value. Takes the first it find."""
   subfolders = [subdir[0] for subdir in os.walk(folder) if 'optimization_results.yaml' in subdir[2]] 
   for subfolder in subfolders:
     hydra_dict = read_hydra_yaml(os.path.join(subfolder, 'optimization_results.yaml'))
@@ -167,7 +165,29 @@ def get_all_env_baseline(envs: dict):
   data =  dict()
   for env_name in envs.keys():
     env = gym.make(envs[env_name])  # Skip using D4RL class because action_space.sample() does not exist
-    print(f"For env: {env_name} with data: {envs[env_name]}")
     expert_mean, random_agent_mean = _get_env_baseline(env)
-    data[env_name] = dict(expert_mean=expert_mean, random_agent_mean=random_agent_mean )
+    data[env_name] = dict(expert_mean=expert_mean, random_agent_mean=random_agent_mean)
   return data
+
+def find_optimal_result(sweep_folder):
+  """Because Ax sweeper gives us the optimal parameters after sweep, but doesnt tell us which folder (num sweep) it is!"""
+  optimal_result_filename = os.path.join(sweep_folder, 'optimization_results.yaml')
+  optimal_param_dict = read_hydra_yaml(optimal_result_filename)['ax']
+  result_folders = [path for path, dirs, files in os.walk(sweep_folder) if 'overrides.yaml' in files]
+  for dot_hydra_folder in result_folders:
+    overrides_dict = read_hydra_configs(dot_hydra_folder)['overrides']
+    match=True
+    for key, value in optimal_param_dict.items():
+      if key in overrides_dict.keys():
+        if overrides_dict[key] != value:
+          match=False
+          break
+      else: match=False
+    if match:
+      print(f"Folder: {dot_hydra_folder} contains the optimal run")
+      optimal_param_str = ','.join([f"{key}={value}" for key, value in optimal_param_dict.items()])
+      print(optimal_param_str)
+      return dot_hydra_folder
+  print("Error: No matching folder found")
+  return False
+
