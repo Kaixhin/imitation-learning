@@ -7,12 +7,16 @@ pretraining:
   iterations: 100000
 reinforcement:
   discount: 0.97
+  target_temperature: -0.5
 imitation:
   model:
-    hidden_size: 256
-    depth: 2
-    activation: 'relu'
-    input_dropout: 0
+    hidden_size: 64
+    depth: 1
+    activation: 'tanh'
+    input_dropout: 0.1
     dropout: 0.1
   pretraining_iterations: 100000
+  weight_decay: 1
   bc: true
+training:
+  start: 10000
