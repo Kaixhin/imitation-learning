@@ -253,8 +253,9 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
     sweep_folders = [path for path, dirs, files in os.walk(subfolder) if 'all.log' in files]
     fig, axes = plt.subplots(len(sweep_folders)//5, 5)
     axes = axes.reshape(-1)
-    once, key_order = True, []
-    for sweep_folder, ax in zip(sweep_folders, axes):
+    once, key_order, plot_data, fig_title = True, [], [], ""
+    for sweep_folder in sweep_folders:
+      subplot_data, env_means = dict(), []
       for env, col in zip(ENVS, colors):
         sweep_env_folder = os.path.join(sweep_folder, env)
         data = torch.load(os.path.join(sweep_env_folder, 'metrics.pth'))
@@ -266,25 +267,41 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
           max_reward, min_reward = normalization_data[env]['expert_mean'], normalization_data[env]['random_agent_mean']
           mean = (mean - min_reward) / (max_reward - min_reward)
           low_fill, top_fill = (mean - std_err - min_reward) / (max_reward - min_reward), (mean + std_err - min_reward) / (max_reward - min_reward)
-          ax.plot(x, mean, col, label=env)
-          ax.fill_between(x, low_fill, top_fill, alpha=0.3)
         else:
-          ax.plot(x, mean, col, label=env)
-          ax.fill_between(x, mean - std_err, mean + std_err, alpha=0.3)
+          low_fill, top_fill = mean - std_err, mean + std_err 
+        env_means.append(np.sum(mean[-5:]/5))
+        subplot_data[env] = dict(x=x, mean=mean, low_fill=low_fill, top_fill=top_fill)
+      subplot_data['score'] = np.median(env_means)
       hydra_conf_folder = os.path.join(sweep_folder, '.hydra')
       hydra_conf = read_hydra_configs(hydra_conf_folder, exclude_key=True)
       if once:
-        fig.legend()
         once = False
         key_order = [key for key in hydra_conf['overrides'].keys()]
         figure_text = ', '.join(key_order)
-        fig.suptitle(f"Trajectory: {trajectory} [ {figure_text} ]")
+        fig_title = f"Trajectory: {trajectory} [ {figure_text} ]"
         #fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
       txt =', '.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
       sweep_num = os.path.basename(os.path.normpath(sweep_folder))
+      optimal=False
       if sweep_num == optimal_run_num:
+        optimal=True
+      subplot_data['title'] = f"{sweep_num}: [{txt} ]"
+      subplot_data['optimal']= optimal
+      plot_data.append(subplot_data)
+    plot_data = sorted(plot_data, key=lambda x: x['score'], reverse=True)
+    once = True 
+    for data, ax in zip(plot_data, axes):
+      for env, col in zip(ENVS, colors):
+        x, mean, low_fill, top_fill = data[env]['x'], data[env]['mean'], data[env]['low_fill'], data[env]['top_fill'], 
+        ax.plot(x, mean, col, label=env)
+        ax.fill_between(x, low_fill, top_fill, alpha=0.3)
+      if once:
+        fig.legend()
+        once = False
+        fig.suptitle(fig_title)
+      if data['optimal']:
         ax.set_facecolor('xkcd:light light green') # We all like xkcd
-      ax.set_title(f"{sweep_num}: [{txt} ]", fontsize='medium')
+      ax.set_title(data['title'], fontsize='medium')
       ax.get_xaxis().set_ticks([])
       ax.set_ylim([-0.3, 1.3])
 
@@ -299,12 +316,13 @@ def plot_all_trajectory_opt_data(alg, output_folder='./outputs/', folder_prefix=
   trajectory_nums = scan_folder_trajectories(data_folder)
   all_envs = ENVS_DATA
   normalization_data = get_all_env_baseline(all_envs)
+  trajectory_nums = sorted(trajectory_nums, reverse=True)
   print(f"Found data with trajectories: {trajectory_nums}")
   for tr in trajectory_nums:
     plot_trajectory_opt_data(alg, tr, output_folder=output_folder, folder_prefix=folder_prefix, date_from=None, date_to=None, normalization_data=normalization_data)
     fig = plt.gcf()
-    fig.xlabel("Normalized Reward")
-    fig.ylabel("Steps")
+    fig.text(0.06, 0.5, "Normalized Reward", ha='center', va='center', rotation='vertical')
+    fig.text(0.5, 0.04, "Steps", ha='center', va='center')
     if save_fig:
       fig.show()
       fig.set_size_inches((16,9), forward=False)
