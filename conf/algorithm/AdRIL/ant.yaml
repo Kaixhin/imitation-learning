@@ -3,5 +3,8 @@ env_type: ant
 env_name: ant-expert-v2
 
 algorithm: AdRIL
+reinforcement:
+  discount: 0.98
+  polyak_factor: 0.98
 imitation:
   update_freq: 1250

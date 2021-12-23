@@ -3,5 +3,8 @@ env_type: walker2d
 env_name: walker2d-expert-v2
 
 algorithm: AdRIL
+reinforcement:
+  discount: 0.98
+  polyak_factor: 0.98
 imitation:
   update_freq: 1250
