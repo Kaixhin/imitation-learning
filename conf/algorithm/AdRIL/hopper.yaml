@@ -7,4 +7,5 @@ reinforcement:
   discount: 0.98
   polyak_factor: 0.98
 imitation:
+  balanced: false
   update_freq: 1250

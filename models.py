@@ -1,4 +1,5 @@
 import copy
+from math import ceil
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -232,3 +233,32 @@ class REDDiscriminator(nn.Module):
   def predict_reward(self, state: Tensor, action: Tensor) -> Tensor:
     prediction, target = self.forward(state, action)
     return torch.exp(-self.sigma_1 * (prediction - target).pow(2).mean(dim=1))
+
+
+class RewardRelabeller():
+  def __init__(self, algorithm: str, balanced: bool):
+    self.algorithm = algorithm
+    self.balanced, self.sample_expert = balanced, True
+
+  def resample_and_relabel(self, transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], batch_size: int, step: int, num_trajectories: int, num_expert_trajectories: int, update_freq: int):
+    # Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place TODO: Add sampling ratio option?
+    if self.balanced:  # Alternate between sampling expert and policy data
+      if self.sample_expert:
+        for key in transitions.keys():
+          transitions[key] = expert_transitions[key]  # Replace all of the batch with expert data
+        expert_idxs, policy_idxs = range(batch_size), []
+      else:
+        expert_idxs, policy_idxs = [], range(batch_size)
+      self.sample_expert = not self.sample_expert  # Sample from other data next time
+    else:  # Replace first half of the batch with expert data
+      for key in transitions.keys():
+        transitions[key][:batch_size // 2] = expert_transitions[key][:batch_size // 2]  
+      expert_idxs, policy_idxs = range(batch_size // 2), range(batch_size // 2, batch_size)
+    # Label rewards according to the algorithm
+    if self.algorithm == 'AdRIL':
+      transitions['rewards'][expert_idxs] = 1 / num_expert_trajectories  # Set a constant +1 reward for expert data, normalised by |trajectories|
+      round_num = ceil(step / update_freq)
+      transitions['rewards'][policy_idxs] = -1 * (round_num > torch.ceil(transitions['step'][policy_idxs] / update_freq)).to(dtype=torch.float32) / max(num_trajectories, 1)  # Set a contast 0 reward for current round of policy data, and -1 for old rounds, normalised by |trajectories|
+    elif self.algorithm == 'SQIL':
+      transitions['rewards'][expert_idxs] = 1  # Set a constant +1 reward for expert data
+      transitions['rewards'][policy_idxs] = 0  # Set a constant 0 reward for policy data
