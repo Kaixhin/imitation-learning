@@ -191,3 +191,11 @@ def find_optimal_result(sweep_folder):
   print("Error: No matching folder found")
   return False
 
+def trim_metrics(folder='./outputs/somefolder/', trim_value=100):
+  metrics = [os.path.join(path, 'metrics.pth') for path, dirs, files in os.walk(folder) if 'metrics.pth' in files]
+  for metric in metrics:
+    data = torch.load(metric)
+    trimmed_data = dict()
+    for key in data.keys():
+      trimmed_data[key] = data[key][::trim_value]
+    torch.save(trimmed_data, metric)
