@@ -269,6 +269,7 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
           low_fill, top_fill = (mean - std_err - min_reward) / (max_reward - min_reward), (mean + std_err - min_reward) / (max_reward - min_reward)
         else:
           low_fill, top_fill = mean - std_err, mean + std_err 
+        import pdb; pdb.set_trace()
         env_means.append(np.sum(mean[-5:]/5))
         subplot_data[env] = dict(x=x, mean=mean, low_fill=low_fill, top_fill=top_fill)
       subplot_data['score'] = np.median(env_means)
@@ -317,6 +318,9 @@ def plot_all_trajectory_opt_data(alg, output_folder='./outputs/', folder_prefix=
   all_envs = ENVS_DATA
   normalization_data = get_all_env_baseline(all_envs)
   trajectory_nums = sorted(trajectory_nums, reverse=True)
+  if not trajectory_nums:
+    print("Didnt found any data with trajectories; defaulting to traj -1 (first found)")
+    trajectory_nums = [-1]
   print(f"Found data with trajectories: {trajectory_nums}")
   for tr in trajectory_nums:
     plot_trajectory_opt_data(alg, tr, output_folder=output_folder, folder_prefix=folder_prefix, date_from=None, date_to=None, normalization_data=normalization_data)
