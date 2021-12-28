@@ -54,7 +54,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Set up imitation learning components
   if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
     if cfg.algorithm in ['AdRIL', 'SQIL']:
-      discriminator = RewardRelabeller(cfg.algorithm, cfg.imitation.balanced)
+      discriminator = RewardRelabeller(cfg.algorithm, cfg.imitation.balanced)  # Balanced sampling (switching between expert and policy data every update) is stateful
     if cfg.algorithm == 'DRIL':
       discriminator = SoftActor(state_size, action_size, cfg.imitation.model)
     elif cfg.algorithm == 'GAIL':
