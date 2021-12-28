@@ -10,12 +10,6 @@ from torch.nn import functional as F
 from models import GAILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, make_gail_input, update_target_network
 
 
-# Creates a batch of training data made from a mix of expert and policy data; rewrites transitions in-place TODO: Add sampling ratio option?
-def mix_policy_expert_transitions(transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], batch_size: int):
-  for key in transitions.keys():
-    transitions[key][:batch_size // 2] = expert_transitions[key][:batch_size // 2]  # Replace first half of the batch with expert data
-
-
 # Performs one SAC update
 def sac_update(actor: SoftActor, critic: TwinCritic, log_alpha: Tensor, target_critic, transitions: Dict[str, Tensor], actor_optimiser: Optimizer, critic_optimiser: Optimizer, temperature_optimiser: Optimizer, discount: float, entropy_target: float, polyak_factor: float) -> Tuple[Tensor, Tensor]:
   states, actions, rewards, next_states, terminals, weights, absorbing = transitions['states'], transitions['actions'], transitions['rewards'], transitions['next_states'], transitions['terminals'], transitions['weights'], transitions['absorbing']

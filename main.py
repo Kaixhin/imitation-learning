@@ -1,5 +1,4 @@
 from collections import deque
-from math import ceil
 import time
 
 import hydra
@@ -13,8 +12,8 @@ from tqdm import tqdm
 from environments import D4RLEnv
 from evaluation import evaluate_agent
 from memory import ReplayMemory
-from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, TwinCritic, create_target_network, make_gail_input
-from training import adversarial_imitation_update, behavioural_cloning_update, mix_policy_expert_transitions, sac_update, target_estimation_update
+from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, RewardRelabeller, TwinCritic, create_target_network, make_gail_input
+from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
 
 
@@ -53,7 +52,9 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
-  if cfg.algorithm in ['DRIL', 'GAIL', 'GMMIL', 'RED']:
+  if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
+    if cfg.algorithm in ['AdRIL', 'SQIL']:
+      discriminator = RewardRelabeller(cfg.algorithm, cfg.imitation.balanced)  # Balanced sampling (switching between expert and policy data every update) is stateful
     if cfg.algorithm == 'DRIL':
       discriminator = SoftActor(state_size, action_size, cfg.imitation.model)
     elif cfg.algorithm == 'GAIL':
@@ -151,11 +152,8 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
         expert_states, expert_actions, expert_next_states, expert_terminals, expert_weights = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case
 
         with torch.inference_mode():
-          if cfg.algorithm == 'AdRIL':
-            mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
-            transitions['rewards'][:cfg.training.batch_size // 2] = 1 / expert_memory.num_trajectories  # Set a constant +1 reward for expert data, normalised by |trajectories|
-            round_num = ceil(step / cfg.imitation.update_freq)
-            transitions['rewards'][cfg.training.batch_size // 2:] = -1 * (round_num > torch.ceil(transitions['step'][cfg.training.batch_size // 2:] / cfg.imitation.update_freq)).to(dtype=torch.float32) / max(memory.num_trajectories, 1)  # Set a contast 0 reward for current round of policy data, and -1 for old rounds, normalised by |trajectories|
+          if cfg.algorithm in ['AdRIL', 'SQIL']:
+            discriminator.resample_and_relabel(transitions, expert_transitions, cfg.training.batch_size, step, memory.num_trajectories, expert_memory.num_trajectories, cfg.imitation.get('update_freq', 0))  # Uses a mix of expert and policy data and overwrites transitions (including rewards) inplace
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
@@ -169,10 +167,6 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
           elif cfg.algorithm == 'RED':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
             if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
-          elif cfg.algorithm == 'SQIL':
-            mix_policy_expert_transitions(transitions, expert_transitions, cfg.training.batch_size)  # Rewrites training transitions as a mix of expert and policy data
-            transitions['rewards'][:cfg.training.batch_size // 2] = 1  # Set a constant +1 reward for expert data
-            transitions['rewards'][cfg.training.batch_size // 2:] = 0  # Set a constant 0 reward for policy data
       
       # Perform a behavioural cloning update (optional)
       if cfg.imitation.bc: behavioural_cloning_update(actor, expert_transitions, actor_optimiser)
