@@ -145,6 +145,8 @@ def get_trajectory_subfolder(alg, folder, num_trajectory, include_datetime=False
   """Returns the subfolder in input:folder with 'optimization_results.yaml' containing given(input:num_trajectory) trajectories value. Takes the first it find."""
   subfolders = [subdir[0] for subdir in os.walk(folder) if 'optimization_results.yaml' in subdir[2]] 
   for subfolder in subfolders:
+    if num_trajectory < 0:
+      return subfolder # if no trajectories specified return first found
     hydra_dict = read_hydra_yaml(os.path.join(subfolder, 'optimization_results.yaml'))
     for key, value in hydra_dict['ax'].items():
       if 'trajectories' in key:
@@ -197,5 +199,8 @@ def trim_metrics(folder='./outputs/somefolder/', trim_value=100):
     data = torch.load(metric)
     trimmed_data = dict()
     for key in data.keys():
-      trimmed_data[key] = data[key][::trim_value]
+      if not 'test_' in key: #Don't trim test, as this is needed for final eval.
+        trimmed_data[key] = data[key][::trim_value]
+      else:
+        trimmed_data[key] = data[key]
     torch.save(trimmed_data, metric)
