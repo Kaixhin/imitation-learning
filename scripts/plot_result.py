@@ -269,10 +269,9 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
           low_fill, top_fill = (mean - std_err - min_reward) / (max_reward - min_reward), (mean + std_err - min_reward) / (max_reward - min_reward)
         else:
           low_fill, top_fill = mean - std_err, mean + std_err 
-        import pdb; pdb.set_trace()
-        env_means.append(np.sum(mean[-5:]/5))
+        env_means.append(np.mean(mean))
         subplot_data[env] = dict(x=x, mean=mean, low_fill=low_fill, top_fill=top_fill)
-      subplot_data['score'] = np.median(env_means)
+      subplot_data['score'] = np.min(env_means)
       hydra_conf_folder = os.path.join(sweep_folder, '.hydra')
       hydra_conf = read_hydra_configs(hydra_conf_folder, exclude_key=True)
       if once:
@@ -286,12 +285,15 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
       optimal=False
       if sweep_num == optimal_run_num:
         optimal=True
+      subplot_data['sweep_num'] = sweep_num
       subplot_data['title'] = f"{sweep_num}: [{txt} ]"
       subplot_data['optimal']= optimal
       plot_data.append(subplot_data)
     plot_data = sorted(plot_data, key=lambda x: x['score'], reverse=True)
     once = True 
+    print(f"For trajectory {trajectory}")
     for data, ax in zip(plot_data, axes):
+      print(f"Run:{data['sweep_num']} Score: {data['score']}")
       for env, col in zip(ENVS, colors):
         x, mean, low_fill, top_fill = data[env]['x'], data[env]['mean'], data[env]['low_fill'], data[env]['top_fill'], 
         ax.plot(x, mean, col, label=env)
