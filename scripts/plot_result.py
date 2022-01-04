@@ -269,9 +269,9 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
           low_fill, top_fill = (mean - std_err - min_reward) / (max_reward - min_reward), (mean + std_err - min_reward) / (max_reward - min_reward)
         else:
           low_fill, top_fill = mean - std_err, mean + std_err 
-        env_means.append(np.sum(mean[-5:]/5))
+        env_means.append(np.mean(mean))
         subplot_data[env] = dict(x=x, mean=mean, low_fill=low_fill, top_fill=top_fill)
-      subplot_data['score'] = np.median(env_means)
+      subplot_data['score'] = np.min(env_means)
       hydra_conf_folder = os.path.join(sweep_folder, '.hydra')
       hydra_conf = read_hydra_configs(hydra_conf_folder, exclude_key=True)
       if once:
