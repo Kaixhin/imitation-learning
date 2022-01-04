@@ -43,6 +43,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   env = D4RLEnv(cfg.env_name, cfg.imitation.absorbing, load_data=True)
   env.seed(cfg.seed)
   normalization_max, normalization_min = env.env.ref_max_score, env.env.ref_min_score
+
   expert_memory = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
@@ -84,14 +85,15 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
       if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
       test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
+      test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
-      metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
+      metrics['test_steps'], metrics['test_returns'], metrics['test_returns_normalized'] = [0], [test_returns], [list(test_returns_normalized)]
       lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
 
       torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
       torch.save(metrics, f'{file_prefix}metrics.pth')
       env.close()
-      return sum(test_returns) / len(test_returns)
+      return np.mean(test_returns_normalized) 
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:

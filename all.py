@@ -28,7 +28,7 @@ def pool_wrapper(cfg):
 def all(cfg: DictConfig):
   all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
   filename = os.path.join(get_original_cwd(), 'normalization_data.npz')
-  all_env_cfgs, normalized_result = [], []
+  all_env_cfgs = [] 
   seed = random.randint(0, 99)
   Path(f"./seed{seed}.txt").touch()
   for key, value in all_envs.items():
