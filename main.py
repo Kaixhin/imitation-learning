@@ -69,7 +69,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 
   # Metrics
-  metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], update_steps=[], predicted_rewards=[], predicted_expert_rewards=[], alphas=[], entropies=[], Q_values=[])
+  metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], test_returns_normalized=[], update_steps=[], predicted_rewards=[], predicted_expert_rewards=[], alphas=[], entropies=[], Q_values=[])
   score = []  # Score used for hyperparameter optimization 
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
