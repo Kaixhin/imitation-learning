@@ -28,7 +28,6 @@ def pool_wrapper(cfg):
 def all(cfg: DictConfig):
   all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
   filename = os.path.join(get_original_cwd(), 'normalization_data.npz')
-  normalization_data = get_all_env_baseline(all_envs)
   all_env_cfgs, normalized_result = [], []
   seed = random.randint(0, 99)
   Path(f"./seed{seed}.txt").touch()
@@ -38,15 +37,14 @@ def all(cfg: DictConfig):
     if not os.path.exists(key): os.mkdir(key)
     all_env_cfgs.append(tmp_cfg)
   with mp.Pool(processes=4) as pool:
-    unnormalized_result = {item[0]: item[1] for item in pool.map(pool_wrapper, all_env_cfgs)}
+    normalized_result = {item[0]: item[1] for item in pool.map(pool_wrapper, all_env_cfgs)}
     pool.close()
-  for key, value in unnormalized_result.items():
-    max_reward, min_reward = normalization_data[key]['expert_mean'], normalization_data[key]['random_agent_mean']
-    normalized_value = (value - min_reward) / (max_reward - min_reward)
-    normalized_result.append(normalized_value)
-    print(f"{key} Result(OG | normalized): {value} | {normalized_value}")
+  result_list = []
+  for key, value in normalized_result.items():
+    result_list.append(value)
+    print(f"{key} Result(normalized): {value}")
   
-  return np.median(normalized_result)
+  return np.min(result_list)
 
 
 if __name__ == '__main__':
