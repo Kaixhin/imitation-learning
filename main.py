@@ -42,6 +42,8 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Set up environment
   env = D4RLEnv(cfg.env_name, cfg.imitation.absorbing, load_data=True)
   env.seed(cfg.seed)
+  normalization_max, normalization_min = env.env.ref_max_score, env.env.ref_min_score
+
   expert_memory = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
   
@@ -67,8 +69,8 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       discriminator_optimiser = optim.AdamW(discriminator.parameters(), lr=cfg.imitation.learning_rate, weight_decay=cfg.imitation.weight_decay)
 
   # Metrics
-  metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], update_steps=[], predicted_rewards=[], predicted_expert_rewards=[], alphas=[], entropies=[], Q_values=[])
-  recent_returns = deque(maxlen=cfg.evaluation.average_window)  # Stores most recent evaluation returns
+  metrics = dict(train_steps=[], train_returns=[], test_steps=[], test_returns=[], test_returns_normalized=[], update_steps=[], predicted_rewards=[], predicted_expert_rewards=[], alphas=[], entropies=[], Q_values=[])
+  score = []  # Score used for hyperparameter optimization 
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   
@@ -83,14 +85,15 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
       if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
       test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
+      test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
-      metrics['test_steps'], metrics['test_returns'] = [0], [test_returns]
+      metrics['test_steps'], metrics['test_returns'], metrics['test_returns_normalized'] = [0], [test_returns], [list(test_returns_normalized)]
       lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
 
       torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
       torch.save(metrics, f'{file_prefix}metrics.pth')
       env.close()
-      return sum(test_returns) / len(test_returns)
+      return np.mean(test_returns_normalized) 
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
@@ -184,9 +187,11 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
       test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
-      recent_returns.append(sum(test_returns) / cfg.evaluation.episodes)
+      test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
+      score.append(np.mean(test_returns_normalized))
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
+      metrics['test_returns_normalized'].append(list(test_returns_normalized))
       lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.env_name} : {cfg.algorithm} Test Returns')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
@@ -210,7 +215,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   torch.save(metrics, f'{file_prefix}metrics.pth')
 
   env.close()
-  return sum(recent_returns) / float(cfg.evaluation.average_window)
+  return np.mean(score)
 
 
 if __name__ == '__main__':

@@ -8,6 +8,7 @@ import os
 import yaml
 import math
 import types
+import warnings
 import gym, d4rl
 OUTPUT_FOLDER='./output/'
 ALGORITHMS = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL', 'AdRIL']
@@ -18,9 +19,12 @@ DEFAULT_DATEFORMAT="%m-%d_%H-%M-%S"
 
 EXCLUDED_KEYS=['hyperparam_opt', 'imitation.trajectories', 'imitation.subsample']
 def str_float_format(value):
+  shortest_format = str(value)
   if type(value) is float:
-    value = "{:.0e}".format(value)
-  return value
+    e_format = "{:.0e}".format(value)
+    g_format = "{:.4g}".format(value)
+    shortest_format = g_format if len(g_format) < len(e_format) else e_format
+  return shortest_format
 
 def read_hydra_yaml(file_name: str, exclude_keys=None):
   with open(file_name, 'r') as fstream:
@@ -30,7 +34,15 @@ def read_hydra_yaml(file_name: str, exclude_keys=None):
   for d in data:
     key, value = d.split('=')
     try:
-      value = float(value)
+      if value in ['False', 'false']:
+        value = False
+      elif value in ['True', 'true']:
+        value = True
+      else:
+        try:
+          value = int(value)
+        except ValueError:
+          value = float(value)
     except ValueError as e:
       pass
     if exclude_keys:
