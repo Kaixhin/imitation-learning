@@ -12,5 +12,6 @@ imitation:
     activation: 'relu'
     input_dropout: 0
     dropout: 0
+  sigma: False
   pretraining_iterations: 100000
   bc: true
