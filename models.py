@@ -214,7 +214,10 @@ class REDDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig):
     super().__init__()
     self.state_only = imitation_cfg.state_only
-    self.sigma_1 = None
+    if imitation_cfg.sigma:
+      self.sigma_1 = imitation_cfg.sigma 
+    else:
+      self.sigma_1 = None
     self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model, input_dropout=imitation_cfg.model.input_dropout, dropout=imitation_cfg.model.dropout)
     self.target = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
     for param in self.target.parameters():
@@ -227,8 +230,11 @@ class REDDiscriminator(nn.Module):
 
   # Originally, sets σ based such that r(s, a) from expert demonstrations ≈ 1; instead this uses kernel median heuristic (same as GMMIL)
   def set_sigma(self, expert_state: Tensor, expert_action: Tensor):
-    prediction, target = self.forward(expert_state, expert_action)
-    self.sigma_1 = 1 / _squared_distance(prediction, target).median().item()
+    if not self.sigma_1:
+      prediction, target = self.forward(expert_state, expert_action)
+      self.sigma_1 = 1 / _squared_distance(prediction, target).median().item()
+    else:
+      print(f"using pre-set sigma: {self.sigma_1}")
 
   def predict_reward(self, state: Tensor, action: Tensor) -> Tensor:
     prediction, target = self.forward(state, action)
