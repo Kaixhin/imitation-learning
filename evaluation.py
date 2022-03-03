@@ -21,12 +21,13 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, env_name: str, absorbing
       state, terminal = env.reset(), False
       while not terminal:
           action = actor.get_greedy_action(state)  # Take greedy action
-          state, reward, terminal = env.step(action)
+          next_state, reward, terminal = env.step(action)
 
           if return_trajectories:
             states.append(state)
             actions.append(action)
           rewards.append(reward)
+          state = next_state
       returns.append(sum(rewards))
 
       if return_trajectories:
