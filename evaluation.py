@@ -17,12 +17,13 @@ def evaluate_agent(agent, num_episodes, env_type=PendulumEnv, env_name='', seed=
       state, terminal = env.reset(), False
       while not terminal:
           action = agent.get_greedy_action(state)  # Take greedy action
-          state, reward, terminal = env.step(action)
+          next_state, reward, terminal = env.step(action)
 
           if return_trajectories:
             states.append(state)
             actions.append(action)
           rewards.append(reward)
+          state = next_state
       returns.append(sum(rewards))
 
       if return_trajectories:
