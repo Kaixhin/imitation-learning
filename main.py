@@ -105,12 +105,12 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       elif cfg.algorithm == 'RED':
         target_estimation_update(discriminator, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
     
-      if cfg.algorithm == 'DRIL':
-        with torch.no_grad(): # inference_mode() is buggy for big tensors; See https://github.com/pytorch/pytorch/issues/75595
-          discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
-      elif cfg.algorithm == 'RED':
-        with torch.inference_mode():
-          discriminator.set_sigma(expert_memory['states'][:cfg.pretraining.batch_size], expert_memory['actions'][:cfg.pretraining.batch_size])  # Estimate on a minibatch for computational feasibility
+    if cfg.algorithm == 'DRIL':
+      with torch.no_grad(): # inference_mode() is buggy for big tensors; See https://github.com/pytorch/pytorch/issues/75595
+        discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
+    elif cfg.algorithm == 'RED':
+      with torch.inference_mode():
+        discriminator.set_sigma(expert_memory['states'][:cfg.pretraining.batch_size], expert_memory['actions'][:cfg.pretraining.batch_size])  # Estimate on a minibatch for computational feasibility
 
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
