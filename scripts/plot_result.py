@@ -277,10 +277,17 @@ def plot_trajectory_opt_data(alg, trajectory, output_folder='./outputs/', folder
       if once:
         once = False
         key_order = [key for key in hydra_conf['overrides'].keys()]
-        figure_text = ', '.join(key_order)
-        fig_title = f"Trajectory: {trajectory} [ {figure_text} ]"
+        # filter it 
+        key_order_filtered = [key.split('.')[-1] if '.' in key else key for key in key_order]
+        figure_text = ', '.join(key_order_filtered)
+        fig_title = f"{alg} Trajectory: {trajectory} [ {figure_text} ]"
         #fig.text(0.0, 0.7, figure_text, fontsize=fontsize)
-      txt =', '.join([str_float_format(hydra_conf['overrides'][key]) for key in key_order])
+      hyperparam_str_list = [str_float_format(hydra_conf['overrides'][key]) for key in key_order]
+      if len(hyperparam_str_list) < 8:
+          txt =', '.join(hyperparam_str_list)
+      else:
+          txt =', '.join(hyperparam_str_list[:len(hyperparam_str_list)//2]) + '\n,' + ', '.join(hyperparam_str_list[len(hyperparam_str_list)//2:])
+
       sweep_num = os.path.basename(os.path.normpath(sweep_folder))
       optimal=False
       if sweep_num == optimal_run_num:
@@ -350,10 +357,11 @@ if __name__ == '__main__':
     parser.add_argument('--date-from', type=str, default=None)
     parser.add_argument('--par-file', action='store_true', default=False)
     parser.add_argument('--data-folder', type=str, default='./outputs/')
+    parser.add_argument('--folder-prefix', type=str, default='all_sweep_')
     args = parser.parse_args()
     if args.plot == 'trajectories':
       print(f"reading data from: {args.data_folder}")
-      plot_all_trajectory_opt_data(args.alg, output_folder=args.data_folder, folder_prefix='all_sweep_', save_fig=args.save_fig)
+      plot_all_trajectory_opt_data(args.alg, output_folder=args.data_folder, folder_prefix=args.folder_prefix, save_fig=args.save_fig)
     elif args.plot == 'hyperparam':
       create_hyperparam_plot(args.n_row, args.n_col, args.save_fig)
     elif args.plot == 'result':

@@ -11,20 +11,26 @@ import types
 import warnings
 import gym, d4rl
 OUTPUT_FOLDER='./output/'
-ALGORITHMS = ['SAC', 'BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL', 'AdRIL']
+ALGORITHMS = ['BC', 'GAIL','GMMIL', 'RED', 'DRIL', 'SQIL', 'AdRIL']
 ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']
 ENVS_DATA = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
 HYDRA_CONF = ['config', 'overrides', 'hydra']
 DEFAULT_DATEFORMAT="%m-%d_%H-%M-%S"
 
-EXCLUDED_KEYS=['hyperparam_opt', 'imitation.trajectories', 'imitation.subsample']
+EXCLUDED_KEYS=['hyperparam_opt', 'imitation.trajectories', 'imitation.subsample', 'imitation.bc', 'pretraining.iterations']
 def str_float_format(value):
-  shortest_format = str(value)
+  if type(value) is int:
+      raw_format = str(int)
+      e_format = f'{value:.0e}'
+      return  raw_format if len(raw_format) < len(e_format) else e_format
   if type(value) is float:
+    raw_format = str(value)
     e_format = "{:.0e}".format(value)
     g_format = "{:.4g}".format(value)
     shortest_format = g_format if len(g_format) < len(e_format) else e_format
-  return shortest_format
+    shortest_format = shortest_format if len(shortest_format) < len(raw_format) else raw_format
+    return shortest_format
+  return str(value)
 
 def read_hydra_yaml(file_name: str, exclude_keys=None):
   with open(file_name, 'r') as fstream:
