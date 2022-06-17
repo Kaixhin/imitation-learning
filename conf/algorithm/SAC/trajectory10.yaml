@@ -1,0 +1,14 @@
+# @package _global_
+env_type: ??
+env_name: ${env_type}-expert-v2
+# Below parameters are optimal for imitation.trajectory=10
+algorithm: AdRIL 
+reinforcement:
+  discount: 0.99
+  polyak_factor: 0.99
+  target_temperature: -1
+imitation:
+  balanced: True
+  update_freq: 1250
+training:
+  start: 10000
