@@ -17,11 +17,11 @@ imitation:
     depth: 1
     input_dropout: 0.1
     dropout: 0.5
-    reward_shaping: false
-    subtract_log_policy: false
+    reward_shaping: False
+    subtract_log_policy: False
     reward_function: 'AIRL'
-  absorbing: true
-  spectral_norm: true
+  absorbing: True
+  spectral_norm: True
   learning_rate: 3.0e-05
   weight_decay: 0.0
   grad_penalty: 0.0
@@ -30,6 +30,6 @@ imitation:
   mixup_alpha: 1
   nonnegative_margin: .inf
   pos_class_prior: 0.7
-  bc: false
+  bc: False
 training:
   start: 1000

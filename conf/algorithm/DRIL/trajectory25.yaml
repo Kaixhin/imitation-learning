@@ -17,7 +17,7 @@ imitation:
   pretraining_iterations: 100000
   learning_rate: 0.0003
   weight_decay: 1.0
-  bc: false
+  bc: False
 training:
   start: 10000
 pretraining:

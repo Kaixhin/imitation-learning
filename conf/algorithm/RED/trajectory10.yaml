@@ -17,6 +17,6 @@ imitation:
   learning_rate: 0.0003
   weight_decay: 0.0
   sigma: False
-  bc: false
+  bc: False
 training:
   start: 10000

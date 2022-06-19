@@ -12,4 +12,4 @@ pretraining:
   iterations: 100000 
 imitation:
   trajectories: 25
-  self_similarity: true
+  self_similarity: True
