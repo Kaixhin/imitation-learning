@@ -34,7 +34,7 @@ imitation:
     input_dropout: 0.5
     dropout: 0.75 
   trajectories: 0  # 0 to disable; otherwise select number of trajectories
-  subsample: 1 #20
+  subsample: 1 # Note that 20 was default in original GAIL implementation
   state_only: false
   absorbing: false
   learning_rate: 0.00003

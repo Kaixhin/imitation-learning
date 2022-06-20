@@ -8,7 +8,7 @@ reinforcement:
   target_temperature: -1
 imitation:
   trajectories: 25
-  balanced: false
+  balanced: False
   update_freq: 2500
 training:
   start: 10000

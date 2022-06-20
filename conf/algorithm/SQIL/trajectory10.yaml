@@ -10,4 +10,4 @@ imitation:
   trajectories: 10
   balanced: False 
 training:
-  start: 10000 # 10000
+  start: 10000 

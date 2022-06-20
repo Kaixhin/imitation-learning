@@ -1,7 +1,6 @@
 # @package _global_
 env_type: ??
 env_name: ${env_type}-expert-v2
-# Below parameters are optimal for imitation.trajectory=5
 algorithm: RED
 reinforcement:
   discount: 0.97
