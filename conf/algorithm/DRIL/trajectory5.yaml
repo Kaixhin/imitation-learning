@@ -1,0 +1,24 @@
+# @package _global_
+env_type: ??
+env_name: ${env_type}-expert-v2
+algorithm: DRIL
+reinforcement:
+  target_temperature: -0.5
+  polyak_factor: 0.995
+  discount: 0.97
+imitation:
+  trajectories: 5
+  model:
+    hidden_size: 64
+    depth: 1
+    activation: 'relu'
+    input_dropout: 0.5
+    dropout: 0.1
+  pretraining_iterations: 10000
+  learning_rate: 0.0003
+  weight_decay: 0.0
+  bc: False
+training:
+  start: 1000
+pretraining:
+  iterations: 0

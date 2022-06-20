@@ -1,0 +1,22 @@
+# @package _global_
+env_type: ??
+env_name: ${env_type}-expert-v2
+algorithm: RED
+reinforcement:
+  discount: 0.97
+  target_temperature: -0.5
+  polyak_factor: 0.99
+imitation:
+  trajectories: 25
+  model:
+    hidden_size: 512
+    depth: 1
+    input_dropout: 0.1
+    dropout: 0.5
+  pretraining_iterations: 10000
+  learning_rate: 3.0e-05
+  weight_decay: 1.0
+  sigma: False
+  bc: False
+training:
+  start: 1000
