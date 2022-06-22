@@ -1,4 +1,4 @@
-numpy==1.20.2
+numpy==1.22.0
 d4rl-pybullet @ git+https://github.com/takuseno/d4rl-pybullet@fc09c4a5f82e6de48ff32f1b4f2af6031e6f4256
 matplotlib==3.4.1
 seaborn==0.11.1
