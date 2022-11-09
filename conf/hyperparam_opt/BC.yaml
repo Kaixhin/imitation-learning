@@ -14,7 +14,3 @@ params:
     type: range
     bounds: [0.00003, 0.0003]
     value_type: 'float'
-  imitation.subsample:
-    type: choice
-    values: [1, 10, 20]
-    value_type: 'int'
