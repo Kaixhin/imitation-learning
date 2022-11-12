@@ -1,7 +1,7 @@
 # @package _global_
 env_type: ??
 env_name: ${env_type}-expert-v2
-algorithm: AdRIL 
+algorithm: BC 
 pretraining:
     iterations: 10000
     learning_rate: 0.00023259995609334602
