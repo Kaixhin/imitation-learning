@@ -1,0 +1,9 @@
+# @package _global_
+env_type: ??
+env_name: ${env_type}-expert-v2
+algorithm: BC 
+pretraining:
+    iterations: 10000
+    learning_rate: 4.854413267992239e-05
+imitation:
+  trajectories: 10
