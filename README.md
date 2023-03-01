@@ -9,24 +9,25 @@ Off-policy imitation learning algorithms (with SAC [[1, 2]](#references)):
 - DRIL [[5]](#references) (with optional BC auxiliary loss; default true)
 - GAIL [[6]](#references)
 - GMMIL [[7]](#references) (with optional self-similarity term [[8]](#references))
-- RED [[9]](#references) (with optional BC auxiliary loss; default true)
-- SQIL [[10]](#references)
+- PWIL [[9]](#references)
+- RED [[10]](#references) (with optional BC auxiliary loss; default true)
+- SQIL [[11]](#references)
 
 General options include:
 
 - State-only imitation learning: `imitation.state-only: true/false`
-- Absorbing state indicator [[11]](#references): `imitation.absorbing: true/false`
+- Absorbing state indicator [[12]](#references): `imitation.absorbing: true/false`
 - BC auxiliary loss: `imitation.bc: true/false`
 
 GAIL options include:
 
-- Reward shaping (AIRL) [[12]](#references): `imitation.model.reward_shaping: true/false`
-- Subtract log π(a|s) (AIRL) [[12]](#references): `imitation.model.subtract_log_policy: true/false`
-- Reward functions (GAIL/AIRL/FAIRL) [[6, 12, 13]](#references): `imitation.model.reward_function: AIRL/FAIRL/GAIL`
-- Gradient penalty [[11, 14]](#references): `imitation.grad_penalty: <float>`
-- Spectral normalisation [[15]](#references): `imitation.spectral_norm: true/false`
-- Entropy bonus [[16]](#references): `imitation.entropy_bonus: <float>`
-- Loss functions (BCE/Mixup/nn-PUGAIL) [[6, 17, 18]](#references): `imitation.loss_function: BCE/Mixup/PUGAIL`
+- Reward shaping (AIRL) [[13]](#references): `imitation.model.reward_shaping: true/false`
+- Subtract log π(a|s) (AIRL) [[13]](#references): `imitation.model.subtract_log_policy: true/false`
+- Reward functions (GAIL/AIRL/FAIRL) [[6, 13, 14]](#references): `imitation.model.reward_function: AIRL/FAIRL/GAIL`
+- Gradient penalty [[12, 15]](#references): `imitation.grad_penalty: <float>`
+- Spectral normalisation [[16]](#references): `imitation.spectral_norm: true/false`
+- Entropy bonus [[17]](#references): `imitation.entropy_bonus: <float>`
+- Loss functions (BCE/Mixup/nn-PUGAIL) [[6, 18, 19]](#references): `imitation.loss_function: BCE/Mixup/PUGAIL`
 
 ## Requirements
 
@@ -42,7 +43,7 @@ The training of each imitation learning algorithm (or SAC with the real environm
 ```sh
 python main.py algorithm=ALG/ENV
 ```
-where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PCIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
 python main.py algorithm=GAIL/hopper
 ```
@@ -103,13 +104,14 @@ If you find this work useful and would like to cite it, please use the following
 [6] [Generative Adversarial Imitation Learning](https://arxiv.org/abs/1606.03476)  
 [7] [Imitation Learning via Kernel Mean Embedding](https://www.aaai.org/ocs/index.php/AAAI/AAAI18/paper/viewPaper/16807)  
 [8] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
-[9] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
-[10] [SQIL: Imitation Learning via Reinforcement Learning with Sparse Rewards](https://arxiv.org/abs/1905.11108)  
-[11] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
-[12] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
-[13] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
-[14] [Sample-Efficient Imitation Learning via Generative Adversarial Nets](https://arxiv.org/abs/1809.02064)  
-[15] [Lipschitzness Is All You Need To Tame Off-policy Generative Adversarial Imitation Learning](https://arxiv.org/abs/2006.16785)  
-[16] [What Matters for Adversarial Imitation Learning?](https://arxiv.org/abs/2106.00672)  
-[17] [Batch Exploration with Examples for Scalable Robotic Reinforcement Learning](https://arxiv.org/abs/2010.11917)  
-[18] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  
+[9] [Primal Wasserstein Imitation Learning](https://arxiv.org/abs/2006.04678)  
+[10] [Random Expert Distillation: Imitation Learning via Expert Policy Support Estimation](https://arxiv.org/abs/1905.06750)  
+[11] [SQIL: Imitation Learning via Reinforcement Learning with Sparse Rewards](https://arxiv.org/abs/1905.11108)  
+[12] [Discriminator-Actor-Critic: Addressing Sample Inefficiency and Reward Bias in Adversarial Imitation Learning](https://arxiv.org/abs/1809.02925)  
+[13] [Learning Robust Rewards with Adversarial Inverse Reinforcement Learning](https://arxiv.org/abs/1710.11248)  
+[14] [A Divergence Minimization Perspective on Imitation Learning Methods](https://arxiv.org/abs/1911.02256)  
+[15] [Sample-Efficient Imitation Learning via Generative Adversarial Nets](https://arxiv.org/abs/1809.02064)  
+[16] [Lipschitzness Is All You Need To Tame Off-policy Generative Adversarial Imitation Learning](https://arxiv.org/abs/2006.16785)  
+[17] [What Matters for Adversarial Imitation Learning?](https://arxiv.org/abs/2106.00672)  
+[18] [Batch Exploration with Examples for Scalable Robotic Reinforcement Learning](https://arxiv.org/abs/2010.11917)  
+[19] [Positive-Unlabeled Reward Learning](https://arxiv.org/abs/1911.00459)  

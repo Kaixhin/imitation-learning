@@ -12,7 +12,7 @@ from tqdm import tqdm
 from environments import D4RLEnv
 from evaluation import evaluate_agent
 from memory import ReplayMemory
-from models import GAILDiscriminator, GMMILDiscriminator, REDDiscriminator, SoftActor, RewardRelabeller, TwinCritic, create_target_network, make_gail_input
+from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, RewardRelabeller, TwinCritic, create_target_network, make_gail_input
 from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
 
@@ -24,7 +24,7 @@ def main(cfg: DictConfig):
 
 def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
-  assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC', 'SQIL']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1

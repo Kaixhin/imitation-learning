@@ -201,6 +201,17 @@ class GMMILDiscriminator(nn.Module):
     return similarity - self_similarity if self.self_similarity else similarity
 
 
+class PWILDiscriminator(nn.Module):
+  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig):
+    super().__init__()
+    self.state_only = imitation_cfg.state_only
+
+
+
+
+
+
+
 class EmbeddingNetwork(nn.Module):
   def __init__(self, input_size: int, model_cfg: DictConfig, input_dropout=0, dropout=0):  # Takes dropout as a separate argument as not be applied to target network
     super().__init__()
