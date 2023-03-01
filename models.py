@@ -224,7 +224,7 @@ class PWILDiscriminator(nn.Module):
   def compute_reward(self, state: Tensor, action: Tensor) -> float:
     agent_atom = state if self.state_only else torch.cat([state, action], dim=1)
     agent_atom = self.scaler.transform(agent_atom)  # Normalise the agent atom
-    weight, cost = 1 / self.time_horizon, 0  # TODO: Subtract eps from weight for numerical stability?
+    weight, cost = 1 / self.time_horizon - 1e-6, 0  # Note: subtracting eps from initial agent atom weight for numerical stability
     dists = torch.linalg.norm(self.expert_atoms - agent_atom, dim=1)
     while weight > 0:
       closest_expert_idx = dists.argmin().item()  # Find closest expert atom
