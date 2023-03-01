@@ -64,7 +64,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size, action_size, cfg.imitation)
     elif cfg.algorithm == 'PWIL':
-      discriminator = PWILDiscriminator(state_size, action_size, cfg.imitation, expert_memory)
+      discriminator = PWILDiscriminator(state_size, action_size, cfg.imitation, expert_memory, env.max_episode_steps)
     elif cfg.algorithm == 'RED':
       discriminator = REDDiscriminator(state_size, action_size, cfg.imitation)
     if cfg.algorithm in ['DRIL', 'GAIL', 'RED']:

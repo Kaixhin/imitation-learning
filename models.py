@@ -205,13 +205,12 @@ class GMMILDiscriminator(nn.Module):
 
 
 class PWILDiscriminator(nn.Module):
-  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory):
+  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory, time_horizon: int):
     super().__init__()
     self.state_only = imitation_cfg.state_only
-    self.expert_memory, self.scaler = expert_memory, StandardScaler()
+    self.expert_memory, self.scaler, self.time_horizon = expert_memory, StandardScaler(), time_horizon
     self.scaler.fit(self._get_expert_atoms())  # Fit the scaler to the data
-    self.time_horizon = 10000  # len(self.expert_memory) / self.expert_memory.num_trajectories  # Set the time horizon based on the average expert trajectory length TODO: Is this correct if episodes terminate early? Probably need to set to max
-    self.reward_scale, self.reward_bandwidth = imitation_cfg.reward_scale, imitation_cfg.reward_bandwidth_scale * self.time_horizon / sqrt(state_size if imitation_cfg.state_only else state_size + action_size)  # Reward function hyperparameters
+    self.reward_scale, self.reward_bandwidth = imitation_cfg.reward_scale, imitation_cfg.reward_bandwidth_scale * self.time_horizon / sqrt(state_size if imitation_cfg.state_only else (state_size + action_size))  # Reward function hyperparameters
     self.reset()
 
   def _get_expert_atoms(self) -> Tensor:
