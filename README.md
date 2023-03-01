@@ -43,7 +43,7 @@ The training of each imitation learning algorithm (or SAC with the real environm
 ```sh
 python main.py algorithm=ALG/ENV
 ```
-where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PCIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PWIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
 python main.py algorithm=GAIL/hopper
 ```
