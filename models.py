@@ -209,7 +209,7 @@ class PWILDiscriminator(nn.Module):
     super().__init__()
     self.state_size, self.action_size, self.state_only = state_size, action_size, imitation_cfg.state_only
     self.expert_memory, self.scaler = expert_memory, StandardScaler()
-    self.time_horizon = len(self.expert_memory) / self.expert_memory.num_trajectories  # Set the time horizon based on the average expert trajectory length TODO: Is this correct if episodes terminate early?
+    self.time_horizon = 10000  # len(self.expert_memory) / self.expert_memory.num_trajectories  # Set the time horizon based on the average expert trajectory length TODO: Is this correct if episodes terminate early? Probably need to set to max
     self.reward_scale, self.reward_bandwidth = imitation_cfg.reward_scale, imitation_cfg.reward_bandwidth_scale * self.time_horizon / sqrt(state_size if imitation_cfg.state_only else state_size + action_size)  # Reward function weights
     self.reset()
 
@@ -221,7 +221,7 @@ class PWILDiscriminator(nn.Module):
   def compute_reward(self, state: Tensor, action: Tensor) -> float:
     agent_atom = state if self.state_only else torch.cat([state, action], dim=1)
     agent_atom = self.scaler.transform(agent_atom)  # Normalise the agent atom
-    weight, cost = 1 / self.time_horizon - 1e-6, 1  # TODO: Subtract eps from weight for numerical stability?
+    weight, cost = 1 / self.time_horizon, 0  # TODO: Subtract eps from weight for numerical stability?
     dists = torch.linalg.norm(self.expert_atoms - agent_atom, dim=1)
     while weight > 0:
       closest_expert_idx = dists.argmin().item()  # Find closest expert atom
