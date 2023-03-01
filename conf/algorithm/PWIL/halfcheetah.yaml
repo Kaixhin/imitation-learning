@@ -4,5 +4,5 @@ env_name: halfcheetah-expert-v2
 
 algorithm: PWIL
 imitation:
-  alpha: 5
-  beta: 5
+  reward_scale: 5
+  reward_bandwidth_scale: 5

@@ -129,7 +129,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       next_state, reward, terminal = env.step(action)
       t += 1
       train_return += reward
-      if cfg.algorithm == 'PWIL': reward = discriminator.predict_reward(state, action)  # Greedily calculate the reward for PWIL
+      if cfg.algorithm == 'PWIL': reward = discriminator.compute_reward(state, action)  # Greedily calculate the reward for PWIL
       memory.append(step, state, action, reward, next_state, terminal and t != env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal
       state = next_state
 

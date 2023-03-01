@@ -22,11 +22,11 @@ params:
     type: choice
     values: [1, 20]  # TODO: Wasn't optimised for other algorithms...
     value_type: 'int'
-  imitation.alpha:
+  imitation.reward_scale:
     type: choice
     values: [5]  # TODO: Add more choices
     value_type: 'float'
-  imitation.beta:
+  imitation.reward_bandwidth_scale:
     type: choice
     values: [5]  # TODO: Add more choices
     value_type: 'float'

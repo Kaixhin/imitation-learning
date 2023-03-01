@@ -1,5 +1,5 @@
 import copy
-from math import ceil
+from math import ceil, exp, sqrt
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -208,17 +208,34 @@ class PWILDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory):
     super().__init__()
     self.state_size, self.action_size, self.state_only = state_size, action_size, imitation_cfg.state_only
-    self.alpha, self.beta = imitation_cfg.alpha, imitation_cfg.beta  # Reward function weights
     self.expert_memory, self.scaler = expert_memory, StandardScaler()
+    self.time_horizon = len(self.expert_memory) / self.expert_memory.num_trajectories  # Set the time horizon based on the average expert trajectory length TODO: Is this correct if episodes terminate early?
+    self.reward_scale, self.reward_bandwidth = imitation_cfg.reward_scale, imitation_cfg.reward_bandwidth_scale * self.time_horizon / sqrt(state_size if imitation_cfg.state_only else state_size + action_size)  # Reward function weights
     self.reset()
 
   def reset(self):
     self.expert_atoms = self.expert_memory['states'] if self.state_only else torch.cat([self.expert_memory['states'], self.expert_memory['actions']], dim=1)
-    self.expert_atoms = torch.tensor(self.scaler.fit_transform(self.expert_atoms), dtype=torch.float32)  # Normalise the data
+    self.expert_atoms = torch.tensor(self.scaler.fit_transform(self.expert_atoms), dtype=torch.float32)  # Normalise the expert atoms
     self.expert_weights = torch.ones(self.expert_atoms.size(0)) / self.expert_atoms.size(0)
 
-  def predict_reward(self, state: Tensor, action: Tensor) -> float:
-    raise NotImplementedError
+  def compute_reward(self, state: Tensor, action: Tensor) -> float:
+    agent_atom = state if self.state_only else torch.cat([state, action], dim=1)
+    agent_atom = self.scaler.transform(agent_atom)  # Normalise the agent atom
+    weight, cost = 1 / self.time_horizon - 1e-6, 1  # TODO: Subtract eps from weight for numerical stability?
+    dists = torch.linalg.norm(self.expert_atoms - agent_atom, dim=1)
+    while weight > 0:
+      closest_expert_idx = dists.argmin().item()  # Find closest expert atom
+      expert_weight = self.expert_weights[closest_expert_idx].item()
+      # Update costs and weights
+      if weight >= expert_weight:
+        cost += expert_weight * dists[closest_expert_idx].item()
+        weight -= expert_weight
+        self.expert_atoms, self.expert_weights, dists = np.delete(self.expert_atoms, closest_expert_idx, axis=0), np.delete(self.expert_weights, closest_expert_idx, axis=0), np.delete(dists, closest_expert_idx, axis=0)  # Remove the expert atom
+      else:
+        cost += weight * dists[closest_expert_idx].item()
+        self.expert_weights[closest_expert_idx] -= weight
+        weight = 0
+    return self.reward_scale * exp(-self.reward_bandwidth * cost)
 
 
 class EmbeddingNetwork(nn.Module):
