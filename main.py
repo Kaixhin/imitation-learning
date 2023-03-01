@@ -54,7 +54,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
-  if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:
+  if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SQIL']:
     if cfg.algorithm in ['AdRIL', 'SQIL']:
       discriminator = RewardRelabeller(cfg.algorithm, cfg.imitation.balanced)  # Balanced sampling (switching between expert and policy data every update) is stateful
     if cfg.algorithm == 'DRIL':
@@ -63,6 +63,8 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation, cfg.reinforcement.discount)
     elif cfg.algorithm == 'GMMIL':
       discriminator = GMMILDiscriminator(state_size, action_size, cfg.imitation)
+    elif cfg.algorithm == 'PWIL':
+      discriminator = PWILDiscriminator(state_size, action_size, cfg.imitation, expert_memory)
     elif cfg.algorithm == 'RED':
       discriminator = REDDiscriminator(state_size, action_size, cfg.imitation)
     if cfg.algorithm in ['DRIL', 'GAIL', 'RED']:
@@ -127,12 +129,14 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       next_state, reward, terminal = env.step(action)
       t += 1
       train_return += reward
+      if cfg.algorithm == 'PWIL': reward = discriminator.predict_reward(state, action)  # Greedily calculate the reward for PWIL
       memory.append(step, state, action, reward, next_state, terminal and t != env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal
       state = next_state
 
     # Reset environment and track metrics on episode termination
     if terminal:
       if cfg.imitation.absorbing and t != env.max_episode_steps: memory.wrap_for_absorbing_states()  # Wrap for absorbing state if terminated without time limit
+      if cfg.algorithm == 'PWIL': discriminator.reset()  # Reset the expert data for PWIL
       # Store metrics and reset environment
       metrics['train_steps'].append(step)
       metrics['train_returns'].append([train_return])
@@ -180,7 +184,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:
         metrics['update_steps'].append(step)
         metrics['predicted_rewards'].append(transitions['rewards'].numpy())
-        if cfg.algorithm not in ['AdRIL', 'SAC', 'SQIL']: metrics['predicted_expert_rewards'].append(expert_rewards.numpy())
+        if cfg.algorithm not in ['AdRIL', 'PWIL', 'SAC', 'SQIL']: metrics['predicted_expert_rewards'].append(expert_rewards.numpy())
         metrics['alphas'].append(log_alpha.exp().detach().numpy())
         metrics['entropies'].append((-log_probs).numpy())  # Actions are sampled from the policy distribution, so "p" is already included
         metrics['Q_values'].append(Q_values.numpy())
@@ -197,7 +201,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
       if cfg.metric_log_interval > 0 and len(metrics['update_steps']) > 0:
-        if cfg.algorithm not in ['AdRIL', 'SAC', 'SQIL']:
+        if cfg.algorithm not in ['AdRIL', 'PWIL', 'SAC', 'SQIL']:
           lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
         lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
         lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')

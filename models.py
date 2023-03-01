@@ -4,12 +4,15 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 from omegaconf import DictConfig
+from sklearn.preprocessing import StandardScaler
 import torch
 from torch import Tensor, nn
 from torch.distributions import Distribution, Independent, Normal, TransformedDistribution
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 from torch.nn.utils import parametrizations
+
+from memory import ReplayMemory
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -148,7 +151,7 @@ def make_gail_input(state: Tensor, action: Tensor, next_state: Tensor, terminal:
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, discount):
+  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, discount: float):
     super().__init__()
     model_cfg = imitation_cfg.model
     self.discount, self.state_only, self.reward_shaping, self.subtract_log_policy, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.subtract_log_policy, model_cfg.reward_function
@@ -202,14 +205,20 @@ class GMMILDiscriminator(nn.Module):
 
 
 class PWILDiscriminator(nn.Module):
-  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig):
+  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory):
     super().__init__()
-    self.state_only = imitation_cfg.state_only
+    self.state_size, self.action_size, self.state_only = state_size, action_size, imitation_cfg.state_only
+    self.alpha, self.beta = imitation_cfg.alpha, imitation_cfg.beta  # Reward function weights
+    self.expert_memory, self.scaler = expert_memory, StandardScaler()
+    self.reset()
 
+  def reset(self):
+    self.expert_atoms = self.expert_memory['states'] if self.state_only else torch.cat([self.expert_memory['states'], self.expert_memory['actions']], dim=1)
+    self.expert_atoms = torch.tensor(self.scaler.fit_transform(self.expert_atoms), dtype=torch.float32)  # Normalise the data
+    self.expert_weights = torch.ones(self.expert_atoms.size(0)) / self.expert_atoms.size(0)
 
-
-
-
+  def predict_reward(self, state: Tensor, action: Tensor) -> float:
+    raise NotImplementedError
 
 
 class EmbeddingNetwork(nn.Module):

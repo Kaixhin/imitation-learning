@@ -4,4 +4,5 @@ env_name: walker2d-expert-v2
 
 algorithm: PWIL
 imitation:
-  balanced: false
+  alpha: 5
+  beta: 5
