@@ -6,11 +6,11 @@ Off-policy imitation learning algorithms (with SAC [[1, 2]](#references)):
 
 - AdRIL [[3]](#references)
 - BC [[4]](#references)
-- DRIL [[5]](#references) (with optional BC auxiliary loss; default true)
+- DRIL [[5]](#references) (with BC auxiliary loss; default true)
 - GAIL [[6]](#references)
 - GMMIL [[7]](#references) (with optional self-similarity term [[8]](#references))
-- PWIL [[9]](#references)
-- RED [[10]](#references) (with optional BC auxiliary loss; default true)
+- PWIL [[9]](#references) (nofill variant)
+- RED [[10]](#references)
 - SQIL [[11]](#references)
 
 General options include:
