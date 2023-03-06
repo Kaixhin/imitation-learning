@@ -35,7 +35,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     assert cfg.imitation.loss_function in ['BCE', 'Mixup', 'PUGAIL']
     if cfg.imitation.loss_function == 'Mixup': assert cfg.imitation.mixup_alpha > 0
     if cfg.imitation.loss_function == 'PUGAIL': assert 0 <= cfg.imitation.pos_class_prior <= 1 and cfg.imitation.nonnegative_margin >= 0
-  assert cfg.metric_log_interval >= 0
+  assert cfg.logging.interval >= 0
   if cfg.use_optimised_hyperparameters:  # Load optimised hyperparameters if specified
     optimised_hyperparameters_config_path = os.path.join(hydra.utils.get_original_cwd(), 'conf', 'optimised_hyperparameters', f'{cfg.algorithm}_{cfg.imitation.trajectories}_trajectories.yaml')
     assert os.path.exists(optimised_hyperparameters_config_path), f'Optimised hyperparameter configuration file {optimised_hyperparameters_config_path} not found'
@@ -170,24 +170,24 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
             discriminator.resample_and_relabel(transitions, expert_transitions, cfg.training.batch_size, step, memory.num_trajectories, expert_memory.num_trajectories, cfg.imitation.get('update_freq', 0))  # Uses a mix of expert and policy data and overwrites transitions (including rewards) inplace
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-            if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
+            if cfg.logging.interval > 0 and step % cfg.logging.interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
           elif cfg.algorithm == 'GAIL':
             transitions['rewards'] = discriminator.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
-            if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:
+            if cfg.logging.interval > 0 and step % cfg.logging.interval == 0:
               expert_rewards = discriminator.predict_reward(**make_gail_input(expert_states, expert_actions, expert_next_states, expert_terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
           elif cfg.algorithm == 'GMMIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
-            if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions, expert_states, expert_actions, expert_weights, expert_weights)
+            if cfg.logging.interval > 0 and step % cfg.logging.interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions, expert_states, expert_actions, expert_weights, expert_weights)
           elif cfg.algorithm == 'RED':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-            if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
+            if cfg.logging.interval > 0 and step % cfg.logging.interval == 0: expert_rewards = discriminator.predict_reward(expert_states, expert_actions)
       
       # Perform a behavioural cloning update (optional)
-      if cfg.imitation.bc: behavioural_cloning_update(actor, expert_transitions, actor_optimiser)
+      if cfg.imitation.bc_aux_loss: behavioural_cloning_update(actor, expert_transitions, actor_optimiser)
       # Perform a SAC update
       log_probs, Q_values = sac_update(actor, critic, log_alpha, target_critic, transitions, actor_optimiser, critic_optimiser, temperature_optimiser, cfg.reinforcement.discount, entropy_target, cfg.reinforcement.polyak_factor)
       # Save auxiliary metrics
-      if cfg.metric_log_interval > 0 and step % cfg.metric_log_interval == 0:
+      if cfg.logging.interval > 0 and step % cfg.logging.interval == 0:
         metrics['update_steps'].append(step)
         metrics['predicted_rewards'].append(transitions['rewards'].numpy())
         if cfg.algorithm not in ['AdRIL', 'PWIL', 'SAC', 'SQIL']: metrics['predicted_expert_rewards'].append(expert_rewards.numpy())
@@ -206,7 +206,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.env} : {cfg.algorithm} Test Returns')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
         lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env} : {cfg.algorithm} Train Returns')
-      if cfg.metric_log_interval > 0 and len(metrics['update_steps']) > 0:
+      if cfg.logging.interval > 0 and len(metrics['update_steps']) > 0:
         if cfg.algorithm not in ['AdRIL', 'PWIL', 'SAC', 'SQIL']:
           lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env} : {cfg.algorithm} Predicted Rewards')
         lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.env} : {cfg.algorithm} Alpha')

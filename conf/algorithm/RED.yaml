@@ -12,4 +12,3 @@ imitation:
     dropout: 0
   sigma: False
   pretraining_iterations: 100000
-  bc: false

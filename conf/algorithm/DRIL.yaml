@@ -15,6 +15,6 @@ imitation:
     dropout: 0.1
   pretraining_iterations: 100000
   weight_decay: 1
-  bc: true
+  bc_aux_loss: true
 training:
   start: 10000
