@@ -18,8 +18,8 @@ General options include:
 - BC pretraining: `bc_pretraining.iterations: >= 0`
 - State-only imitation learning: `imitation.state-only: true/false`
 - Absorbing state indicator [[12]](#references): `imitation.absorbing: true/false`
+- Training on a mix of agent and expert data: `imitation.mix_expert_data: true/false`
 - BC auxiliary loss: `imitation.bc_aux_loss: true/false`
-- TODO: MIXED-DATA TRAINING
 
 GAIL options include:
 
@@ -53,7 +53,7 @@ python main.py algorithm=GAIL env=hopper
 ```
 Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
-Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- and number-of-trajectory-specific hyperparameters tuned with Ax [TODO: ref us], add option `use_optimised_hyperparameters=true`.
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [TODO: ref us], add option `use_optimised_hyperparameters=true`.
 
 ### Hyperparameter optimisation
 

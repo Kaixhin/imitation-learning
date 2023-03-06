@@ -2,4 +2,5 @@
 
 algorithm: SQIL
 imitation:
+  mix_expert_data: true
   balanced: false

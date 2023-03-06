@@ -40,6 +40,7 @@ imitation:
   absorbing: false
   learning_rate: 0.00003
   weight_decay: 10
+  mix_expert_data: false
   bc_aux_loss: false
 training:
   start: 1000
@@ -50,7 +51,7 @@ evaluation:
   episodes: 30
 logging:
   interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
-use_optimised_hyperparameters: false
+use_optimised_hyperparameters: false  # use algorithm- + number-of-trajectory-specific tuned hyperparameters
 num_workers: 4  # Number of multiprocess workers for data loader
 check_time_usage: false
 save_trajectories: false
