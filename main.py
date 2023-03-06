@@ -17,7 +17,7 @@ from training import adversarial_imitation_update, behavioural_cloning_update, s
 from utils import cycle, flatten_list_dicts, lineplot
 
 
-@hydra.main(config_path='conf', config_name='config', version_base='1.1')
+@hydra.main(version_base=None, config_path='conf', config_name='config')
 def main(cfg: DictConfig):
   return run(cfg)
 

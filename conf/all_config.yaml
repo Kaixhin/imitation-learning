@@ -56,6 +56,8 @@ num_workers: 0
 
 # Run/sweep directories
 hydra:
+  job:
+    chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
   run:
     dir: ./outputs/all_${algorithm}/${now:%m-%d_%H-%M-%S}
   sweep:
