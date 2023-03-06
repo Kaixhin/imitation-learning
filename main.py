@@ -25,6 +25,7 @@ def main(cfg: DictConfig):
 def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.env in ['ant', 'halfcheetah', 'hopper', 'walker2d']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1
@@ -40,7 +41,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   torch.manual_seed(cfg.seed)
 
   # Set up environment
-  env = D4RLEnv(cfg.env_name, cfg.imitation.absorbing, load_data=True)
+  env = D4RLEnv(cfg.env, cfg.imitation.absorbing, load_data=True)
   env.seed(cfg.seed)
   normalization_max, normalization_min = env.env.ref_max_score, env.env.ref_min_score
 
@@ -86,11 +87,11 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
 
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
       if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
-      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
+      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed)
       test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
       metrics['test_steps'], metrics['test_returns'], metrics['test_returns_normalized'] = [0], [test_returns], [list(test_returns_normalized)]
-      lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.env_name} : {cfg.algorithm}')
+      lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.env} : {cfg.algorithm}')
 
       torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
       torch.save(metrics, f'{file_prefix}metrics.pth')
@@ -191,28 +192,28 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
-      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed)
+      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed)
       test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       score.append(np.mean(test_returns_normalized))
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
       metrics['test_returns_normalized'].append(list(test_returns_normalized))
-      lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.env_name} : {cfg.algorithm} Test Returns')
+      lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.env} : {cfg.algorithm} Test Returns')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
-        lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env_name} : {cfg.algorithm} Train Returns')
+        lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env} : {cfg.algorithm} Train Returns')
       if cfg.metric_log_interval > 0 and len(metrics['update_steps']) > 0:
         if cfg.algorithm not in ['AdRIL', 'PWIL', 'SAC', 'SQIL']:
-          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env_name} : {cfg.algorithm} Predicted Rewards')
-        lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.env_name} : {cfg.algorithm} Alpha')
-        lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f'{cfg.env_name} : {cfg.algorithm} Entropy')
-        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f'{cfg.env_name} : {cfg.algorithm} Q-values')
+          lineplot(metrics['update_steps'], metrics['predicted_rewards'], metrics['predicted_expert_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env} : {cfg.algorithm} Predicted Rewards')
+        lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.env} : {cfg.algorithm} Alpha')
+        lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f'{cfg.env} : {cfg.algorithm} Entropy')
+        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f'{cfg.env} : {cfg.algorithm} Q-values')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env_name, cfg.imitation.absorbing, cfg.seed, return_trajectories=True, render=cfg.render)
+    _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed, return_trajectories=True, render=cfg.render)
     torch.save(trajectories, f'{file_prefix}trajectories.pth')
   # Save agent and metrics
   torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f'{file_prefix}agent.pth')

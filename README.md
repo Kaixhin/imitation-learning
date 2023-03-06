@@ -42,18 +42,22 @@ Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](http
 
 The training of each imitation learning algorithm (or SAC with the real environment reward) can be started with:
 ```sh
-python main.py algorithm=ALG/ENV
+python main.py algorithm=ALG env=ENV
 ```
 where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PWIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
-python main.py algorithm=GAIL/hopper
+python main.py algorithm=GAIL env=hopper
 ```
 
-Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG/ENV.yaml`, with the latter containing algorithm- and environment-specific hyperparameters that were tuned with Ax.
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`, with the latter containing algorithm- and environment-specific hyperparameters that were tuned with Ax. TODO: Trajectory-specific HPs?
 
-Results will be saved in `outputs/ENV_ALGO/m-d_H-M-S` with the last subfolder indicating the current datetime.
+Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder indicating the current datetime.
+
+Each environment uses the D4RL "expert-v2" data.
 
 ### Hyperparameter optimisation
+
+TODO: Fix README and tidy up HP opt files
 
 Hyperparameter optimisation can be run by adding `-m hydra/sweeper=ax hyperparam_opt=ALG`, for example:
 ```sh
@@ -65,14 +69,14 @@ python main.py -m algorithm=GAIL/hopper hydra/sweeper=ax hyperparam_opt=GAIL
 
 A seed sweep can be performed as follows:
 ```sh
-python main.py -m algorithm=GAIL/hopper seed=1,2,3,4,5 
+python main.py -m algorithm=GAIL env=hopper seed=1,2,3,4,5 
 ```
 or via the existing bash script:
 ```sh
 ./scripts/run_seed_experiments.sh ALG ENV
 ```
 
-The results will be available in `./outputs/seed_sweeper_ENV_ALG` folder (note that running this code twice will overwrite the previous results).
+The results will be available in `./outputs/ALG_ENV_seed_sweeper` folder (note that running this code twice will overwrite the previous results).
 
 ## Results
 

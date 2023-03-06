@@ -1,7 +1,0 @@
-# @package _global_
-env_type: halfcheetah
-env_name: halfcheetah-expert-v2
-
-algorithm: SQIL
-imitation:
-  balanced: false

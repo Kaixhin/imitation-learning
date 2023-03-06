@@ -1,6 +1,4 @@
 # @package _global_
-env_type: halfcheetah
-env_name: halfcheetah-expert-v2
 
 algorithm: RED
 pretraining:
@@ -14,4 +12,4 @@ imitation:
     dropout: 0
   sigma: False
   pretraining_iterations: 100000
-  bc: false 
+  bc: false

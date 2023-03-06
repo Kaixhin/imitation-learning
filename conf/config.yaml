@@ -1,11 +1,12 @@
 defaults:
   - _self_
-  - algorithm: SAC/ant
+  - algorithm: SAC
   - hyperparam_opt: empty
   - override hydra/sweeper: basic
 
 seed: 0
 steps: 1000000
+env: 'ant'
 replay:
   size: 1000000
 pretraining:
@@ -32,9 +33,9 @@ imitation:
     depth: 1
     activation: 'relu'
     input_dropout: 0.5
-    dropout: 0.75 
+    dropout: 0.75
   trajectories: 0  # 0 to disable; otherwise select number of trajectories
-  subsample: 1 # Note that 20 was default in original GAIL implementation
+  subsample: 1  # Note that 20 was default in original GAIL implementation
   state_only: false
   absorbing: false
   learning_rate: 0.00003
@@ -58,6 +59,6 @@ hydra:
   job:
     chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
   run:
-    dir: ./outputs/${algorithm}_${env_type}/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision
+    dir: ./outputs/${algorithm}_${env}/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision
   sweep:
-    dir: ./outputs/${algorithm}_${env_type}_sweeper/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_${env}_sweeper/${now:%m-%d_%H-%M-%S}

@@ -1,7 +1,0 @@
-# @package _global_
-env_type: hopper
-env_name: hopper-expert-v2
-
-algorithm: SQIL
-imitation:
-  balanced: false
