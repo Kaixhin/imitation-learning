@@ -30,6 +30,8 @@ GAIL options include:
 - Entropy bonus [[17]](#references): `imitation.entropy_bonus: <float>`
 - Loss functions (BCE/Mixup/nn-PUGAIL) [[6, 18, 19]](#references): `imitation.loss_function: BCE/Mixup/PUGAIL`
 
+Benchmarked on [Gym MuJoCo environments](https://www.gymlibrary.dev/environments/mujoco/) with [D4RL "expert-v2" data](https://github.com/Farama-Foundation/D4RL/wiki/Tasks#gym).
+
 ## Requirements
 
 Requirements can be installed with:
@@ -48,12 +50,9 @@ where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PWIL|RED|SAC|SQIL]` and `ENV` i
 ```sh
 python main.py algorithm=GAIL env=hopper
 ```
-
-Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`, with the latter containing algorithm- and environment-specific hyperparameters that were tuned with Ax. TODO: Trajectory-specific HPs?
-
 Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
-Each environment uses the D4RL "expert-v2" data.
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- and number-of-trajectory-specific hyperparameters tuned with Ax [TODO: ref us], add option `use_optimised_hyperparameters=true`.
 
 ### Hyperparameter optimisation
 

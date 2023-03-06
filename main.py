@@ -4,7 +4,7 @@ import time
 
 import hydra
 import numpy as np
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 import torch
 from torch import optim
 from torch.utils.data import DataLoader
@@ -36,12 +36,10 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     if cfg.imitation.loss_function == 'Mixup': assert cfg.imitation.mixup_alpha > 0
     if cfg.imitation.loss_function == 'PUGAIL': assert 0 <= cfg.imitation.pos_class_prior <= 1 and cfg.imitation.nonnegative_margin >= 0
   assert cfg.metric_log_interval >= 0
-  # Load optimised hyperparameters if specified
-  if cfg.optimised_hyperparameters:
-    optimised_hyperparameters_config_path = os.path.join(hydra.utils.get_original_cwd(), 'conf', 'optimised_hyperparameters', f'{cfg.algorithm}_{cfg.imitation.trajectories}.yaml')
+  if cfg.use_optimised_hyperparameters:  # Load optimised hyperparameters if specified
+    optimised_hyperparameters_config_path = os.path.join(hydra.utils.get_original_cwd(), 'conf', 'optimised_hyperparameters', f'{cfg.algorithm}_{cfg.imitation.trajectories}_trajectories.yaml')
     assert os.path.exists(optimised_hyperparameters_config_path), f'Optimised hyperparameter configuration file {optimised_hyperparameters_config_path} not found'
-    print('found')
-  quit()
+    cfg = OmegaConf.merge(cfg, OmegaConf.load(optimised_hyperparameters_config_path))  # Overwrite default hyperparameters
 
   # General setup
   np.random.seed(cfg.seed)

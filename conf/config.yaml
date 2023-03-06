@@ -4,7 +4,7 @@ defaults:
   - hyperparam_opt: empty
   - override hydra/sweeper: basic
 
-optimised_hyperparameters: false
+use_optimised_hyperparameters: false
 seed: 0
 steps: 1000000
 env: 'ant'
