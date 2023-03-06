@@ -1,13 +1,10 @@
 # @package _global_
-env_type: ??
-env_name: ${env_type}-expert-v2
-algorithm: DRIL
+
 reinforcement:
   target_temperature: -0.5
   polyak_factor: 0.995
   discount: 0.97
 imitation:
-  trajectories: 5
   model:
     hidden_size: 64
     depth: 1

@@ -1,13 +1,10 @@
 # @package _global_
-env_type: ??
-env_name: ${env_type}-expert-v2
-algorithm: RED
+
 reinforcement:
   discount: 0.97
   target_temperature: -0.5
   polyak_factor: 0.99
 imitation:
-  trajectories: 25
   model:
     hidden_size: 512
     depth: 1

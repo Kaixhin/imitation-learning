@@ -1,7 +1,5 @@
 # @package _global_
-env_type: ??
-env_name: ${env_type}-expert-v2
-algorithm: GMMIL
+
 reinforcement:
   discount: 0.99
   target_temperature: -1.0
@@ -11,5 +9,4 @@ training:
 pretraining:
   iterations: 100000 
 imitation:
-  trajectories: 25
   self_similarity: True

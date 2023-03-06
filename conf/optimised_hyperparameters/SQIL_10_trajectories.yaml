@@ -1,13 +1,10 @@
 # @package _global_
-env_type: ??
-env_name: ${env_type}-expert-v2
-algorithm: SQIL
+
 reinforcement:
   discount: 0.99
   polyak_factor: 0.995
   target_temperature: -1.0
 imitation:
-  trajectories: 10
   balanced: False 
 training:
   start: 10000 
