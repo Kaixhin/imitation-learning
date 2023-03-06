@@ -16,5 +16,5 @@ imitation:
   weight_decay: 1.0
 training:
   start: 10000
-pretraining:
+bc_pretraining:
   iterations: 0

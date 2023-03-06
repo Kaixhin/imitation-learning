@@ -8,7 +8,7 @@ seed: 0 #${hydra:job.num}
 steps: 1000000
 replay:
   size: 1000000
-pretraining:
+bc_pretraining:
   iterations: 0
   batch_size: 256
   learning_rate: 0.0001

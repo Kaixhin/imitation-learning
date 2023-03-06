@@ -83,10 +83,10 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
   
   # Behavioural cloning pretraining
-  if cfg.pretraining.iterations > 0:
-    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
-    actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.pretraining.learning_rate)  # Create separate pretraining optimiser
-    for _ in tqdm(range(cfg.pretraining.iterations), leave=False):
+  if cfg.bc_pretraining.iterations > 0:
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.bc_pretraining.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
+    actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.bc_pretraining.learning_rate)  # Create separate pretraining optimiser
+    for _ in tqdm(range(cfg.bc_pretraining.iterations), leave=False):
       expert_transitions = next(expert_dataloader)
       behavioural_cloning_update(actor, expert_transitions, actor_pretrain_optimiser)
 
@@ -106,7 +106,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
     expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
-    for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):  # TODO: Change the naming of "imitation.pretraining_iterations"
+    for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):
       expert_transition = next(expert_dataloader)
       if cfg.algorithm == 'DRIL':
         behavioural_cloning_update(discriminator, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)

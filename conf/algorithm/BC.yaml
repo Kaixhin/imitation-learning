@@ -1,5 +1,5 @@
 # @package _global_
 
 algorithm: BC
-pretraining:
+bc_pretraining:
   iterations: 100000

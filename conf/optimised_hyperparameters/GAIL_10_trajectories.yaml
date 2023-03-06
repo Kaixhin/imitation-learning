@@ -2,7 +2,7 @@
 
 replay:
   size: 3000000
-pretraining:
+bc_pretraining:
   iterations: 100000
 reinforcement:
   discount: 0.97

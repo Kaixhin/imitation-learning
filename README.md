@@ -15,9 +15,10 @@ Off-policy imitation learning algorithms (with SAC [[1, 2]](#references)):
 
 General options include:
 
+- BC pretraining: `bc_pretraining.iterations: >= 0`
 - State-only imitation learning: `imitation.state-only: true/false`
 - Absorbing state indicator [[12]](#references): `imitation.absorbing: true/false`
-- BC auxiliary loss: `imitation.bc: true/false`
+- BC auxiliary loss: `imitation.bc_aux_loss: true/false`
 - TODO: MIXED-DATA TRAINING
 
 GAIL options include:

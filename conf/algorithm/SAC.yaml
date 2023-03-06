@@ -3,5 +3,5 @@
 algorithm: SAC
 replay:
   size: 1000000
-pretraining:
+bc_pretraining:
   iterations: 0

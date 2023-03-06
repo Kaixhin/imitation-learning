@@ -6,7 +6,7 @@ reinforcement:
   polyak_factor: 0.995
 training:
   start: 10000 
-pretraining:
+bc_pretraining:
   iterations: 100000 
 imitation:
   self_similarity: True
