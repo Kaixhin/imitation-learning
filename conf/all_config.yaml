@@ -2,9 +2,10 @@ defaults:
   - _self_
   - algorithm: ${hyperparam_opt}/ant
   - optional hyperparam_opt: SAC 
-  - override hydra/sweeper: ax  
+  - override hydra/sweeper: ax
+
 seed: 0 #${hydra:job.num}
-steps: 1000000  # TODO: Change per environment: 2M for Adroit
+steps: 1000000
 replay:
   size: 1000000
 pretraining:

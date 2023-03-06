@@ -5,7 +5,7 @@ defaults:
   - override hydra/sweeper: basic
 
 seed: 0
-steps: 1000000  # TODO: Change per environment: 2M for Adroit
+steps: 1000000
 replay:
   size: 1000000
 pretraining:
