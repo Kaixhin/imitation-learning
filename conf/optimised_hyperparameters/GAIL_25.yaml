@@ -1,6 +1,5 @@
 # @package _global_
-env_type: ??
-env_name: ${env_type}-expert-v2
+
 algorithm: GAIL
 replay:
   size: 3000000
@@ -11,7 +10,6 @@ reinforcement:
   target_temperature: -1.0
   polyak_factor: 0.99
 imitation:
-  trajectories: 25
   model:
     hidden_size: 512
     depth: 1
