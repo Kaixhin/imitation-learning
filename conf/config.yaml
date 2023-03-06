@@ -58,6 +58,6 @@ hydra:
   job:
     chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
   run:
-    dir: ./outputs/${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_${env_type}/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision
   sweep:
-    dir: ./outputs/sweeper_${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_${env_type}_sweeper/${now:%m-%d_%H-%M-%S}

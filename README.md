@@ -7,17 +7,18 @@ Off-policy imitation learning algorithms (with SAC [[1, 2]](#references)):
 - AdRIL [[3]](#references)
 - BC [[4]](#references)
 - DRIL [[5]](#references) (with BC auxiliary loss; default true)
-- GAIL [[6]](#references)
+- GAIL [[6]](#references) (a.k.a. DAC/SAM with off-policy algorithm TODO: add refs)
 - GMMIL [[7]](#references) (with optional self-similarity term [[8]](#references))
 - PWIL [[9]](#references) (nofill variant)
 - RED [[10]](#references)
-- SQIL [[11]](#references)
+- SQIL [[11]](#references) (TODO: Make AdRIL an option of this)
 
 General options include:
 
 - State-only imitation learning: `imitation.state-only: true/false`
 - Absorbing state indicator [[12]](#references): `imitation.absorbing: true/false`
 - BC auxiliary loss: `imitation.bc: true/false`
+- TODO: MIXED-DATA TRAINING
 
 GAIL options include:
 
@@ -35,7 +36,7 @@ Requirements can be installed with:
 ```sh
 pip install -r requirements.txt
 ```
-Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL-PyBullet](https://github.com/takuseno/d4rl-pybullet) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; if unneeded they can be removed from `requirements.txt`.
+Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL](https://github.com/Farama-Foundation/D4RL) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; if unneeded they can be removed from `requirements.txt`.
 
 ## Run
 
