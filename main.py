@@ -13,7 +13,7 @@ from tqdm import tqdm
 from environments import D4RLEnv
 from evaluation import evaluate_agent
 from memory import ReplayMemory
-from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, RewardRelabeller, TwinCritic, create_target_network, make_gail_input
+from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, RewardRelabeller, TwinCritic, create_target_network, make_gail_input, mix_expert_agent_transitions
 from training import adversarial_imitation_update, behavioural_cloning_update, sac_update, target_estimation_update
 from utils import cycle, flatten_list_dicts, lineplot
 
@@ -162,12 +162,14 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
           adversarial_imitation_update(actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation)
           discriminator.eval()
         
+        # Optionally, mix expert data into agent data for training
+        if cfg.imitation.mix_expert_data: mix_expert_agent_transitions(transitions, expert_transitions, cfg.training.batch_size)
         # Predict rewards
         states, actions, next_states, terminals, weights = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']
         expert_states, expert_actions, expert_next_states, expert_terminals, expert_weights = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case (for relevant algorithms)
 
         with torch.inference_mode():
-          if cfg.algorithm in ['AdRIL', 'SQIL']:
+          if cfg.algorithm in ['AdRIL', 'SQIL']:  # TODO: Fix this for new mix_expert_data option
             discriminator.resample_and_relabel(transitions, expert_transitions, cfg.training.batch_size, step, memory.num_trajectories, expert_memory.num_trajectories, cfg.imitation.get('update_freq', 0))  # Uses a mix of expert and policy data and overwrites transitions (including rewards) inplace
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)

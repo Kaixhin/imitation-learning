@@ -281,6 +281,12 @@ class REDDiscriminator(nn.Module):
     return torch.exp(-self.sigma_1 * (prediction - target).pow(2).mean(dim=1))
 
 
+# TODO: Refactor SQIL/AdRIL to use this
+def mix_expert_agent_transitions(transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], batch_size: int):
+  for key in transitions.keys():
+    transitions[key][:batch_size // 2] = expert_transitions[key][:batch_size // 2]  # Replace first half of the batch with expert data
+
+
 class RewardRelabeller():
   def __init__(self, algorithm: str, balanced: bool):
     self.algorithm = algorithm
