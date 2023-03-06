@@ -11,4 +11,5 @@ imitation:
     input_dropout: 0
     dropout: 0
   sigma: False
-  pretraining_iterations: 100000
+  pretraining:
+    iterations: 100000

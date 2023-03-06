@@ -53,7 +53,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
 
   expert_memory = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
-  
+
   # Set up agent
   actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.reinforcement.model.actor), TwinCritic(state_size, action_size, cfg.reinforcement.model.critic), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), cfg.reinforcement.target_temperature * action_size  # Entropy target heuristic from SAC paper for continuous action domains
@@ -82,10 +82,10 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   score = []  # Score used for hyperparameter optimization 
 
   if cfg.check_time_usage: start_time = time.time()  # Performance tracking
-  
+
   # Behavioural cloning pretraining
   if cfg.bc_pretraining.iterations > 0:
-    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.bc_pretraining.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
     actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.bc_pretraining.learning_rate)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.bc_pretraining.iterations), leave=False):
       expert_transitions = next(expert_dataloader)
@@ -102,24 +102,24 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
       torch.save(metrics, f'{file_prefix}metrics.pth')
       env.close()
-      return np.mean(test_returns_normalized) 
+      return np.mean(test_returns_normalized)
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
-    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.pretraining.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
-    for _ in tqdm(range(cfg.imitation.pretraining_iterations), leave=False):
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
+    for _ in tqdm(range(cfg.imitation.pretraining.iterations), leave=False):
       expert_transition = next(expert_dataloader)
       if cfg.algorithm == 'DRIL':
         behavioural_cloning_update(discriminator, expert_transition, discriminator_optimiser)  # Perform behavioural cloning updates offline on policy ensemble (dropout version)
       elif cfg.algorithm == 'RED':
         target_estimation_update(discriminator, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
-    
+
     if cfg.algorithm == 'DRIL':
       with torch.no_grad(): # inference_mode() is buggy for big tensors; See https://github.com/pytorch/pytorch/issues/75595
         discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
     elif cfg.algorithm == 'RED':
       with torch.inference_mode():
-        discriminator.set_sigma(expert_memory['states'][:cfg.pretraining.batch_size], expert_memory['actions'][:cfg.pretraining.batch_size])  # Estimate on a minibatch for computational feasibility
+        discriminator.set_sigma(expert_memory['states'][:cfg.training.batch_size], expert_memory['actions'][:cfg.training.batch_size])  # Estimate on a minibatch for computational feasibility
 
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
@@ -161,7 +161,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
           discriminator.train()
           adversarial_imitation_update(actor, discriminator, transitions, expert_transitions, discriminator_optimiser, cfg.imitation)
           discriminator.eval()
-        
+
         # Optionally, mix expert data into agent data for training
         if cfg.imitation.mix_expert_data: mix_expert_agent_transitions(transitions, expert_transitions, cfg.training.batch_size)
         # Predict rewards
@@ -179,7 +179,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
           elif cfg.algorithm == 'RED':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
-      
+
       # Perform a behavioural cloning update (optional)
       if cfg.imitation.bc_aux_loss: behavioural_cloning_update(actor, expert_transitions, actor_optimiser)
       # Perform a SAC update
@@ -191,7 +191,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
         metrics['alphas'].append(log_alpha.exp().detach().numpy())
         metrics['entropies'].append((-log_probs).numpy())  # Actions are sampled from the policy distribution, so "p" is already included
         metrics['Q_values'].append(Q_values.numpy())
-  
+
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
       test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed)
