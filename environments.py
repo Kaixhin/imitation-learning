@@ -85,14 +85,14 @@ class D4RLEnv():
       timeouts_list = timeouts_list[:trajectories]
       weights_list = weights_list[:trajectories]
     num_trajectories = len(states_list)
-    # Wrap for absorbing states TODO: Fix
+    # Wrap for absorbing states
     if self.absorbing:
       absorbing_state, absorbing_action = torch.cat([torch.zeros(1, state_size), torch.ones(1, 1)], dim=1), torch.zeros(1, action_size)  # Create absorbing state and absorbing action
       for i in range(len(states_list)):
         # Append absorbing indicator (zero)
         states_list[i] = torch.cat([states_list[i], torch.zeros(states_list[i].size(0), 1)], dim=1)
         next_states_list[i] = torch.cat([next_states_list[i], torch.zeros(next_states_list[i].size(0), 1)], dim=1)
-        if not timeouts_list[i]:  # Apply for episodes that did not terminate due to time limits
+        if not timeouts_list[i][-1]:  # Apply for episodes that did not terminate due to time limits
           # Replace the final next state with the absorbing state and overwrite terminal status
           next_states_list[i][-1] = absorbing_state
           terminals_list[i][-1] = 0
@@ -102,6 +102,7 @@ class D4RLEnv():
           actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
           next_states_list[i] = torch.cat([next_states_list[i], absorbing_state], dim=0)
           terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
+          timeouts_list[i] = torch.cat([timeouts_list[i], torch.zeros(1)], dim=0)
           weights_list[i] = torch.cat([weights_list[i], torch.full((1, ), 1 / subsample)], dim=0)  # Importance weight absorbing state as kept during subsampling
     # Subsample within trajectories
     if subsample > 1:

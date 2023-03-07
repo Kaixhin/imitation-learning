@@ -17,7 +17,7 @@ General options include:
 - State-only imitation learning: `imitation.state-only: true/false`
 - Absorbing state indicator [[KAD18]](#references): `imitation.absorbing: true/false`
 - Training on a mix of agent and expert data: `imitation.mix_expert_data: true/false`
-- BC [[P91]](#references) auxiliary loss: `imitation.bc_aux_loss: true/false`
+- BC auxiliary loss: `imitation.bc_aux_loss: true/false`
 
 GAIL options include:
 
