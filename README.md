@@ -2,7 +2,7 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-Off-policy imitation learning algorithms (with SAC [[HZA18, HZH18]](#references)):
+Off-policy imitation learning algorithms (using SAC [[HZA18, HZH18]](#references) as the base RL algorithm):
 
 - AdRIL [[SCB21]](#references)
 - DRIL [[BSH20]](#references) (with BC auxiliary loss; default true)
@@ -49,10 +49,11 @@ The training of each imitation learning algorithm (or SAC with the real environm
 ```sh
 python main.py algorithm=ALG env=ENV
 ```
-where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PWIL|RED|SAC]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `AdRIL/BC/DRIL/GAIL/GMMIL/PWIL/RED/SAC` and `ENV` is one of `ant/halfcheetah/hopper/walker2d`. For example:
 ```sh
 python main.py algorithm=GAIL env=hopper
 ```
+
 Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `use_optimised_hyperparameters=true`.
@@ -63,11 +64,13 @@ TODO: Fix README and tidy up HP opt files
 
 Hyperparameter optimisation can be run by adding `-m hydra/sweeper=ax hyperparam_opt=ALG`, for example:
 ```sh
-python main.py -m algorithm=GAIL/hopper hydra/sweeper=ax hyperparam_opt=GAIL
+python main.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL
 ```
-`hyperparam_opt` specifies the hyperparameter search space.
+where `hyperparam_opt` specifies the hyperparameter search space.
 
 ### Seed sweep
+
+TODO: Fix seed sweep
 
 A seed sweep can be performed as follows:
 ```sh
