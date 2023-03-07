@@ -119,16 +119,20 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       elif cfg.algorithm == 'RED':
         target_estimation_update(discriminator, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
 
-    if cfg.algorithm == 'DRIL':
-      with torch.inference_mode():
+    with torch.inference_mode():
+      if cfg.algorithm == 'DRIL':
         discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
-    elif cfg.algorithm == 'RED':
-      with torch.inference_mode():
+      elif cfg.algorithm == 'RED':
         discriminator.set_sigma(expert_memory['states'][:cfg.training.batch_size], expert_memory['actions'][:cfg.training.batch_size])  # Estimate on a minibatch for computational feasibility
 
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
       start_time = time.time()
+  elif cfg.algorithm == 'PWIL' and cfg.imitation.mix_expert_data:
+    with torch.inference_mode():
+      for i, transition in tqdm(enumerate(expert_memory), leave=False):
+        expert_memory.rewards[i] = discriminator.compute_reward(transition['states'].unsqueeze(dim=0), transition['actions'].unsqueeze(dim=0))  # Greedily calculate the reward for PWIL for expert data and rewrite memory
+        if transition['terminals'] or transition['timeouts']: discriminator.reset()  # Reset the expert data for PWIL
 
   # Training
   t, state, terminal, train_return = 0, env.reset(), False, 0
@@ -141,12 +145,12 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       next_state, reward, terminal = env.step(action)
       t += 1
       train_return += reward
-      if cfg.algorithm == 'PWIL': reward = discriminator.compute_reward(state, action)  # Greedily calculate the reward for PWIL TODO: Set up PWIL for imitation.mix_expert_data
-      memory.append(step, state, action, reward, next_state, terminal and t != env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal
+      if cfg.algorithm == 'PWIL': reward = discriminator.compute_reward(state, action)  # Greedily calculate the reward for PWIL
+      memory.append(step, state, action, reward, next_state, terminal and t != env.max_episode_steps, t == env.max_episode_steps)  # True reward stored for SAC, should be overwritten by IL algorithms; if env terminated due to a time limit then do not count as terminal (store as timeout)
       state = next_state
 
     # Reset environment and track metrics on episode termination
-    if terminal:
+    if terminal:  # If terminal (or timed out)
       if cfg.imitation.absorbing and t != env.max_episode_steps: memory.wrap_for_absorbing_states()  # Wrap for absorbing state if terminated without time limit
       if cfg.algorithm == 'PWIL': discriminator.reset()  # Reset the expert data for PWIL
       # Store metrics and reset environment
