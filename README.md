@@ -68,20 +68,18 @@ python main.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL
 ```
 where `hyperparam_opt` specifies the hyperparameter search space.
 
-### Seed sweep
+### Hyperparameter sweep
 
-TODO: Fix seed sweep
-
-A seed sweep can be performed as follows:
+A hyperparameter sweep can be performed as follows:
 ```sh
 python main.py -m algorithm=GAIL env=hopper seed=1,2,3,4,5 
 ```
-or via the existing bash script:
+or via the existing bash script (TODO: Maybe remove or otherwise document better):
 ```sh
 ./scripts/run_seed_experiments.sh ALG ENV
 ```
 
-The results will be available in `./outputs/ALG_ENV_seed_sweeper` folder (note that running this code twice will overwrite the previous results).
+Results will be saved in `outputs/ALGO_ENV_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
 
 ## Results
 

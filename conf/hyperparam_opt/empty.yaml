@@ -1,6 +1,5 @@
 # @package _global_
-sweeping: False
+sweeping: False  # TODO: ???
 hydra:
   sweep:
-    dir: ./outputs/seed_sweeper_${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
-
+    dir: ./outputs/${algorithm}_${env}_sweeper/${now:%m-%d_%H-%M-%S}
