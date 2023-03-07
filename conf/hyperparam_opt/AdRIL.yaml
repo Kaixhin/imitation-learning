@@ -24,7 +24,7 @@ params:
     value_type: 'bool'
   imitation.update_freq:
     type: choice
-    values: [1250, 2500, 5000, 12500, 25000, 50000]
+    values: [0, 1250, 2500, 5000, 12500, 25000, 50000]
     value_type: 'int'
   training.start:
     type: choice

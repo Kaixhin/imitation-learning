@@ -5,31 +5,33 @@
 Off-policy imitation learning algorithms (with SAC [[HZA18, HZH18]](#references)):
 
 - AdRIL [[SCB21]](#references)
-- BC [[P91]](#references)
 - DRIL [[BSH20]](#references) (with BC auxiliary loss; default true)
 - GAIL [[HE16]](#references) (a.k.a. DAC/SAM when using an off-policy algorithm [[KAD18, BK18]](#references))
 - GMMIL [[KP18]](#references) (with optional self-similarity term [[AL21]](#references))
-- PWIL [[DHG20]](#references) (nofill variant)
+- PWIL [[DHG20]](#references) (with mix of expert data; default true)
 - RED [[WCA19]](#references)
-- SQIL [[RDL19]](#references) (TODO: Make AdRIL an option of this)
 
 General options include:
 
-- BC pretraining: `bc_pretraining.iterations: >= 0`
+- BC [[P91]](#references) (pre)training: `bc_pretraining.iterations: >= 0`
 - State-only imitation learning: `imitation.state-only: true/false`
 - Absorbing state indicator [[KAD18]](#references): `imitation.absorbing: true/false`
 - Training on a mix of agent and expert data: `imitation.mix_expert_data: true/false`
-- BC auxiliary loss: `imitation.bc_aux_loss: true/false`
+- BC [[P91]](#references) auxiliary loss: `imitation.bc_aux_loss: true/false`
 
 GAIL options include:
 
 - Reward shaping (AIRL) [[FLL17]](#references): `imitation.model.reward_shaping: true/false`
 - Subtract log π(a|s) (AIRL) [[FLL17]](#references): `imitation.model.subtract_log_policy: true/false`
 - Reward functions (GAIL/AIRL/FAIRL) [[HE16, FLL17, GZG19]](#references): `imitation.model.reward_function: AIRL/FAIRL/GAIL`
-- Gradient penalty [[KAD18, BK18]](#references): `imitation.grad_penalty: <float>`
+- Gradient penalty [[KAD18, BK18]](#references): `imitation.grad_penalty: >= 0`
 - Spectral normalisation [[BSK20]](#references): `imitation.spectral_norm: true/false`
-- Entropy bonus [[ORH21]](#references): `imitation.entropy_bonus: <float>`
+- Entropy bonus [[ORH21]](#references): `imitation.entropy_bonus: >= 0`
 - Loss functions (BCE/Mixup/nn-PUGAIL) [[HE16, CNN20, XD19]](#references): `imitation.loss_function: BCE/Mixup/PUGAIL`
+
+AdRIL options include:
+
+- Discriminator update frequency: `imitation.update_freq: >= 0` (set to 0 for SQIL [[RDL19]](#references))
 
 Benchmarked on [Gym MuJoCo environments](https://www.gymlibrary.dev/environments/mujoco/) with [D4RL "expert-v2" data](https://github.com/Farama-Foundation/D4RL/wiki/Tasks#gym).
 
@@ -47,7 +49,7 @@ The training of each imitation learning algorithm (or SAC with the real environm
 ```sh
 python main.py algorithm=ALG env=ENV
 ```
-where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PWIL|RED|SAC|SQIL]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
+where `ALG` is one of `[AdRIL|BC|DRIL|GAIL|GMMIL|PWIL|RED|SAC]` and `ENV` is one of `[ant|halfcheetah|hopper|walker2d]`. For example:
 ```sh
 python main.py algorithm=GAIL env=hopper
 ```

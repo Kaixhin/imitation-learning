@@ -25,17 +25,22 @@ def main(cfg: DictConfig):
 
 def run(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
-  assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC', 'SQIL']
+  assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC']
   assert cfg.env in ['ant', 'halfcheetah', 'hopper', 'walker2d']
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
+  assert cfg.bc_pretraining.iterations >= 0
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1
   if cfg.algorithm == 'GAIL':
     assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']
+    assert cfg.imitation.grad_penalty >= 0
+    assert cfg.imitation.entropy_bonus >= 0
     assert cfg.imitation.loss_function in ['BCE', 'Mixup', 'PUGAIL']
     if cfg.imitation.loss_function == 'Mixup': assert cfg.imitation.mixup_alpha > 0
     if cfg.imitation.loss_function == 'PUGAIL': assert 0 <= cfg.imitation.pos_class_prior <= 1 and cfg.imitation.nonnegative_margin >= 0
-  if cfg.algorithm in ['AdRIL', 'SQIL']: assert cfg.imitation.mix_expert_data
+  if cfg.algorithm == 'AdRIL': 
+    assert cfg.imitation.mix_expert_data
+    assert cfg.imitation.update_freq >= 0
   assert cfg.logging.interval >= 0
   if cfg.use_optimised_hyperparameters:  # Load optimised hyperparameters if specified
     optimised_hyperparameters_config_path = os.path.join(hydra.utils.get_original_cwd(), 'conf', 'optimised_hyperparameters', f'{cfg.algorithm}_{cfg.imitation.trajectories}_trajectories.yaml')
@@ -61,9 +66,9 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
   memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
-  if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SQIL']:
-    if cfg.algorithm in ['AdRIL', 'SQIL']:
-      discriminator = RewardRelabeller(cfg.algorithm, cfg.imitation.balanced)  # Balanced sampling (switching between expert and policy data every update) is stateful
+  if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED']:
+    if cfg.algorithm == 'AdRIL':
+      discriminator = RewardRelabeller(cfg.imitation.update_freq, cfg.imitation.balanced)  # Balanced sampling (switching between expert and policy data every update) is stateful
     if cfg.algorithm == 'DRIL':
       discriminator = SoftActor(state_size, action_size, cfg.imitation.model)
     elif cfg.algorithm == 'GAIL':
@@ -97,7 +102,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
       metrics['test_steps'], metrics['test_returns'], metrics['test_returns_normalized'] = [0], [test_returns], [list(test_returns_normalized)]
-      lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.env} : {cfg.algorithm}')
+      lineplot(steps, len(steps) * [test_returns], filename=f'{file_prefix}test_returns', title=f'{cfg.algorithm}: {cfg.env}')
 
       torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
       torch.save(metrics, f'{file_prefix}metrics.pth')
@@ -115,7 +120,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
         target_estimation_update(discriminator, expert_transition, discriminator_optimiser)  # Train predictor network to match random target network
 
     if cfg.algorithm == 'DRIL':
-      with torch.no_grad(): # inference_mode() is buggy for big tensors; See https://github.com/pytorch/pytorch/issues/75595
+      with torch.inference_mode():
         discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
     elif cfg.algorithm == 'RED':
       with torch.inference_mode():
@@ -155,7 +160,7 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       # Sample a batch of transitions
       transitions, expert_transitions = memory.sample(cfg.training.batch_size), expert_memory.sample(cfg.training.batch_size)
 
-      if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED', 'SQIL']:  # Note that PWIL predicts and stores rewards online during environment interaction
+      if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'RED']:  # Note that PWIL predicts and stores rewards online during environment interaction
         # Train discriminator
         if cfg.algorithm == 'GAIL':
           discriminator.train()
@@ -169,8 +174,8 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
         expert_states, expert_actions, expert_next_states, expert_terminals, expert_weights = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case (for relevant algorithms)
 
         with torch.inference_mode():
-          if cfg.algorithm in ['AdRIL', 'SQIL']:  # TODO: Fix this for new mix_expert_data option
-            discriminator.resample_and_relabel(transitions, expert_transitions, cfg.training.batch_size, step, memory.num_trajectories, expert_memory.num_trajectories, cfg.imitation.get('update_freq', 0))  # Uses a mix of expert and policy data and overwrites transitions (including rewards) inplace
+          if cfg.algorithm == 'AdRIL':  # TODO: Fix this for new mix_expert_data option
+            discriminator.resample_and_relabel(transitions, expert_transitions, cfg.training.batch_size, step, memory.num_trajectories, expert_memory.num_trajectories)  # Uses a mix of expert and policy data and overwrites transitions (including rewards) inplace
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'GAIL':
@@ -200,14 +205,14 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
       metrics['test_steps'].append(step)
       metrics['test_returns'].append(test_returns)
       metrics['test_returns_normalized'].append(list(test_returns_normalized))
-      lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.env} : {cfg.algorithm} Test Returns')
+      lineplot(metrics['test_steps'], metrics['test_returns'], filename=f"{file_prefix}test_returns", title=f'{cfg.algorithm}: {cfg.env} Test Returns')
       if len(metrics['train_returns']) > 0:  # Plot train returns if any
-        lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.env} : {cfg.algorithm} Train Returns')
+        lineplot(metrics['train_steps'], metrics['train_returns'], filename=f"{file_prefix}train_returns", title=f'Training {cfg.algorithm}: {cfg.env} Train Returns')
       if cfg.logging.interval > 0 and len(metrics['update_steps']) > 0:
-        if cfg.algorithm != 'SAC': lineplot(metrics['update_steps'], metrics['predicted_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.env} : {cfg.algorithm} Predicted Rewards')
-        lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.env} : {cfg.algorithm} Alpha')
-        lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f'{cfg.env} : {cfg.algorithm} Entropy')
-        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f'{cfg.env} : {cfg.algorithm} Q-values')
+        if cfg.algorithm != 'SAC': lineplot(metrics['update_steps'], metrics['predicted_rewards'], filename=f'{file_prefix}predicted_rewards', yaxis='Predicted Reward', title=f'{cfg.algorithm}: {cfg.env} Predicted Rewards')
+        lineplot(metrics['update_steps'], metrics['alphas'], filename=f'{file_prefix}sac_alpha', yaxis='Alpha', title=f'{cfg.algorithm}: {cfg.env} Alpha')
+        lineplot(metrics['update_steps'], metrics['entropies'], filename=f'{file_prefix}sac_entropy', yaxis='Entropy', title=f'{cfg.algorithm}: {cfg.env} Entropy')
+        lineplot(metrics['update_steps'], metrics['Q_values'], filename=f'{file_prefix}Q_values', yaxis='Q-value', title=f'{cfg.algorithm}: {cfg.env} Q-values')
 
   if cfg.check_time_usage:
     metrics['training_time'] = time.time() - start_time

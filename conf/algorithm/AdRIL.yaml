@@ -7,4 +7,4 @@ reinforcement:
 imitation:
   mix_expert_data: true
   balanced: true
-  update_freq: 1250
+  update_freq: 1250  # 0 to disable => equivalent to SQIL

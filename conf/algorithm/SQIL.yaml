@@ -1,6 +1,0 @@
-# @package _global_
-
-algorithm: SQIL
-imitation:
-  mix_expert_data: true
-  balanced: false
