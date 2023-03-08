@@ -54,7 +54,6 @@ check_time_usage: false
 save_trajectories: false
 render: false
 
-# Run/sweep directories
 hydra:
   job:
     chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)

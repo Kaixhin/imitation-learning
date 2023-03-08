@@ -1,11 +1,9 @@
 defaults:
   - config  # Use default config as base
   - _self_
-  - hyperparam_opt: ${algorithm} 
+  - optional hyperparam_opt: ${algorithm} 
   - override hydra/sweeper: ax
 
-
-# Run/sweep directories
 hydra:
   job:
     chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
@@ -13,3 +11,28 @@ hydra:
     dir: ./outputs/${algorithm}_all/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision
   sweep:
     dir: ./outputs/${algorithm}_all_sweeper/${now:%m-%d_%H-%M-%S}
+  sweeper:
+    ax_config:
+      max_trials: 30
+      experiment:
+        minimize: false
+      early_stop:
+        max_epochs_without_improvement: 5
+      is_noisy: true
+      params:
+        training.batch_size:
+          type: choice
+          values: [1024, 2048, 4096]
+          value_type: 'int'
+        reinforcement.learning_rate:
+          type: choice
+          values: [0.00003, 0.0003]
+          value_type: 'float'
+        reinforcement.ppo_epochs:
+          type: choice
+          values: [5, 10, 20]
+          value_type: 'int'
+        reinforcement.entropy_loss_coeff:
+          type: choice
+          values: [0, 0.001, 0.01]
+          value_type: 'float'
