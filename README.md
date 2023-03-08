@@ -43,7 +43,7 @@ pip install -r requirements.txt
 ```
 Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL](https://github.com/Farama-Foundation/D4RL) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; if unneeded they can be removed from `requirements.txt`.
 
-## Run
+## Normal run
 
 The training of each imitation learning algorithm (or SAC with the real environment reward) can be started with:
 ```sh
@@ -58,28 +58,27 @@ Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder in
 
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `use_optimised_hyperparameters=true`.
 
-### Hyperparameter optimisation
-
-TODO: Fix README and tidy up HP opt files
-
-Hyperparameter optimisation can be run by adding `-m hydra/sweeper=ax hyperparam_opt=ALG`, for example:
-```sh
-python main.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL
-```
-where `hyperparam_opt` specifies the hyperparameter search space.
-
 ### Hyperparameter sweep
 
 A hyperparameter sweep can be performed as follows:
 ```sh
 python main.py -m algorithm=GAIL env=hopper seed=1,2,3,4,5 
 ```
-or via the existing bash script (TODO: Maybe remove or otherwise document better):
-```sh
-./scripts/run_seed_experiments.sh ALG ENV
-```
 
 Results will be saved in `outputs/ALGO_ENV_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
+
+### Hyperparameter optimisation
+
+Hyperparameter optimisation (jointly, over all environments) can be run with:
+```sh
+python all.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL
+```
+where `hyperparam_opt` specifies the hyperparameter search space, which is tailored to each algorithm.
+
+This command is used to optimise hyperparameters for a given number of expert trajectories, for example:
+```sh
+python all.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL imitation.trajectories=5
+```
 
 ## Results
 
