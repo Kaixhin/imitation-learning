@@ -56,13 +56,22 @@ python main.py algorithm=GAIL env=hopper
 
 Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
-Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `use_optimised_hyperparameters=true`.
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `use_optimised_hyperparameters=ALG_NUMTRAJECTORIES_trajectories`. For example:
+```sh
+python main.py use_optimised_hyperparameters=AdRIL_5_trajectories ENV=halfcheetah
+```
+
+Running the algorithm on all environments in parallel can be achieved with:
+```sh
+python all.py algorithm=ALG env=ENV
+```
+with results saved in `outputs/ALGO_all/m-d_H-M-S`, containing subdirectories for each environment.
 
 ### Hyperparameter sweep
 
-A hyperparameter sweep can be performed as follows:
+A hyperparameter sweep can be performed using `-m` and a series of hyperparameter values. For example:
 ```sh
-python main.py -m algorithm=GAIL env=hopper seed=1,2,3,4,5 
+python main.py -m algorithm=PWIL env=walker2d seed=1,2,3,4,5 
 ```
 
 Results will be saved in `outputs/ALGO_ENV_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
@@ -71,13 +80,13 @@ Results will be saved in `outputs/ALGO_ENV_sweep/m-d_H-M-S` with a subdirectory 
 
 Hyperparameter optimisation (jointly, over all environments) can be run with:
 ```sh
-python all.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL
+python all.py -m algorithm=ALG hydra/sweeper=ax hyperparam_opt=ALG
 ```
 where `hyperparam_opt` specifies the hyperparameter search space, which is tailored to each algorithm.
 
 This command is used to optimise hyperparameters for a given number of expert trajectories, for example:
 ```sh
-python all.py -m algorithm=GAIL env=hopper hydra/sweeper=ax hyperparam_opt=GAIL imitation.trajectories=5
+python all.py -m algorithm=GAIL hydra/sweeper=ax hyperparam_opt=GAIL imitation.trajectories=5
 ```
 
 ## Results

@@ -1,10 +1,12 @@
 # @package _global_
 
+algorithm: RED
 reinforcement:
   discount: 0.97
   target_temperature: -0.5
   polyak_factor: 0.99
 imitation:
+  trajectories: 10
   model:
     hidden_size: 512
     depth: 2

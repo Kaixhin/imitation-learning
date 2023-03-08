@@ -42,10 +42,6 @@ def run(cfg: DictConfig, file_prefix: str='') -> float:
     assert cfg.imitation.mix_expert_data
     assert cfg.imitation.update_freq >= 0
   assert cfg.logging.interval >= 0
-  if cfg.use_optimised_hyperparameters:  # Load optimised hyperparameters if specified
-    optimised_hyperparameters_config_path = os.path.join(hydra.utils.get_original_cwd(), 'conf', 'optimised_hyperparameters', f'{cfg.algorithm}_{cfg.imitation.trajectories}_trajectories.yaml')
-    assert os.path.exists(optimised_hyperparameters_config_path), f'Optimised hyperparameter configuration file {optimised_hyperparameters_config_path} not found'
-    cfg = OmegaConf.merge(cfg, OmegaConf.load(optimised_hyperparameters_config_path))  # Overwrite default hyperparameters
 
   # General setup
   np.random.seed(cfg.seed)

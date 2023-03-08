@@ -1,10 +1,11 @@
 defaults:
   - _self_
   - algorithm: SAC
+  - optional optimised_hyperparameters: null
 
 seed: 0
 steps: 1000000
-env: 'ant'
+env: ant
 replay:
   size: 1000000
 bc_pretraining:
@@ -15,11 +16,11 @@ reinforcement:
     actor:
       hidden_size: 256
       depth: 2
-      activation: 'relu'
+      activation: relu
     critic:
       hidden_size: 256
       depth: 2
-      activation: 'relu'
+      activation: relu
   discount: 0.99
   target_temperature: -1
   learning_rate: 0.0003
@@ -28,7 +29,7 @@ imitation:
   model:
     hidden_size: 64 
     depth: 1
-    activation: 'relu'
+    activation: relu
     input_dropout: 0.5
     dropout: 0.75
   trajectories: 0  # 0 to disable; otherwise select number of trajectories
@@ -48,7 +49,6 @@ evaluation:
   episodes: 30
 logging:
   interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
-use_optimised_hyperparameters: false  # use algorithm- + number-of-trajectory-specific tuned hyperparameters
 num_workers: 4  # Number of multiprocess workers for data loader
 check_time_usage: false
 save_trajectories: false

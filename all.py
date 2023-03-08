@@ -1,6 +1,5 @@
 import os
 import random
-import shutil
 
 import hydra
 from omegaconf import DictConfig
@@ -23,9 +22,7 @@ def all(cfg: DictConfig):
     env_cfg = cfg.copy()
     env_cfg.env, env_cfg.seed = env, seed  # Overwrite the env and seed
     env_cfgs.append(env_cfg)
-    # Create a new (empty) folder for each env
-    if os.path.exists(env): shutil.rmtree(env)
-    os.makedirs(env)
+    os.makedirs(env)  # Create a new (empty) folder for each env
   with mp.Pool(processes=len(envs)) as pool:
     avg_scores = pool.map(map_func, env_cfgs)
   return min(avg_scores)

@@ -1,5 +1,6 @@
 # @package _global_
 
+algorithm: GMMIL
 reinforcement:
   discount: 0.99
   target_temperature: -1.0
@@ -9,4 +10,5 @@ training:
 bc_pretraining:
   iterations: 100000 
 imitation:
+  trajectories: 5
   self_similarity: True

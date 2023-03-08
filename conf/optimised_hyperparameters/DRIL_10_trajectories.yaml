@@ -1,10 +1,12 @@
 # @package _global_
 
+algorithm: DRIL
 reinforcement:
   target_temperature: -0.5
   polyak_factor: 0.995
   discount: 0.97
 imitation:
+  trajectories: 10
   model:
     hidden_size: 64
     depth: 1
