@@ -78,15 +78,14 @@ Results will be saved in `outputs/ALGO_ENV_sweep/m-d_H-M-S` with a subdirectory 
 
 ### Hyperparameter optimisation
 
-Hyperparameter optimisation (jointly, over all environments) can be run with:
+Bayesian hyperparameter optimisation (jointly, over all environments) can be run with:
 ```sh
-python all.py -m algorithm=ALG hydra/sweeper=ax hyperparam_opt=ALG
+python all.py -m algorithm=ALG
 ```
-where `hyperparam_opt` specifies the hyperparameter search space, which is tailored to each algorithm.
 
 This command is used to optimise hyperparameters for a given number of expert trajectories, for example:
 ```sh
-python all.py -m algorithm=GAIL hydra/sweeper=ax hyperparam_opt=GAIL imitation.trajectories=5
+python all.py -m algorithm=GAIL imitation.trajectories=5
 ```
 
 ## Results
