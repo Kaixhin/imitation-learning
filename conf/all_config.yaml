@@ -1,58 +1,9 @@
 defaults:
+  - config  # Use default config as base
   - _self_
-  - algorithm: ${hyperparam_opt}/ant
-  - optional hyperparam_opt: SAC 
+  - hyperparam_opt: ${algorithm} 
   - override hydra/sweeper: ax
 
-seed: 0 #${hydra:job.num}
-steps: 1000000
-replay:
-  size: 1000000
-bc_pretraining:
-  iterations: 0
-  batch_size: 256
-  learning_rate: 0.0001
-reinforcement:
-  model:
-    actor:
-      hidden_size: 256
-      depth: 2
-      activation: 'relu'
-    critic:
-      hidden_size: 256
-      depth: 2
-      activation: 'relu'
-  discount: 0.99
-  target_temperature: -1
-  learning_rate: 0.0003
-  polyak_factor: 0.995
-imitation:
-  model:
-    hidden_size: 64 
-    depth: 1
-    activation: 'relu'
-    input_dropout: 0.5
-    dropout: 0.75 
-  trajectories: 0  # 0 to disable; otherwise select number of trajectories
-  subsample: 1 # Note that 20 was default in original GAIL implementation
-
-  state_only: false
-  absorbing: false
-  learning_rate: 0.00003
-  weight_decay: 10
-  bc_aux_loss: false
-training:
-  start: 1000
-  interval: 1
-  batch_size: 256
-evaluation:
-  interval: 10000
-  episodes: 30
-check_time_usage: false
-metric_log_interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
-save_trajectories: false
-render: false
-num_workers: 0
 
 # Run/sweep directories
 hydra:

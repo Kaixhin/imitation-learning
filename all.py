@@ -19,12 +19,14 @@ from environments import get_all_env_baseline
 #torch.set_num_threads(1) This work the best, but probably slower
 if __name__ == '__main__': mp.set_start_method('forkserver') #This circumvent deadlock
 
+
 def pool_wrapper(cfg):
   env_type = cfg.env_type
   result = run(cfg, file_prefix=env_type+'/')
   return [env_type, result]
 
-@hydra.main(config_path='conf', config_name='all_config')
+
+@hydra.main(version_base=None, config_path='conf', config_name='all_config')
 def all(cfg: DictConfig):
   all_envs = dict(ant='ant-expert-v2', halfcheetah='halfcheetah-expert-v2', hopper='hopper-expert-v2', walker2d='walker2d-expert-v2')
   filename = os.path.join(get_original_cwd(), 'normalization_data.npz')

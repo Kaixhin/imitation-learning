@@ -1,8 +1,6 @@
 defaults:
   - _self_
   - algorithm: SAC
-  - optional hyperparam_opt: null
-  - override hydra/sweeper: basic
 
 seed: 0
 steps: 1000000
@@ -56,7 +54,7 @@ check_time_usage: false
 save_trajectories: false
 render: false
 
-# Run and sweep directories
+# Run/sweep directories
 hydra:
   job:
     chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
