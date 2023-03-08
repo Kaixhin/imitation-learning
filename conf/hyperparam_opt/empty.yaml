@@ -1,5 +1,0 @@
-# @package _global_
-sweeping: False  # TODO: ???
-hydra:
-  sweep:
-    dir: ./outputs/${algorithm}_${env}_sweeper/${now:%m-%d_%H-%M-%S}
