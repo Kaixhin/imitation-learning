@@ -4,7 +4,6 @@ from typing import Dict, Optional, Tuple
 
 import numpy as np
 from omegaconf import DictConfig
-from sklearn.preprocessing import StandardScaler
 import torch
 from torch import Tensor, nn
 from torch.distributions import Distribution, Independent, Normal, TransformedDistribution
@@ -204,12 +203,24 @@ class GMMILDiscriminator(nn.Module):
     return similarity - self_similarity if self.self_similarity else similarity
 
 
+# Returns the scale and offset to normalise data based on mean and standard deviation
+def _calculate_normalisation_scale_offset(data: Tensor) -> Tuple[Tensor, Tensor]:
+  inv_scale, offset = data.std(dim=0, keepdims=True), -data.mean(dim=0, keepdims=True)  # Calculate statistics over dataset
+  inv_scale[inv_scale == 0] = 1  # Set (inverse) scale to 1 if feature is constant (no variance)
+  return 1 / inv_scale, offset
+
+
+# Returns a tensor with a "row" (dim 0) deleted
+def _delete_row(data: Tensor, index: int) -> Tensor:
+  return torch.cat([data[:index], data[index + 1:]], dim=0)
+
+
 class PWILDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory, time_horizon: int):
     super().__init__()
     self.state_only = imitation_cfg.state_only
-    self.expert_memory, self.scaler, self.time_horizon = expert_memory, StandardScaler(), time_horizon
-    self.scaler.fit(self._get_expert_atoms())  # Fit the scaler to the data
+    self.expert_memory, self.time_horizon = expert_memory, time_horizon
+    self.data_scale, self.data_offset = _calculate_normalisation_scale_offset(self._get_expert_atoms())  # Calculate normalisation parameters for the data
     self.reward_scale, self.reward_bandwidth = imitation_cfg.reward_scale, imitation_cfg.reward_bandwidth_scale * self.time_horizon / sqrt(state_size if imitation_cfg.state_only else (state_size + action_size))  # Reward function hyperparameters (based on α and β)
     self.reset()
 
@@ -217,13 +228,12 @@ class PWILDiscriminator(nn.Module):
     return self.expert_memory['states'] if self.state_only else torch.cat([self.expert_memory['states'], self.expert_memory['actions']], dim=1)
 
   def reset(self):
-    self.expert_atoms = self._get_expert_atoms()
-    self.expert_atoms = torch.tensor(self.scaler.transform(self.expert_atoms), dtype=torch.float32)  # Normalise the expert atoms
+    self.expert_atoms = self.data_scale * (self._get_expert_atoms() + self.data_offset)  # Get and normalise the expert atoms
     self.expert_weights = torch.full((len(self.expert_memory), ), 1 / len(self.expert_memory))
 
   def compute_reward(self, state: Tensor, action: Tensor) -> float:
     agent_atom = state if self.state_only else torch.cat([state, action], dim=1)
-    agent_atom = self.scaler.transform(agent_atom)  # Normalise the agent atom
+    agent_atom = self.data_scale * (agent_atom + self.data_offset)  # Normalise the agent atom
     weight, cost = 1 / self.time_horizon - 1e-6, 0  # Note: subtracting eps from initial agent atom weight for numerical stability
     dists = torch.linalg.norm(self.expert_atoms - agent_atom, dim=1)
     while weight > 0:
@@ -233,7 +243,7 @@ class PWILDiscriminator(nn.Module):
       if weight >= expert_weight:
         cost += expert_weight * dists[closest_expert_idx].item()
         weight -= expert_weight
-        self.expert_atoms, self.expert_weights, dists = np.delete(self.expert_atoms, closest_expert_idx, axis=0), np.delete(self.expert_weights, closest_expert_idx, axis=0), np.delete(dists, closest_expert_idx, axis=0)  # Remove the expert atom
+        self.expert_atoms, self.expert_weights, dists = _delete_row(self.expert_atoms, closest_expert_idx), _delete_row(self.expert_weights, closest_expert_idx), _delete_row(dists, closest_expert_idx)  # Remove the expert atom
       else:
         cost += weight * dists[closest_expert_idx].item()
         self.expert_weights[closest_expert_idx] -= weight
