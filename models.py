@@ -210,6 +210,11 @@ def _calculate_normalisation_scale_offset(data: Tensor) -> Tuple[Tensor, Tensor]
   return 1 / inv_scale, offset
 
 
+# Returns a tensor with a "row" (dim 0) deleted
+def _delete_row(data: Tensor, index: int) -> Tensor:
+  return torch.cat([data[:index], data[index + 1:]], dim=0)
+
+
 class PWILDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory, time_horizon: int):
     super().__init__()
@@ -238,7 +243,7 @@ class PWILDiscriminator(nn.Module):
       if weight >= expert_weight:
         cost += expert_weight * dists[closest_expert_idx].item()
         weight -= expert_weight
-        self.expert_atoms, self.expert_weights, dists = np.delete(self.expert_atoms, closest_expert_idx, axis=0), np.delete(self.expert_weights, closest_expert_idx, axis=0), np.delete(dists, closest_expert_idx, axis=0)  # Remove the expert atom
+        self.expert_atoms, self.expert_weights, dists = _delete_row(self.expert_atoms, closest_expert_idx), _delete_row(self.expert_weights, closest_expert_idx), _delete_row(dists, closest_expert_idx)  # Remove the expert atom
       else:
         cost += weight * dists[closest_expert_idx].item()
         self.expert_weights[closest_expert_idx] -= weight
