@@ -13,12 +13,12 @@ imitation:
   model:
     reward_shaping: false
     subtract_log_policy: false
-    reward_function: 'AIRL'
+    reward_function: AIRL
   absorbing: true
   grad_penalty: 1
   spectral_norm: true
   entropy_bonus: 0
-  loss_function: 'BCE'
+  loss_function: BCE
   mixup_alpha: 1
   pos_class_prior: 0.7
   nonnegative_margin: .inf

@@ -7,7 +7,7 @@ imitation:
   model:
     hidden_size: 32
     depth: 1
-    activation: 'relu'
+    activation: relu
     input_dropout: 0
     dropout: 0
   sigma: False

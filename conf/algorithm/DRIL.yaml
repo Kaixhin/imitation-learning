@@ -10,7 +10,7 @@ imitation:
   model:
     hidden_size: 64
     depth: 1
-    activation: 'tanh'
+    activation: tanh
     input_dropout: 0.1
     dropout: 0.1
   pretraining:
