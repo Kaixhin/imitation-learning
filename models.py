@@ -1,5 +1,5 @@
 import copy
-from math import ceil
+from math import ceil, exp, sqrt
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -10,6 +10,8 @@ from torch.distributions import Distribution, Independent, Normal, TransformedDi
 from torch.distributions.transforms import TanhTransform
 from torch.nn import Parameter, functional as F
 from torch.nn.utils import parametrizations
+
+from memory import ReplayMemory
 
 ACTIVATION_FUNCTIONS = {'relu': nn.ReLU, 'sigmoid': nn.Sigmoid, 'tanh': nn.Tanh}
 
@@ -148,7 +150,7 @@ def make_gail_input(state: Tensor, action: Tensor, next_state: Tensor, terminal:
 
 
 class GAILDiscriminator(nn.Module):
-  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, discount):
+  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, discount: float):
     super().__init__()
     model_cfg = imitation_cfg.model
     self.discount, self.state_only, self.reward_shaping, self.subtract_log_policy, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.subtract_log_policy, model_cfg.reward_function
@@ -199,6 +201,54 @@ class GMMILDiscriminator(nn.Module):
       s_a_s_a_sq_dist = _squared_distance(state_action, state_action)
       self_similarity = _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_1) + _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_2)
     return similarity - self_similarity if self.self_similarity else similarity
+
+
+# Returns the scale and offset to normalise data based on mean and standard deviation
+def _calculate_normalisation_scale_offset(data: Tensor) -> Tuple[Tensor, Tensor]:
+  inv_scale, offset = data.std(dim=0, keepdims=True), -data.mean(dim=0, keepdims=True)  # Calculate statistics over dataset
+  inv_scale[inv_scale == 0] = 1  # Set (inverse) scale to 1 if feature is constant (no variance)
+  return 1 / inv_scale, offset
+
+
+# Returns a tensor with a "row" (dim 0) deleted
+def _delete_row(data: Tensor, index: int) -> Tensor:
+  return torch.cat([data[:index], data[index + 1:]], dim=0)
+
+
+class PWILDiscriminator(nn.Module):
+  def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, expert_memory: ReplayMemory, time_horizon: int):
+    super().__init__()
+    self.state_only = imitation_cfg.state_only
+    self.expert_memory, self.time_horizon = expert_memory, time_horizon
+    self.data_scale, self.data_offset = _calculate_normalisation_scale_offset(self._get_expert_atoms())  # Calculate normalisation parameters for the data
+    self.reward_scale, self.reward_bandwidth = imitation_cfg.reward_scale, imitation_cfg.reward_bandwidth_scale * self.time_horizon / sqrt(state_size if imitation_cfg.state_only else (state_size + action_size))  # Reward function hyperparameters (based on α and β)
+    self.reset()
+
+  def _get_expert_atoms(self) -> Tensor:
+    return self.expert_memory['states'] if self.state_only else torch.cat([self.expert_memory['states'], self.expert_memory['actions']], dim=1)
+
+  def reset(self):
+    self.expert_atoms = self.data_scale * (self._get_expert_atoms() + self.data_offset)  # Get and normalise the expert atoms
+    self.expert_weights = torch.full((len(self.expert_memory), ), 1 / len(self.expert_memory))
+
+  def compute_reward(self, state: Tensor, action: Tensor) -> float:
+    agent_atom = state if self.state_only else torch.cat([state, action], dim=1)
+    agent_atom = self.data_scale * (agent_atom + self.data_offset)  # Normalise the agent atom
+    weight, cost = 1 / self.time_horizon - 1e-6, 0  # Note: subtracting eps from initial agent atom weight for numerical stability
+    dists = torch.linalg.norm(self.expert_atoms - agent_atom, dim=1)
+    while weight > 0:
+      closest_expert_idx = dists.argmin().item()  # Find closest expert atom
+      expert_weight = self.expert_weights[closest_expert_idx].item()
+      # Update costs and weights
+      if weight >= expert_weight:
+        cost += expert_weight * dists[closest_expert_idx].item()
+        weight -= expert_weight
+        self.expert_atoms, self.expert_weights, dists = _delete_row(self.expert_atoms, closest_expert_idx), _delete_row(self.expert_weights, closest_expert_idx), _delete_row(dists, closest_expert_idx)  # Remove the expert atom
+      else:
+        cost += weight * dists[closest_expert_idx].item()
+        self.expert_weights[closest_expert_idx] -= weight
+        weight = 0
+    return self.reward_scale * exp(-self.reward_bandwidth * cost)
 
 
 class EmbeddingNetwork(nn.Module):

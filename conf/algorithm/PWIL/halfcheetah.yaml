@@ -1,0 +1,8 @@
+# @package _global_
+env_type: halfcheetah
+env_name: halfcheetah-expert-v2
+
+algorithm: PWIL
+imitation:
+  reward_scale: 5
+  reward_bandwidth_scale: 5

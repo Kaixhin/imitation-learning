@@ -1,0 +1,32 @@
+# @package hydra.sweeper.ax_config
+max_trials: 30
+experiment:
+  minimize: false
+early_stop:
+  max_epochs_without_improvement: 5
+is_noisy: true
+params:
+  reinforcement.discount:
+    type: choice
+    values: [0.97, 0.99]
+    value_type: 'float'
+  reinforcement.target_temperature:
+    type: choice
+    values: [-1, -0.5]
+    value_type: 'float'
+  reinforcement.polyak_factor:
+    type: choice
+    values: [0.99, 0.995]
+    value_type: 'float'
+  imitation.reward_scale:
+    type: choice
+    values: [1, 5, 10]
+    value_type: 'float'
+  imitation.reward_bandwidth_scale:
+    type: choice
+    values: [1, 5, 10]
+    value_type: 'float'
+  training.start:
+    type: choice
+    values: [1000, 10000]
+    value_type: 'int'
