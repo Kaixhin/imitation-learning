@@ -83,7 +83,7 @@ def _mix_vars(x_1: Tensor, x_2: Tensor, eps: Tensor) -> Tensor:
 
 # Performs an adversarial imitation learning update
 def adversarial_imitation_update(actor: SoftActor, discriminator: GAILDiscriminator, transitions: Dict[str, Tensor], expert_transitions: Dict[str, Tensor], discriminator_optimiser: Optimizer, imitation_cfg: DictConfig):
-  reward_shaping, subtract_log_policy, loss_function, grad_penalty, mixup_alpha, entropy_bonus, pos_class_prior, nonnegative_margin = imitation_cfg.model.reward_shaping, imitation_cfg.model.subtract_log_policy, imitation_cfg.loss_function, imitation_cfg.grad_penalty, imitation_cfg.mixup_alpha, imitation_cfg.entropy_bonus, imitation_cfg.pos_class_prior, imitation_cfg.nonnegative_margin
+  reward_shaping, subtract_log_policy, loss_function, grad_penalty, mixup_alpha, entropy_bonus, pos_class_prior, nonnegative_margin = imitation_cfg.discriminator.reward_shaping, imitation_cfg.discriminator.subtract_log_policy, imitation_cfg.loss_function, imitation_cfg.grad_penalty, imitation_cfg.mixup_alpha, imitation_cfg.entropy_bonus, imitation_cfg.pos_class_prior, imitation_cfg.nonnegative_margin
 
   expert_state, expert_action, expert_next_state, expert_terminal, expert_weight = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']
   state, action, next_state, terminal, weight = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']

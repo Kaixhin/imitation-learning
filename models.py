@@ -152,7 +152,7 @@ def make_gail_input(state: Tensor, action: Tensor, next_state: Tensor, terminal:
 class GAILDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig, discount: float):
     super().__init__()
-    model_cfg = imitation_cfg.model
+    model_cfg = imitation_cfg.discriminator
     self.discount, self.state_only, self.reward_shaping, self.subtract_log_policy, self.reward_function = discount, imitation_cfg.state_only, model_cfg.reward_shaping, model_cfg.subtract_log_policy, model_cfg.reward_function
     if self.reward_shaping:
       self.g = nn.Linear(state_size if self.state_only else state_size + action_size, 1)  # Reward function r
@@ -264,14 +264,11 @@ class REDDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig):
     super().__init__()
     self.state_only = imitation_cfg.state_only
-    if imitation_cfg.sigma:
-      self.sigma_1 = imitation_cfg.sigma 
-    else:
-      self.sigma_1 = None
-    self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model, input_dropout=imitation_cfg.model.input_dropout, dropout=imitation_cfg.model.dropout)
-    self.target = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.model)
+    self.predictor = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.discriminator, input_dropout=imitation_cfg.discriminator.input_dropout, dropout=imitation_cfg.discriminator.dropout)
+    self.target = EmbeddingNetwork(state_size if self.state_only else state_size + action_size, imitation_cfg.discriminator)
     for param in self.target.parameters():
       param.requires_grad = False
+    self.sigma_1 = imitation_cfg.reward_bandwidth_scale
 
   def forward(self, state: Tensor, action: Tensor) -> Tuple[Tensor, Tensor]:
     state_action = state if self.state_only else _join_state_action(state, action)
@@ -283,8 +280,6 @@ class REDDiscriminator(nn.Module):
     if not self.sigma_1:
       prediction, target = self.forward(expert_state, expert_action)
       self.sigma_1 = 1 / _squared_distance(prediction, target).median().item()
-    else:
-      print(f"using pre-set sigma: {self.sigma_1}")
 
   def predict_reward(self, state: Tensor, action: Tensor) -> Tensor:
     prediction, target = self.forward(state, action)

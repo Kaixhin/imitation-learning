@@ -1,14 +1,15 @@
 # @package _global_
 
 algorithm: GAIL
-bc_pretraining:
-  iterations: 100000
+# bc_pretraining:
+#   iterations: 100000
 reinforcement:
   discount: 0.97
   target_temperature: -0.5
   polyak_factor: 0.99
 imitation:
-  model:
+  absorbing: true
+  discriminator:
     hidden_size: 64 
     depth: 1
     activation: relu
@@ -19,7 +20,6 @@ imitation:
     reward_function: AIRL
   learning_rate: 0.00003
   weight_decay: 10
-  absorbing: true
   grad_penalty: 1
   spectral_norm: true
   entropy_bonus: 0

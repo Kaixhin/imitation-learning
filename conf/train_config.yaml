@@ -25,15 +25,14 @@ logging:
   interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
 # Agent/reinforcement learning hyperparameters
 reinforcement:
-  model:
-    actor:
-      hidden_size: 256
-      depth: 2
-      activation: relu
-    critic:
-      hidden_size: 256
-      depth: 2
-      activation: relu
+  actor:
+    hidden_size: 256
+    depth: 2
+    activation: relu
+  critic:
+    hidden_size: 256
+    depth: 2
+    activation: relu
   discount: 0.99
   target_temperature: -1
   polyak_factor: 0.995
