@@ -29,4 +29,5 @@ def main(cfg: DictConfig):
 
 
 if __name__ == '__main__':
+  mp.set_start_method('forkserver')  # Prevent deadlock occurring with Ax sweeper
   main()

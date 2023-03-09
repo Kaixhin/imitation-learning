@@ -18,19 +18,32 @@ hydra:
         max_epochs_without_improvement: 5
       is_noisy: true
       params:
+        training.start:
+          type: choice
+          values: [1000, 10000]
+          value_type: int
         training.batch_size:
           type: choice
-          values: [1024, 2048, 4096]
-          value_type: 'int'
-        reinforcement.learning_rate:
-          type: choice
-          values: [0.00003, 0.0003]
-          value_type: 'float'
-        reinforcement.ppo_epochs:
-          type: choice
-          values: [5, 10, 20]
-          value_type: 'int'
-        reinforcement.entropy_loss_coeff:
-          type: choice
-          values: [0, 0.001, 0.01]
-          value_type: 'float'
+          values: [128, 256, 512, 1024]
+          value_type: int
+        training.learning_rate:
+          type: range
+          bounds: [0.00003, 0.0003]
+          value_type: float
+        training.weight_decay:
+          type: range
+          bounds: [0.0, 10.0]
+          value_type: float
+          log_scale: true
+        reinforcement.discount:
+          type: range
+          bounds: [0.95, 0.99]
+          value_type: float
+        reinforcement.target_temperature:
+          type: range
+          bounds: [-1.0, -0.5]
+          value_type: float
+        reinforcement.polyak_factor:
+          type: range
+          bounds: [0.97, 0.995]
+          value_type: float
