@@ -10,7 +10,7 @@ from torch import optim
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from environments import D4RLEnv
+from environments import D4RLEnv, ENVS
 from evaluation import evaluate_agent
 from memory import ReplayMemory
 from models import GAILDiscriminator, GMMILDiscriminator, PWILDiscriminator, REDDiscriminator, SoftActor, RewardRelabeller, TwinCritic, create_target_network, make_gail_input, mix_expert_agent_transitions
@@ -26,7 +26,7 @@ def main(cfg: DictConfig):
 def train(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC']
-  assert cfg.env in ['ant', 'halfcheetah', 'hopper', 'walker2d']
+  assert cfg.env in ENVS
   cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
   assert cfg.bc_pretraining.iterations >= 0
   assert cfg.imitation.trajectories >= 0

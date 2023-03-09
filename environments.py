@@ -14,6 +14,9 @@ from memory import ReplayMemory
 gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
 
+ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']  # Supported envs
+
+
 class D4RLEnv():
   def __init__(self, env_name: str, absorbing: bool, load_data: bool=False):
     self.env = gym.make(f'{env_name}-expert-v2')
