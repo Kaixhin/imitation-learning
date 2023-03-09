@@ -1,0 +1,21 @@
+# @package _global_
+
+algorithm: DRIL
+bc_pretraining:
+  iterations: 100000
+reinforcement:
+  discount: 0.97
+  target_temperature: -0.5
+imitation:
+  model:
+    hidden_size: 64
+    depth: 1
+    activation: tanh
+    input_dropout: 0.1
+    dropout: 0.1
+  pretraining:
+    iterations: 100000
+  weight_decay: 1
+  bc_aux_loss: true
+training:
+  start: 10000

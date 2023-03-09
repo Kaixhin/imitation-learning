@@ -1,61 +1,38 @@
 defaults:
+  - config  # Use default config as base
   - _self_
-  - algorithm: ${hyperparam_opt}/ant
-  - optional hyperparam_opt: SAC 
-  - override hydra/sweeper: ax  
-seed: 0 #${hydra:job.num}
-steps: 1000000  # TODO: Change per environment: 2M for Adroit
-replay:
-  size: 1000000
-pretraining:
-  iterations: 0
-  batch_size: 256
-  learning_rate: 0.0001
-reinforcement:
-  model:
-    actor:
-      hidden_size: 256
-      depth: 2
-      activation: 'relu'
-    critic:
-      hidden_size: 256
-      depth: 2
-      activation: 'relu'
-  discount: 0.99
-  target_temperature: -1
-  learning_rate: 0.0003
-  polyak_factor: 0.995
-imitation:
-  model:
-    hidden_size: 64 
-    depth: 1
-    activation: 'relu'
-    input_dropout: 0.5
-    dropout: 0.75 
-  trajectories: 0  # 0 to disable; otherwise select number of trajectories
-  subsample: 1 # Note that 20 was default in original GAIL implementation
+  - optional hyperparam_opt: ${algorithm} 
+  - override hydra/sweeper: ax
 
-  state_only: false
-  absorbing: false
-  learning_rate: 0.00003
-  weight_decay: 10
-  bc: false
-training:
-  start: 1000
-  interval: 1
-  batch_size: 256
-evaluation:
-  interval: 10000
-  episodes: 30
-check_time_usage: false
-metric_log_interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
-save_trajectories: false
-render: false
-num_workers: 0
-
-# Run/sweep directories
 hydra:
+  job:
+    chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
   run:
-    dir: ./outputs/all_${algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_all/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision
   sweep:
-    dir: ./outputs/all_sweep_${algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_all_sweeper/${now:%m-%d_%H-%M-%S}
+  sweeper:
+    ax_config:
+      max_trials: 30
+      experiment:
+        minimize: false
+      early_stop:
+        max_epochs_without_improvement: 5
+      is_noisy: true
+      params:
+        training.batch_size:
+          type: choice
+          values: [1024, 2048, 4096]
+          value_type: 'int'
+        reinforcement.learning_rate:
+          type: choice
+          values: [0.00003, 0.0003]
+          value_type: 'float'
+        reinforcement.ppo_epochs:
+          type: choice
+          values: [5, 10, 20]
+          value_type: 'int'
+        reinforcement.entropy_loss_coeff:
+          type: choice
+          values: [0, 0.001, 0.01]
+          value_type: 'float'

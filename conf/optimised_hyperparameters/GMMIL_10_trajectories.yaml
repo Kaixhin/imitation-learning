@@ -1,0 +1,14 @@
+# @package _global_
+
+algorithm: GMMIL
+reinforcement:
+  discount: 0.97
+  target_temperature: -0.5
+  polyak_factor: 0.995
+training:
+  start: 10000 
+bc_pretraining:
+  iterations: 100000 
+imitation:
+  trajectories: 10
+  self_similarity: True

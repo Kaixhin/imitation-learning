@@ -1,0 +1,13 @@
+# @package _global_
+
+algorithm: AdRIL
+reinforcement:
+  discount: 0.99
+  polyak_factor: 0.995
+  target_temperature: -1
+imitation:
+  trajectories: 5
+  balanced: False 
+  update_freq: 2500 
+training:
+  start: 1000 

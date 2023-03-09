@@ -16,7 +16,7 @@ gym.logger.set_level(ERROR)  # Ignore warnings from Gym logger
 
 class D4RLEnv():
   def __init__(self, env_name: str, absorbing: bool, load_data: bool=False):
-    self.env = gym.make(env_name)
+    self.env = gym.make(f'{env_name}-expert-v2')
     if load_data: self.dataset = self.env.get_dataset()  # Load dataset before (potentially) adjusting observation_space (fails assertion check otherwise)
     self.env.action_space.high, self.env.action_space.low = torch.as_tensor(self.env.action_space.high), torch.as_tensor(self.env.action_space.low)  # Convert action space for action clipping
 
@@ -66,7 +66,7 @@ class D4RLEnv():
     timeouts = torch.as_tensor(self.dataset['timeouts'], dtype=torch.float32)
     state_size, action_size = states.size(1), actions.size(1)
     # Split into separate trajectories
-    states_list, actions_list, next_states_list, terminals_list, weights_list, timeout_list = [], [], [], [], [], []
+    states_list, actions_list, next_states_list, terminals_list, weights_list, timeouts_list = [], [], [], [], [], []
     terminal_idxs, timeout_idxs = terminals.nonzero().flatten(), timeouts.nonzero().flatten()
     ep_end_idxs = torch.sort(torch.cat([torch.tensor([-1]), terminal_idxs, timeout_idxs], dim=0))[0]
     for i in range(len(ep_end_idxs) - 1):
@@ -74,24 +74,25 @@ class D4RLEnv():
       actions_list.append(actions[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])
       next_states_list.append(next_states[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])
       terminals_list.append(terminals[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])  # Only store true terminations; timeouts should not be treated as such
+      timeouts_list.append(timeouts[ep_end_idxs[i] + 1:ep_end_idxs[i + 1] + 1])  # Store if episode terminated due to timeout
       weights_list.append(torch.ones_like(terminals_list[-1]))  # Add an importance weight of 1 to every transition
-      timeout_list.append(ep_end_idxs[i + 1] in timeout_idxs)  # Store if episode terminated due to timeout
     # Pick number of trajectories
     if trajectories > 0:
       states_list = states_list[:trajectories]
       actions_list = actions_list[:trajectories]
       next_states_list = next_states_list[:trajectories]
       terminals_list = terminals_list[:trajectories]
+      timeouts_list = timeouts_list[:trajectories]
       weights_list = weights_list[:trajectories]
     num_trajectories = len(states_list)
     # Wrap for absorbing states
-    if self.absorbing:  
+    if self.absorbing:
       absorbing_state, absorbing_action = torch.cat([torch.zeros(1, state_size), torch.ones(1, 1)], dim=1), torch.zeros(1, action_size)  # Create absorbing state and absorbing action
       for i in range(len(states_list)):
         # Append absorbing indicator (zero)
         states_list[i] = torch.cat([states_list[i], torch.zeros(states_list[i].size(0), 1)], dim=1)
         next_states_list[i] = torch.cat([next_states_list[i], torch.zeros(next_states_list[i].size(0), 1)], dim=1)
-        if not timeout_list[i]:  # Apply for episodes that did not terminate due to time limits
+        if not timeouts_list[i][-1]:  # Apply for episodes that did not terminate due to time limits
           # Replace the final next state with the absorbing state and overwrite terminal status
           next_states_list[i][-1] = absorbing_state
           terminals_list[i][-1] = 0
@@ -101,6 +102,7 @@ class D4RLEnv():
           actions_list[i] = torch.cat([actions_list[i], absorbing_action], dim=0)
           next_states_list[i] = torch.cat([next_states_list[i], absorbing_state], dim=0)
           terminals_list[i] = torch.cat([terminals_list[i], torch.zeros(1)], dim=0)
+          timeouts_list[i] = torch.cat([timeouts_list[i], torch.zeros(1)], dim=0)
           weights_list[i] = torch.cat([weights_list[i], torch.full((1, ), 1 / subsample)], dim=0)  # Importance weight absorbing state as kept during subsampling
     # Subsample within trajectories
     if subsample > 1:
@@ -112,10 +114,11 @@ class D4RLEnv():
         actions_list[i] = actions_list[i][idxs]
         next_states_list[i] = next_states_list[i][idxs]
         terminals_list[i] = terminals_list[i][idxs]
+        timeouts_list[i] = timeouts_list[i][idxs]
         weights_list[i] = weights_list[i][idxs]
 
-    transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0), 'weights': torch.cat(weights_list, dim=0), 'num_trajectories': num_trajectories}
-    transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability
+    transitions = {'states': torch.cat(states_list, dim=0), 'actions': torch.cat(actions_list, dim=0), 'next_states': torch.cat(next_states_list, dim=0), 'terminals': torch.cat(terminals_list, dim=0), 'timeouts': torch.cat(timeouts_list, dim=0), 'weights': torch.cat(weights_list, dim=0), 'num_trajectories': num_trajectories}
+    transitions['rewards'] = torch.zeros_like(transitions['terminals'])  # Pass 0 rewards to replay memory for interoperability/make sure reward information is not leaked to IL algorithm when data comes from an offline RL dataset
     return ReplayMemory(transitions['states'].size(0), state_size + (1 if self.absorbing else 0), action_size, self.absorbing, transitions=transitions)
 
 

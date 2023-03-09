@@ -1,27 +1,26 @@
 defaults:
   - _self_
-  - algorithm: SAC/ant
-  - hyperparam_opt: empty
-  - override hydra/sweeper: basic
+  - algorithm: SAC
+  - optional optimised_hyperparameters: null
 
 seed: 0
-steps: 1000000  # TODO: Change per environment: 2M for Adroit
+steps: 1000000
+env: ant
 replay:
   size: 1000000
-pretraining:
+bc_pretraining:
   iterations: 0
-  batch_size: 256
   learning_rate: 0.0001
 reinforcement:
   model:
     actor:
       hidden_size: 256
       depth: 2
-      activation: 'relu'
+      activation: relu
     critic:
       hidden_size: 256
       depth: 2
-      activation: 'relu'
+      activation: relu
   discount: 0.99
   target_temperature: -1
   learning_rate: 0.0003
@@ -30,16 +29,17 @@ imitation:
   model:
     hidden_size: 64 
     depth: 1
-    activation: 'relu'
+    activation: relu
     input_dropout: 0.5
-    dropout: 0.75 
+    dropout: 0.75
   trajectories: 0  # 0 to disable; otherwise select number of trajectories
-  subsample: 1 # Note that 20 was default in original GAIL implementation
+  subsample: 1  # Note that 20 was default in original GAIL implementation
   state_only: false
   absorbing: false
   learning_rate: 0.00003
   weight_decay: 10
-  bc: false
+  mix_expert_data: false
+  bc_aux_loss: false
 training:
   start: 1000
   interval: 1
@@ -47,15 +47,17 @@ training:
 evaluation:
   interval: 10000
   episodes: 30
+logging:
+  interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
+num_workers: 4  # Number of multiprocess workers for data loader
 check_time_usage: false
-metric_log_interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
 save_trajectories: false
 render: false
-num_workers: 4
 
-# Run/sweep directories
 hydra:
+  job:
+    chdir: true  # Change working directory to output directory (default behaviour for Hydra < 1.2)
   run:
-    dir: ./outputs/${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_${env}/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision
   sweep:
-    dir: ./outputs/sweeper_${env_type}_${algorithm}/${now:%m-%d_%H-%M-%S}
+    dir: ./outputs/${algorithm}_${env}_sweeper/${now:%m-%d_%H-%M-%S}

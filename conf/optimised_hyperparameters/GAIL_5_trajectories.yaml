@@ -1,0 +1,33 @@
+# @package _global_
+
+algorithm: GAIL
+replay:
+  size: 3000000
+bc_pretraining:
+  iterations: 100000
+reinforcement:
+  discount: 0.99
+  target_temperature: -1.0
+  polyak_factor: 0.995
+imitation:
+  trajectories: 5
+  model:
+    hidden_size: 256
+    depth: 2
+    input_dropout: 0.5
+    dropout: 0.1
+    reward_shaping: False
+    subtract_log_policy: False
+    reward_function: AIRL
+  absorbing: True
+  spectral_norm: True
+  learning_rate: 3.0e-05
+  weight_decay: 0.0
+  grad_penalty: 0.1
+  entropy_bonus: 0.0
+  loss_function: Mixup
+  mixup_alpha: 1
+  nonnegative_margin: .inf
+  pos_class_prior: 0.7
+training:
+  start: 10000

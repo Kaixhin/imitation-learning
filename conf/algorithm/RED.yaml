@@ -1,0 +1,15 @@
+# @package _global_
+
+algorithm: RED
+bc_pretraining:
+  iterations: 0
+imitation:
+  model:
+    hidden_size: 32
+    depth: 1
+    activation: relu
+    input_dropout: 0
+    dropout: 0
+  sigma: False
+  pretraining:
+    iterations: 100000

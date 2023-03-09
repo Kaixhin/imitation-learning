@@ -1,9 +1,0 @@
-# @package _global_
-env_type: hopper
-env_name: hopper-expert-v2
-
-algorithm: SAC
-replay:
-  size: 1000000
-pretraining:
-  iterations: 0

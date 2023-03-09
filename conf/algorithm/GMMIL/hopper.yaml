@@ -1,9 +1,0 @@
-# @package _global_
-env_type: hopper
-env_name: hopper-expert-v2
-
-algorithm: GMMIL
-pretraining:
-  iterations: 100000 
-imitation:
-  self_similarity: true
