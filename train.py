@@ -27,12 +27,12 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC']
   assert cfg.env in ENVS
-  cfg.replay.size = min(cfg.steps, cfg.replay.size)  # Set max replay size to min of environment steps and replay size
+  cfg.memory.size = min(cfg.steps, cfg.memory.size)  # Set max replay memory size to min of environment steps and replay memory size
   assert cfg.bc_pretraining.iterations >= 0
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1
   if cfg.algorithm == 'GAIL':
-    assert cfg.imitation.model.reward_function in ['AIRL', 'FAIRL', 'GAIL']
+    assert cfg.imitation.discriminator.reward_function in ['AIRL', 'FAIRL', 'GAIL']
     assert cfg.imitation.grad_penalty >= 0
     assert cfg.imitation.entropy_bonus >= 0
     assert cfg.imitation.loss_function in ['BCE', 'Mixup', 'PUGAIL']
@@ -56,17 +56,17 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   state_size, action_size = env.observation_space.shape[0], env.action_space.shape[0]
 
   # Set up agent
-  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.reinforcement.model.actor), TwinCritic(state_size, action_size, cfg.reinforcement.model.critic), torch.zeros(1, requires_grad=True)
+  actor, critic, log_alpha = SoftActor(state_size, action_size, cfg.reinforcement.actor), TwinCritic(state_size, action_size, cfg.reinforcement.critic), torch.zeros(1, requires_grad=True)
   target_critic, entropy_target = create_target_network(critic), cfg.reinforcement.target_temperature * action_size  # Entropy target heuristic from SAC paper for continuous action domains
-  actor_optimiser, critic_optimiser, temperature_optimiser = optim.Adam(actor.parameters(), lr=cfg.reinforcement.learning_rate), optim.Adam(critic.parameters(), lr=cfg.reinforcement.learning_rate), optim.Adam([log_alpha], lr=cfg.reinforcement.learning_rate)
-  memory = ReplayMemory(cfg.replay.size, state_size, action_size, cfg.imitation.absorbing)
+  actor_optimiser, critic_optimiser, temperature_optimiser = optim.AdamW(actor.parameters(), lr=cfg.training.learning_rate, weight_decay=cfg.training.weight_decay), optim.Adam(critic.parameters(), lr=cfg.training.learning_rate, weight_decay=cfg.training.weight_decay), optim.Adam([log_alpha], lr=cfg.training.learning_rate)
+  memory = ReplayMemory(cfg.memory.size, state_size, action_size, cfg.imitation.absorbing)
 
   # Set up imitation learning components
   if cfg.algorithm in ['AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED']:
     if cfg.algorithm == 'AdRIL':
       discriminator = RewardRelabeller(cfg.imitation.update_freq, cfg.imitation.balanced)  # Balanced sampling (switching between expert and policy data every update) is stateful
     if cfg.algorithm == 'DRIL':
-      discriminator = SoftActor(state_size, action_size, cfg.imitation.model)
+      discriminator = SoftActor(state_size, action_size, cfg.imitation.discriminator)
     elif cfg.algorithm == 'GAIL':
       discriminator = GAILDiscriminator(state_size, action_size, cfg.imitation, cfg.reinforcement.discount)
     elif cfg.algorithm == 'GMMIL':
@@ -87,7 +87,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   # Behavioural cloning pretraining
   if cfg.bc_pretraining.iterations > 0:
     expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
-    actor_pretrain_optimiser = optim.Adam(actor.parameters(), lr=cfg.bc_pretraining.learning_rate)  # Create separate pretraining optimiser
+    actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg.bc_pretraining.learning_rate, weight_decay=cfg.bc_pretraining.weight_decay)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.bc_pretraining.iterations), leave=False):
       expert_transitions = next(expert_dataloader)
       behavioural_cloning_update(actor, expert_transitions, actor_pretrain_optimiser)
@@ -179,7 +179,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
           elif cfg.algorithm == 'DRIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions)
           elif cfg.algorithm == 'GAIL':
-            transitions['rewards'] = discriminator.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor, cfg.imitation.model.reward_shaping, cfg.imitation.model.subtract_log_policy))
+            transitions['rewards'] = discriminator.predict_reward(**make_gail_input(states, actions, next_states, terminals, actor, cfg.imitation.discriminator.reward_shaping, cfg.imitation.discriminator.subtract_log_policy))
           elif cfg.algorithm == 'GMMIL':
             transitions['rewards'] = discriminator.predict_reward(states, actions, expert_states, expert_actions, weights, expert_weights)
           elif cfg.algorithm == 'RED':

@@ -3,52 +3,50 @@ defaults:
   - algorithm: SAC
   - optional optimised_hyperparameters: null
 
+# General options
 seed: 0
 steps: 1000000
 env: ant
-replay:
-  size: 1000000
+# Training/evaluation/logging hyperparameters
 bc_pretraining:
   iterations: 0
   learning_rate: 0.0001
-reinforcement:
-  model:
-    actor:
-      hidden_size: 256
-      depth: 2
-      activation: relu
-    critic:
-      hidden_size: 256
-      depth: 2
-      activation: relu
-  discount: 0.99
-  target_temperature: -1
-  learning_rate: 0.0003
-  polyak_factor: 0.995
-imitation:
-  model:
-    hidden_size: 64 
-    depth: 1
-    activation: relu
-    input_dropout: 0.5
-    dropout: 0.75
-  trajectories: 0  # 0 to disable; otherwise select number of trajectories
-  subsample: 1  # Note that 20 was default in original GAIL implementation
-  state_only: false
-  absorbing: false
-  learning_rate: 0.00003
-  weight_decay: 10
-  mix_expert_data: false
-  bc_aux_loss: false
+  weight_decay: 0
 training:
   start: 1000
   interval: 1
   batch_size: 256
+  learning_rate: 0.0003
+  weight_decay: 0
 evaluation:
   interval: 10000
   episodes: 30
 logging:
   interval: 1000  # 0 to disable; logging too frequently can crash plotting/result in a large metrics file
+# Agent/reinforcement learning hyperparameters
+reinforcement:
+  actor:
+    hidden_size: 256
+    depth: 2
+    activation: relu
+  critic:
+    hidden_size: 256
+    depth: 2
+    activation: relu
+  discount: 0.99
+  target_temperature: -1
+  polyak_factor: 0.995
+memory:
+  size: 1000000
+# Imitation learning hyperparameters
+imitation:
+  trajectories: 0  # 0 to keep all trajectories; otherwise select number of trajectories
+  subsample: 1  # Note that 20 was default in original GAIL implementation
+  state_only: false
+  absorbing: false
+  mix_expert_data: false
+  bc_aux_loss: false
+# Miscellaneous options
 num_workers: 4  # Number of multiprocess workers for data loader
 check_time_usage: false
 save_trajectories: false

@@ -5,10 +5,10 @@
 Imitation learning algorithms (using SAC [[HZA18, HZH18]](#references) as the base RL algorithm):
 
 - AdRIL [[SCB21]](#references)
-- DRIL [[BSH20]](#references) (with BC auxiliary loss; default true)
+- DRIL [[BSH20]](#references) (dropout version; with BC auxiliary loss, default true)
 - GAIL [[HE16]](#references) (a.k.a. DAC/SAM when using an off-policy algorithm [[KAD18, BK18]](#references))
-- GMMIL [[KP18]](#references) (with optional self-similarity term [[AL21]](#references))
-- PWIL [[DHG20]](#references) (with mix of expert data; default true) TODO: This should be seeded ER, not mix
+- GMMIL [[KP18]](#references)
+- PWIL [[DHG20]](#references) (with mix of expert data, default true) TODO: This should be seeded ER, not mix
 - RED [[WCA19]](#references)
 
 General options include:
@@ -19,6 +19,13 @@ General options include:
 - Training on a mix of agent and expert data: `imitation.mix_expert_data: true/false`
 - BC auxiliary loss: `imitation.bc_aux_loss: true/false`
 
+DRIL, GAIL and RED include several options for their trained discriminators.
+
+AdRIL options include:
+
+- Balanced sampling: `imitation.balanced: true/false` (alternate sampling expert and agent data batches vs. mixed batches)
+- Discriminator update frequency: `imitation.update_freq: >= 0` (set to 0 for SQIL [[RDL19]](#references))
+
 GAIL options include:
 
 - Reward shaping (AIRL) [[FLL17]](#references): `imitation.model.reward_shaping: true/false`
@@ -28,10 +35,16 @@ GAIL options include:
 - Spectral normalisation [[BSK20]](#references): `imitation.spectral_norm: true/false`
 - Entropy bonus [[ORH21]](#references): `imitation.entropy_bonus: >= 0`
 - Loss functions (BCE/Mixup/nn-PUGAIL) [[HE16, CNN20, XD19]](#references): `imitation.loss_function: BCE/Mixup/PUGAIL`
+- Additional hyperparameters for the loss functions: `imitation.mixup_alpha: >= 0`, `imitation.pos_class_prior: >= 0, <= 1`, `imitation.nonnegative_margin: >= 0`
 
-AdRIL options include:
+PWIL options include:
 
-- Discriminator update frequency: `imitation.update_freq: >= 0` (set to 0 for SQIL [[RDL19]](#references))
+- Reward scale α: `imitation.reward_scale: >= 0`
+- Reward bandwidth scale β: `imitation.reward_bandwidth_scale: >= 0`
+
+RED options include:
+
+- Reward bandwidth scale σ1: `imitation.reward_bandwidth_scale: >= 0`
 
 Benchmarked on [Gym MuJoCo environments](https://www.gymlibrary.dev/environments/mujoco/) with [D4RL "expert-v2" data](https://github.com/Farama-Foundation/D4RL/wiki/Tasks#gym).
 
