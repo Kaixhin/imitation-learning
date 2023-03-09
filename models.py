@@ -184,7 +184,7 @@ class GMMILDiscriminator(nn.Module):
   def __init__(self, state_size: int, action_size: int, imitation_cfg: DictConfig):
     super().__init__()
     self.state_only = imitation_cfg.state_only
-    self.gamma_1, self.gamma_2, self.self_similarity = None, None, imitation_cfg.self_similarity
+    self.gamma_1, self.gamma_2 = None, None
 
   def predict_reward(self, state: Tensor, action: Tensor, expert_state: Tensor, expert_action: Tensor, weight: Tensor, expert_weight: Tensor) -> Tensor:
     state_action = state if self.state_only else _join_state_action(state, action)
@@ -195,12 +195,10 @@ class GMMILDiscriminator(nn.Module):
       self.gamma_2 = 1 / (_weighted_median(_squared_distance(expert_state_action, expert_state_action), torch.outer(expert_weight, expert_weight)).item() + 1e-8)  # Add epsilon for numerical stability (if distance is zero)
     # Calculate negative of witness function (based on kernel mean embeddings)
     weight_norm, exp_weight_norm  = weight / weight.sum(), expert_weight / expert_weight.sum()
-    s_a_e_s_a_sq_dist = _squared_distance(state_action, expert_state_action)
+    s_a_e_s_a_sq_dist, s_a_s_a_sq_dist = _squared_distance(state_action, expert_state_action), _squared_distance(state_action, state_action)
     similarity = _weighted_similarity(s_a_e_s_a_sq_dist, weight_norm, exp_weight_norm, gamma=self.gamma_1) + _weighted_similarity(s_a_e_s_a_sq_dist, weight_norm, exp_weight_norm, gamma=self.gamma_2)
-    if self.self_similarity:
-      s_a_s_a_sq_dist = _squared_distance(state_action, state_action)
-      self_similarity = _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_1) + _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_2)
-    return similarity - self_similarity if self.self_similarity else similarity
+    self_similarity = _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_1) + _weighted_similarity(s_a_s_a_sq_dist, weight_norm, weight_norm, gamma=self.gamma_2)
+    return similarity - self_similarity
 
 
 # Returns the scale and offset to normalise data based on mean and standard deviation
