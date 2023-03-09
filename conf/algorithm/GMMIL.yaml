@@ -1,7 +1,5 @@
 # @package _global_
 
 algorithm: GMMIL
-bc_pretraining:
-  iterations: 100000 
 imitation:
   self_similarity: true

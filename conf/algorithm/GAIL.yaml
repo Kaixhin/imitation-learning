@@ -9,9 +9,16 @@ reinforcement:
   polyak_factor: 0.99
 imitation:
   model:
+    hidden_size: 64 
+    depth: 1
+    activation: relu
+    input_dropout: 0.5
+    dropout: 0.75
     reward_shaping: false
     subtract_log_policy: false
     reward_function: AIRL
+  learning_rate: 0.00003
+  weight_decay: 10
   absorbing: true
   grad_penalty: 1
   spectral_norm: true

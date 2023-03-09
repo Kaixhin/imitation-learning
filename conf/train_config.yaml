@@ -47,16 +47,6 @@ imitation:
   absorbing: false
   mix_expert_data: false
   bc_aux_loss: false
-
-  model:
-    hidden_size: 64 
-    depth: 1
-    activation: relu
-    input_dropout: 0.5
-    dropout: 0.75
-  learning_rate: 0.00003
-  weight_decay: 10
-
 # Miscellaneous options
 num_workers: 4  # Number of multiprocess workers for data loader
 check_time_usage: false
