@@ -1,5 +1,5 @@
 defaults:
-  - config  # Use default config as base
+  - train_config  # Use default config as base
   - _self_
   - optional hyperparam_opt: ${algorithm} 
   - override hydra/sweeper: ax

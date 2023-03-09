@@ -18,12 +18,12 @@ from training import adversarial_imitation_update, behavioural_cloning_update, s
 from utils import cycle, flatten_list_dicts, lineplot
 
 
-@hydra.main(version_base=None, config_path='conf', config_name='config')
+@hydra.main(version_base=None, config_path='conf', config_name='train_config')
 def main(cfg: DictConfig):
-  return run(cfg)
+  return train(cfg)
 
 
-def run(cfg: DictConfig, file_prefix: str='') -> float:
+def train(cfg: DictConfig, file_prefix: str='') -> float:
   # Configuration check
   assert cfg.algorithm in ['AdRIL', 'BC', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED', 'SAC']
   assert cfg.env in ['ant', 'halfcheetah', 'hopper', 'walker2d']

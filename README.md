@@ -47,23 +47,23 @@ Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](http
 
 The training of each imitation learning algorithm (or SAC with the real environment reward) can be started with:
 ```sh
-python main.py algorithm=<ALG> env=<ENV>
+python train.py algorithm=<ALG> env=<ENV>
 ```
 where `<ALG>` is one of `AdRIL/BC/DRIL/GAIL/GMMIL/PWIL/RED/SAC` and `<ENV>` is one of `ant/halfcheetah/hopper/walker2d`. For example:
 ```sh
-python main.py algorithm=GAIL env=hopper
+python train.py algorithm=GAIL env=hopper
 ```
 
 Results will be saved in `outputs/<ALGO>_<ENV>/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
 Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/<ALG>.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `optimised_hyperparameters=<ALG>_<NUM_TRAJECTORIES>_trajectories`. For example:
 ```sh
-python main.py use_optimised_hyperparameters=AdRIL_5_trajectories env=halfcheetah
+python train.py use_optimised_hyperparameters=AdRIL_5_trajectories env=halfcheetah
 ```
 
 Running the algorithm on all environments in parallel can be achieved with:
 ```sh
-python all.py algorithm=<ALG> env=<ENV>
+python train_all.py algorithm=<ALG> env=<ENV>
 ```
 with results saved in `outputs/<ALGO>_all/m-d_H-M-S`, containing subdirectories for each environment.
 
@@ -71,7 +71,7 @@ with results saved in `outputs/<ALGO>_all/m-d_H-M-S`, containing subdirectories 
 
 A hyperparameter sweep can be performed using `-m` and a series of hyperparameter values. For example:
 ```sh
-python main.py -m algorithm=PWIL env=walker2d seed=1,2,3,4,5 
+python train.py -m algorithm=PWIL env=walker2d seed=1,2,3,4,5 
 ```
 
 Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
@@ -80,12 +80,12 @@ Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirect
 
 Bayesian hyperparameter optimisation (jointly, over all environments) can be run with:
 ```sh
-python all.py -m algorithm=<ALG>
+python train_all.py -m algorithm=<ALG>
 ```
 
 This command is used to optimise hyperparameters for a given number of expert trajectories, for example:
 ```sh
-python all.py -m algorithm=GAIL imitation.trajectories=5
+python train_all.py -m algorithm=GAIL imitation.trajectories=5
 ```
 
 ## Results

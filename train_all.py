@@ -5,15 +5,15 @@ import hydra
 from omegaconf import DictConfig
 from torch import multiprocessing as mp
 
-from main import run
+from train import train
 
 
 def map_func(cfg: DictConfig):
-  return run(cfg, file_prefix=f'{cfg.env}/')
+  return train(cfg, file_prefix=f'{cfg.env}/')
 
 
-@hydra.main(version_base=None, config_path='conf', config_name='all_config')
-def all(cfg: DictConfig):
+@hydra.main(version_base=None, config_path='conf', config_name='train_all_config')
+def main(cfg: DictConfig):
   envs = ['ant', 'halfcheetah', 'hopper', 'walker2d']
   env_cfgs = []
   seed = random.randint(0, 99)  # Set a random random seed for all envs
@@ -29,4 +29,4 @@ def all(cfg: DictConfig):
 
 
 if __name__ == '__main__':
-  all()
+  main()
