@@ -1,8 +1,6 @@
 # @package _global_
 
 algorithm: GAIL
-replay:
-  size: 3000000
 bc_pretraining:
   iterations: 100000
 reinforcement:

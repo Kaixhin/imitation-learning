@@ -1,8 +1,6 @@
 # @package _global_
 
 algorithm: RED
-bc_pretraining:
-  iterations: 0
 imitation:
   model:
     hidden_size: 32
