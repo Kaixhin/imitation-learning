@@ -2,13 +2,13 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-Off-policy imitation learning algorithms (using SAC [[HZA18, HZH18]](#references) as the base RL algorithm):
+Imitation learning algorithms (using SAC [[HZA18, HZH18]](#references) as the base RL algorithm):
 
 - AdRIL [[SCB21]](#references)
 - DRIL [[BSH20]](#references) (with BC auxiliary loss; default true)
 - GAIL [[HE16]](#references) (a.k.a. DAC/SAM when using an off-policy algorithm [[KAD18, BK18]](#references))
 - GMMIL [[KP18]](#references) (with optional self-similarity term [[AL21]](#references))
-- PWIL [[DHG20]](#references) (with mix of expert data; default true)
+- PWIL [[DHG20]](#references) (with mix of expert data; default true) TODO: This should be seeded ER, not mix
 - RED [[WCA19]](#references)
 
 General options include:
@@ -41,31 +41,31 @@ Requirements can be installed with:
 ```sh
 pip install -r requirements.txt
 ```
-Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL](https://github.com/Farama-Foundation/D4RL) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation; if unneeded they can be removed from `requirements.txt`.
+Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL](https://github.com/Farama-Foundation/D4RL) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation.
 
 ## Normal run
 
 The training of each imitation learning algorithm (or SAC with the real environment reward) can be started with:
 ```sh
-python main.py algorithm=ALG env=ENV
+python main.py algorithm=<ALG> env=<ENV>
 ```
-where `ALG` is one of `AdRIL/BC/DRIL/GAIL/GMMIL/PWIL/RED/SAC` and `ENV` is one of `ant/halfcheetah/hopper/walker2d`. For example:
+where `<ALG>` is one of `AdRIL/BC/DRIL/GAIL/GMMIL/PWIL/RED/SAC` and `<ENV>` is one of `ant/halfcheetah/hopper/walker2d`. For example:
 ```sh
 python main.py algorithm=GAIL env=hopper
 ```
 
-Results will be saved in `outputs/ALGO_ENV/m-d_H-M-S` with the last subfolder indicating the current datetime.
+Results will be saved in `outputs/<ALGO>_<ENV>/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
-Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/ALG.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `use_optimised_hyperparameters=ALG_NUMTRAJECTORIES_trajectories`. For example:
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/<ALG>.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `optimised_hyperparameters=<ALG>_<NUM_TRAJECTORIES>_trajectories`. For example:
 ```sh
-python main.py use_optimised_hyperparameters=AdRIL_5_trajectories ENV=halfcheetah
+python main.py use_optimised_hyperparameters=AdRIL_5_trajectories env=halfcheetah
 ```
 
 Running the algorithm on all environments in parallel can be achieved with:
 ```sh
-python all.py algorithm=ALG env=ENV
+python all.py algorithm=<ALG> env=<ENV>
 ```
-with results saved in `outputs/ALGO_all/m-d_H-M-S`, containing subdirectories for each environment.
+with results saved in `outputs/<ALGO>_all/m-d_H-M-S`, containing subdirectories for each environment.
 
 ### Hyperparameter sweep
 
@@ -74,13 +74,13 @@ A hyperparameter sweep can be performed using `-m` and a series of hyperparamete
 python main.py -m algorithm=PWIL env=walker2d seed=1,2,3,4,5 
 ```
 
-Results will be saved in `outputs/ALGO_ENV_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
+Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
 
 ### Hyperparameter optimisation
 
 Bayesian hyperparameter optimisation (jointly, over all environments) can be run with:
 ```sh
-python all.py -m algorithm=ALG
+python all.py -m algorithm=<ALG>
 ```
 
 This command is used to optimise hyperparameters for a given number of expert trajectories, for example:
