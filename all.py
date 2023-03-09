@@ -5,7 +5,7 @@ import hydra
 from omegaconf import DictConfig
 from torch import multiprocessing as mp
 
-from main import run 
+from main import run
 
 
 def map_func(cfg: DictConfig):
@@ -29,5 +29,4 @@ def all(cfg: DictConfig):
 
 
 if __name__ == '__main__':
-  mp.set_start_method('forkserver')  # Circumvents deadlock? TODO: Check on Linux
   all()
