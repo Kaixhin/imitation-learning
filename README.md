@@ -101,6 +101,15 @@ This command is used to optimise hyperparameters for a given number of expert tr
 python train_all.py -m algorithm=GAIL imitation.trajectories=5
 ```
 
+To view the results of the optimisation process, run:
+```sh
+python scripts/print_plot_sweep_results.py --path <PATH>
+```
+for example, as follow:
+```sh
+python scripts/print_plot_sweep_results.py --path outputs/BC_all_sweeper/03-09_19-13-21
+```
+
 ## Results
 
 ![PyBullet results](figures/pybullet.png) 

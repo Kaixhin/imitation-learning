@@ -12,8 +12,9 @@ ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']  # TODO: Relative import fro
 
 
 parser = argparse.ArgumentParser(description='Plot hyperparameter sweep results')
-parser.add_argument('--path', type=str, default='outputs/BC_all_sweeper/03-09_19-13-21', help='Output path')
+parser.add_argument('--path', type=str, default='', help='Output path')
 args = parser.parse_args()
+assert os.path.exists(args.path), f'Output folder {args.path} does not exist'
 
 
 # Load all data
