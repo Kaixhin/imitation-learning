@@ -1,60 +1,59 @@
-# @package hydra.sweeper.ax_config
-max_trials: 30
-experiment:
-  minimize: false
-early_stop:
-  max_epochs_without_improvement: 5
-is_noisy: true
 params:
-  reinforcement.discount:
+  # TODO: BC pretraining?
+  imitation.absorbing:
     type: choice
-    values: [0.97, 0.99]
-    value_type: 'float'
-  reinforcement.target_temperature:
+    values: [true, false]
+    value_type: bool
+  imitation.mix_expert_data:
     type: choice
-    values: [-1, -0.5]
-    value_type: 'float'
-  reinforcement.polyak_factor:
+    values: [true, false]
+    value_type: bool
+  # TODO: BC aux loss?
+  imitation.discriminator.hidden_size:
     type: choice
-    values: [0.99, 0.995]
-    value_type: 'float'
-  imitation.model.hidden_size:
-    type: choice
-    values: [64, 256, 512]
-    value_type: 'int'
-  imitation.model.depth:
+    values: [32, 64, 128]
+    value_type: int
+  imitation.discriminator.depth:
     type: choice
     values: [1, 2]
-    value_type: 'int'
-  imitation.model.input_dropout:
+    value_type: int
+  imitation.discriminator.activation:
     type: choice
-    values: [0.0, 0.1, 0.5]
-    value_type: 'float'
-  imitation.model.dropout:
+    values: [relu, tanh]
+    value_type: str
+  imitation.discriminator.input_dropout:
+    type: range
+    bounds: [0, 0.5]
+    value_type: float
+  imitation.discriminator.dropout:
+    type: range
+    bounds: [0.05, 0.75]
+    value_type: float
+  imitation.discriminator.reward_function:
     type: choice
-    values: [0.1, 0.5, 0.75]
-    value_type: 'float'
+    values: [GAIL, AIRL, FAIRL]
+    value_type: str
   imitation.learning_rate:
-    type: choice
-    values: [0.00003, 0.0003]
-    value_type: 'float'
+    type: range
+    bounds: [0.00003, 0.0003]
+    value_type: float
   imitation.weight_decay:
-    type: choice
-    values: [0, 1, 10]
-    value_type: 'float'
+    type: range
+    bounds: [0.0, 10.0]
+    value_type: float
   imitation.grad_penalty:
+    type: range
+    bounds: [0.0, 1.0]
+    value_type: float
+  imitation.spectral_norm:
     type: choice
-    values: [0, 0.1, 1]
-    value_type: 'float'
+    values: [true, false]
+    value_type: bool
   imitation.entropy_bonus:
-    type: choice
-    values: [0, 0.003, 0.03, 0.3]
-    value_type: 'float'
+    type: range
+    bounds: [0.0, 0.3]
+    value_type: float
   imitation.loss_function:
     type: choice
-    values: ['BCE', 'Mixup']
-    value_type: 'str'
-  training.start:
-    type: choice
-    values: [1000, 10000]
-    value_type: 'int'
+    values: [BCE, Mixup, PUGAIL]
+    value_type: str
