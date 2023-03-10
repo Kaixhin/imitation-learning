@@ -1,7 +1,7 @@
 defaults:
   - train_config  # Use default config as base
   - _self_
-  - optional hyperparam_opt: ${algorithm} 
+  - optional hyperparameter_search_space: ${algorithm} 
   - override hydra/sweeper: ax
 
 num_workers: 0  # Disable multiprocess dataloader for Ax sweeps
