@@ -44,6 +44,9 @@ df = pd.DataFrame(experiments).sort_values('min_avg_test_return', ascending=Fals
 # Remove fixed hyperparameters
 nunique = df[[c for c in df.columns if c not in ['test_steps', 'test_returns', 'min_avg_test_return']]].nunique()
 df = df.drop(nunique[nunique == 1].index, axis=1)
+# Infer best datatypes for data
+df = df.apply(pd.to_numeric, errors='ignore')  # Converts to numeric data if possible, otherwise keeps original
+df = df.convert_dtypes()  # Converts categorical data to string (np.arrays left as object)
 # Print dataframe
 print(df)
 
@@ -59,6 +62,14 @@ fig.show()
 
 # Show parallel coordinates plot
 fig = go.Figure()
-dimensions = [{'values': df[c], 'label': c} for c in df.columns if c not in ['test_steps', 'test_returns', 'min_avg_test_return']]
+dimensions = []
+for c in df.columns:
+  if c not in ['test_steps', 'test_returns', 'min_avg_test_return']:
+    if df[c].dtype == 'string':  # Convert categorical options into ints manually to control plotting properly
+      codes, uniques = pd.factorize(df[c])
+      dimension = {'values': codes, 'label': c, 'tickvals': codes, 'ticktext': df[c]}
+    else:
+      dimension = {'values': df[c], 'label': c}
+    dimensions.append(dimension)
 fig.add_trace(go.Parcoords(line={'color': df['min_avg_test_return'], 'showscale': True, 'cmin': -0.1, 'cmax': 1.1}, dimensions=dimensions))
 fig.show()
