@@ -4,6 +4,8 @@ defaults:
   - optional hyperparam_opt: ${algorithm} 
   - override hydra/sweeper: ax
 
+num_workers: 0  # Disable multiprocess dataloader for Ax sweeps
+
 hydra:
   run:
     dir: ./outputs/${algorithm}_all/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision

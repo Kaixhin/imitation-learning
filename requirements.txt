@@ -1,5 +1,5 @@
 ax-platform==0.2.0
-botorch=0.5.0
+botorch==0.5.0
 d4rl @ git+https://github.com/Farama-Foundation/d4rl@71a9549f2091accff93eeff68f1f3ab2c0e0a288
 gpytorch==1.8.0
 gym==0.23.1
