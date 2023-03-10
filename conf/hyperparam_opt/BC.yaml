@@ -9,10 +9,6 @@ params:
     type: range
     bounds: [0.00003, 0.0003]
     value_type: float
-  bc_pretraining.weight_decay:
-    type: range
-    bounds: [0.0, 10.0]
-    value_type: float
   training.batch_size:
     type: choice
     values: [128, 256, 512, 1024]

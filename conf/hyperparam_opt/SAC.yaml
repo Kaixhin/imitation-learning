@@ -13,10 +13,6 @@ params:
     type: range
     bounds: [0.00003, 0.0003]
     value_type: float
-  training.weight_decay:
-    type: range
-    bounds: [0.0, 10.0]
-    value_type: float
   reinforcement.discount:
     type: range
     bounds: [0.95, 0.99]
