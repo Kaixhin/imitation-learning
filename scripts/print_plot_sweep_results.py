@@ -71,5 +71,5 @@ for c in df.columns:
     else:
       dimension = {'values': df[c], 'label': c}
     dimensions.append(dimension)
-fig.add_trace(go.Parcoords(line={'color': df['min_avg_test_return'], 'showscale': True, 'cmin': -0.1, 'cmax': 1.1}, dimensions=dimensions))
+fig.add_trace(go.Parcoords(line={'color': df['min_avg_test_return'], 'showscale': True}, dimensions=dimensions))
 fig.show()
