@@ -37,11 +37,17 @@ for entry in sorted(entries, key=lambda e: int(e.name)):  # Natural sorting (so 
   experiments['test_steps'].append(metrics['test_steps'])
   experiments['test_returns'].append(np.stack(env_returns))  # Store returns as env x eval_step x num_evals
   experiments['min_avg_test_return'].append(experiments['test_returns'][-1].mean(axis=(1, 2)).min())  # Take mean for each env, then take min over envs
+
+
+# Create dataframe and sort
 df = pd.DataFrame(experiments).sort_values('min_avg_test_return', ascending=False)
-
-
+# Remove fixed hyperparameters
+nunique = df[[c for c in df.columns if c not in ['test_steps', 'test_returns', 'min_avg_test_return']]].nunique()
+df = df.drop(nunique[nunique == 1].index, axis=1)
 # Print dataframe
 print(df)
+
+
 # Plot returns from all experiments
 fig, cmap = make_subplots(rows=5, cols=6, shared_xaxes=True, shared_yaxes=True, subplot_titles=list(map(lambda n: f'{n:.3f}', df['min_avg_test_return']))), px.colors.qualitative.Plotly  # 30 experiments
 for idx, row in df.iterrows():
@@ -52,5 +58,7 @@ fig.update_yaxes(range=(-0.1, 1.1))  # Set shared plot ranges
 fig.show()
 
 # Show parallel coordinates plot
-fig = px.parallel_coordinates(df, color='min_avg_test_return')
+fig = go.Figure()
+dimensions = [{'values': df[c], 'label': c} for c in df.columns if c not in ['test_steps', 'test_returns', 'min_avg_test_return']]
+fig.add_trace(go.Parcoords(line={'color': df['min_avg_test_return'], 'showscale': True, 'cmin': -0.1, 'cmax': 1.1}, dimensions=dimensions))
 fig.show()
