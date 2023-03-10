@@ -2,7 +2,8 @@ import argparse
 import os
 
 import numpy as np
-import plotly.express as px
+from plotly import express as px, graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 import torch
 import yaml
@@ -18,7 +19,7 @@ assert os.path.exists(args.path), f'Output folder {args.path} does not exist'
 
 
 # Load all data
-experiments = {'score': []}
+experiments = {'min_avg_test_return': [], 'test_steps': [], 'test_returns': []}
 entries = [entry for entry in os.scandir(args.path) if entry.is_dir()]  # Get all subdirectories
 for entry in sorted(entries, key=lambda e: int(e.name)):  # Natural sorting (so dataframe row can be linked to subdirectory)
   # Parse searched hyperparameters
@@ -28,15 +29,28 @@ for entry in sorted(entries, key=lambda e: int(e.name)):  # Natural sorting (so 
     name, value = hyperparameter.split('=')
     if name not in experiments: experiments[name] = []
     experiments[name].append(value)
-  # Collect scores
-  env_scores = []
+  # Collect returns
+  env_returns = []
   for env in ENVS:
-    env_scores.append(torch.load(os.path.join(entry.path, env, 'metrics.pth'))['test_returns_normalized'])
-  experiments['score'].append(np.stack(env_scores).mean(axis=(1, 2)).min())  # Transform scores to env x eval_step x num_evals, mean over each env, then take min
-df = pd.DataFrame(experiments).sort_values('score', ascending=False)
+    metrics = torch.load(os.path.join(entry.path, env, 'metrics.pth'))
+    env_returns.append(metrics['test_returns_normalized'])
+  experiments['test_steps'].append(metrics['test_steps'])
+  experiments['test_returns'].append(np.stack(env_returns))  # Store returns as env x eval_step x num_evals
+  experiments['min_avg_test_return'].append(experiments['test_returns'][-1].mean(axis=(1, 2)).min())  # Take mean for each env, then take min over envs
+df = pd.DataFrame(experiments).sort_values('min_avg_test_return', ascending=False)
 
 
-# Print dataframe and show parallel coordinates plot
+# Print dataframe
 print(df)
-fig = px.parallel_coordinates(df, color='score')
+# Plot returns from all experiments
+fig, cmap = make_subplots(rows=5, cols=6, shared_xaxes=True, shared_yaxes=True, subplot_titles=list(map(lambda n: f'{n:.3f}', df['min_avg_test_return']))), px.colors.qualitative.Plotly  # 30 experiments
+for idx, row in df.iterrows():
+  for e, env in enumerate(ENVS):
+    fig.add_trace(go.Scatter(x=row['test_steps'], y=row['test_returns'][e].mean(axis=1), mode='lines', line={'color': cmap[e]}, name=env, showlegend=idx == 0), row=(idx // 6) + 1, col=(idx % 6) + 1)
+fig.update_annotations(font_size=13)  # Reduce title font size
+fig.update_yaxes(range=(-0.1, 1.1))  # Set shared plot ranges
+fig.show()
+
+# Show parallel coordinates plot
+fig = px.parallel_coordinates(df, color='min_avg_test_return')
 fig.show()
