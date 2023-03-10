@@ -32,7 +32,7 @@ for entry in sorted(entries, key=lambda e: int(e.name)):  # Natural sorting (so 
   env_scores = []
   for env in ENVS:
     env_scores.append(torch.load(os.path.join(entry.path, env, 'metrics.pth'))['test_returns_normalized'])
-  experiments['score'].append(np.stack(env_scores).mean())  # Transform scores to env x eval_step x num_evals and take mean
+  experiments['score'].append(np.stack(env_scores).mean(axis=(1, 2)).min())  # Transform scores to env x eval_step x num_evals, mean over each env, then take min
 df = pd.DataFrame(experiments).sort_values('score', ascending=False)
 
 
