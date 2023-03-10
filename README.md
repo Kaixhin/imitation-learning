@@ -26,6 +26,10 @@ AdRIL options include:
 - Balanced sampling: `imitation.balanced: true/false` (alternate sampling expert and agent data batches vs. mixed batches)
 - Discriminator update frequency: `imitation.update_freq: >= 0` (set to 0 for SQIL [[RDL19]](#references))
 
+DRIL options include:
+
+- Quantile cutoff: `imitation.quantile_cutoff: >= 0, <= 1`
+
 GAIL options include:
 
 - Reward shaping (AIRL) [[FLL17]](#references): `imitation.model.reward_shaping: true/false`

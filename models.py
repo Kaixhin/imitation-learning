@@ -107,8 +107,8 @@ class SoftActor(nn.Module):
     return prob.view(-1, 5).var(dim=1)  # Resized tensor is batch size x ensemble size
 
   # Set uncertainty threshold at the 98th quantile of uncertainty costs calculated over the expert data
-  def set_uncertainty_threshold(self, expert_state: Tensor, expert_action: Tensor):
-    self.q = torch.quantile(self._get_action_uncertainty(expert_state, expert_action), 0.98).item()
+  def set_uncertainty_threshold(self, expert_state: Tensor, expert_action: Tensor, quantile_cutoff: float):
+    self.q = torch.quantile(self._get_action_uncertainty(expert_state, expert_action), quantile_cutoff).item()
 
   def predict_reward(self, state: Tensor, action: Tensor) -> Tensor:
     # Calculate (raw) uncertainty cost

@@ -31,16 +31,18 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   assert cfg.bc_pretraining.iterations >= 0
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1
-  if cfg.algorithm == 'GAIL':
+  if cfg.algorithm == 'AdRIL': 
+    assert cfg.imitation.mix_expert_data
+    assert cfg.imitation.update_freq >= 0
+  elif cfg.algorithm == 'DRIL': 
+    assert 0 <= cfg.imitation.quantile_cutoff <= 1
+  elif cfg.algorithm == 'GAIL':
     assert cfg.imitation.discriminator.reward_function in ['AIRL', 'FAIRL', 'GAIL']
     assert cfg.imitation.grad_penalty >= 0
     assert cfg.imitation.entropy_bonus >= 0
     assert cfg.imitation.loss_function in ['BCE', 'Mixup', 'PUGAIL']
     if cfg.imitation.loss_function == 'Mixup': assert cfg.imitation.mixup_alpha > 0
     if cfg.imitation.loss_function == 'PUGAIL': assert 0 <= cfg.imitation.pos_class_prior <= 1 and cfg.imitation.nonnegative_margin >= 0
-  if cfg.algorithm == 'AdRIL': 
-    assert cfg.imitation.mix_expert_data
-    assert cfg.imitation.update_freq >= 0
   assert cfg.logging.interval >= 0
 
   # General setup
@@ -119,7 +121,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
 
     with torch.inference_mode():
       if cfg.algorithm == 'DRIL':
-        discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'])
+        discriminator.set_uncertainty_threshold(expert_memory['states'], expert_memory['actions'], cfg.imitation.quantile_cutoff)
       elif cfg.algorithm == 'RED':
         discriminator.set_sigma(expert_memory['states'][:cfg.training.batch_size], expert_memory['actions'][:cfg.training.batch_size])  # Estimate on a minibatch for computational feasibility
 

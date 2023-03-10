@@ -13,3 +13,4 @@ imitation:
     iterations: 100000
   learning_rate: 0.00003
   weight_decay: 0
+  quantile_cutoff: 0.98
