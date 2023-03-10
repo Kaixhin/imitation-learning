@@ -48,8 +48,9 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   torch.manual_seed(cfg.seed)
 
   # Set up environment
-  env = D4RLEnv(cfg.env, cfg.imitation.absorbing, load_data=True)
+  env, eval_env = D4RLEnv(cfg.env, cfg.imitation.absorbing, load_data=True), D4RLEnv(cfg.env, cfg.imitation.absorbing)
   env.seed(cfg.seed)
+  eval_env.seed(cfg.seed)
   normalization_max, normalization_min = env.env.ref_max_score, env.env.ref_min_score
 
   expert_memory = env.get_dataset(trajectories=cfg.imitation.trajectories, subsample=cfg.imitation.subsample)  # Load expert trajectories dataset
@@ -94,7 +95,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
 
     if cfg.algorithm == 'BC':  # Return early if algorithm is BC
       if cfg.check_time_usage: metrics['pre_training_time'] = time.time() - start_time
-      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed)
+      test_returns = evaluate_agent(actor, eval_env, cfg.evaluation.episodes)
       test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       steps = [*range(0, cfg.steps, cfg.evaluation.interval)]
       metrics['test_steps'], metrics['test_returns'], metrics['test_returns_normalized'] = [0], [test_returns], [list(test_returns_normalized)]
@@ -103,6 +104,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
       torch.save(dict(actor=actor.state_dict()), f'{file_prefix}agent.pth')
       torch.save(metrics, f'{file_prefix}metrics.pth')
       env.close()
+      eval_env.close()
       return np.mean(test_returns_normalized)
 
   # Pretraining "discriminators"
@@ -199,7 +201,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
 
     # Evaluate agent and plot metrics
     if step % cfg.evaluation.interval == 0 and not cfg.check_time_usage:
-      test_returns = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed)
+      test_returns = evaluate_agent(actor, eval_env, cfg.evaluation.episodes)
       test_returns_normalized = (np.array(test_returns) - normalization_min) / (normalization_max - normalization_min)
       score.append(np.mean(test_returns_normalized))
       metrics['test_steps'].append(step)
@@ -219,7 +221,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
 
   if cfg.save_trajectories:
     # Store trajectories from agent after training
-    _, trajectories = evaluate_agent(actor, cfg.evaluation.episodes, cfg.env, cfg.imitation.absorbing, cfg.seed, return_trajectories=True, render=cfg.render)
+    _, trajectories = evaluate_agent(actor, eval_env, cfg.evaluation.episodes, return_trajectories=True, render=cfg.render)
     torch.save(trajectories, f'{file_prefix}trajectories.pth')
   # Save agent and metrics
   torch.save(dict(actor=actor.state_dict(), critic=critic.state_dict(), log_alpha=log_alpha), f'{file_prefix}agent.pth')
@@ -227,6 +229,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   torch.save(metrics, f'{file_prefix}metrics.pth')
 
   env.close()
+  eval_env.close()
   return np.mean(score)
 
 

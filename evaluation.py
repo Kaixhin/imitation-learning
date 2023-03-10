@@ -8,10 +8,7 @@ from models import SoftActor
 
 
 # Evaluate agent with deterministic policy π
-def evaluate_agent(actor: SoftActor, num_episodes: int, env_name: str, absorbing: bool, seed: int, return_trajectories: bool=False, render: bool=False) -> Union[Tuple[List[List[float]], Dict[str, Tensor]], List[List[float]]]:
-  env = D4RLEnv(env_name, absorbing)
-  env.seed(seed)
-
+def evaluate_agent(actor: SoftActor, env: D4RLEnv, num_episodes: int, return_trajectories: bool=False, render: bool=False) -> Union[Tuple[List[List[float]], Dict[str, Tensor]], List[List[float]]]:
   returns, trajectories = [], []
   if render: env.render()  # PyBullet requires creating render window before first env reset, and then updates without requiring first call
 
@@ -35,5 +32,4 @@ def evaluate_agent(actor: SoftActor, num_episodes: int, env_name: str, absorbing
         terminals = torch.cat([torch.zeros(len(rewards) - 1), torch.ones(1)])
         trajectories.append({'states': torch.cat(states), 'actions': torch.cat(actions), 'rewards': torch.tensor(rewards, dtype=torch.float32), 'terminals': terminals})
 
-  env.close()
   return (returns, trajectories) if return_trajectories else returns
