@@ -10,7 +10,7 @@ env: ant
 # Training/evaluation/logging hyperparameters
 bc_pretraining:
   iterations: 0
-  learning_rate: 0.0001
+  learning_rate: 0.00025
   weight_decay: 0
 training:
   start: 1000
@@ -43,7 +43,7 @@ imitation:
   trajectories: 0  # 0 to keep all trajectories; otherwise select number of trajectories
   subsample: 1  # Note that 20 was default in original GAIL implementation
   state_only: false
-  absorbing: false
+  absorbing: true
   mix_expert_data: false
   bc_aux_loss: false
 # Miscellaneous options

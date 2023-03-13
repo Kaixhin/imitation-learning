@@ -2,4 +2,4 @@
 
 algorithm: BC
 bc_pretraining:
-  iterations: 100000
+  iterations: 50000

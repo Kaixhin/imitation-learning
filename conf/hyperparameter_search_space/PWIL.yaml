@@ -4,16 +4,6 @@ defaults:
   - SAC
 
 params:
-  # TODO: BC pretraining?
-  imitation.absorbing:
-    type: choice
-    values: [true, false]
-    value_type: bool
-  imitation.mix_expert_data:
-    type: choice
-    values: [true, false]
-    value_type: bool
-  # TODO: BC aux loss?
   imitation.reward_scale:
     type: choice
     values: [1.0, 5.0, 10.0]
