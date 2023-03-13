@@ -2,7 +2,6 @@
 
 algorithm: DRIL
 imitation:
-  bc_aux_loss: true
   discriminator:
     hidden_size: 64
     depth: 1

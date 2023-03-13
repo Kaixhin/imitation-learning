@@ -2,6 +2,5 @@
 
 algorithm: PWIL
 imitation:
-  mix_expert_data: true
   reward_scale: 5
   reward_bandwidth_scale: 5

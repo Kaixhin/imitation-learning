@@ -5,19 +5,19 @@
 Imitation learning algorithms (using SAC [[HZA18, HZH18]](#references) as the base RL algorithm):
 
 - AdRIL [[SCB21]](#references)
-- DRIL [[BSH20]](#references) (dropout version; with BC auxiliary loss, default true)
+- DRIL [[BSH20]](#references) (dropout version)
 - GAIL [[HE16]](#references) (a.k.a. DAC/SAM when using an off-policy algorithm [[KAD18, BK18]](#references))
 - GMMIL [[KP18]](#references)
-- PWIL [[DHG20]](#references) (with mix of expert data, default true) TODO: This should be seeded ER, not mix
+- PWIL [[DHG20]](#references) (with mix of expert data, default true) TODO: This should be seeded ER, not mix, and default false
 - RED [[WCA19]](#references)
 
 General options include:
 
-- BC [[P91]](#references) (pre)training: `bc_pretraining.iterations: >= 0`
-- State-only imitation learning: `imitation.state-only: true/false`
-- Absorbing state indicator [[KAD18]](#references): `imitation.absorbing: true/false`
-- Training on a mix of agent and expert data: `imitation.mix_expert_data: true/false`
-- BC auxiliary loss: `imitation.bc_aux_loss: true/false`
+- BC [[P91]](#references) (pre)training: `bc_pretraining.iterations: >= 0; default 0`
+- State-only imitation learning: `imitation.state-only: true/false; default false`
+- Absorbing state indicator [[KAD18]](#references): `imitation.absorbing: true/false; default true`
+- Training on a mix of agent and expert data: `imitation.mix_expert_data: true/false' default false`
+- BC auxiliary loss: `imitation.bc_aux_loss: true/false; default false`
 
 DRIL, GAIL and RED include several options for their trained discriminators.
 

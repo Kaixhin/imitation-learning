@@ -9,6 +9,6 @@ params:
     values: [1.0, 5.0, 10.0]
     value_type: float
   imitation.reward_bandwidth_scale:
-    type: range
+    type: choice
     values: [1.0, 5.0, 10.0]
     value_type: float
