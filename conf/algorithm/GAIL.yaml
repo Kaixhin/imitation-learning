@@ -25,5 +25,3 @@ imitation:
   mixup_alpha: 1
   pos_class_prior: 0.7
   nonnegative_margin: .inf
-training:
-  start: 10000

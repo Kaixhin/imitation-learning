@@ -5,6 +5,6 @@ reinforcement:
   discount: 0.98
   polyak_factor: 0.98
 imitation:
-  mix_expert_data: true
+  mix_expert_data: mixed_batch
   balanced: true
   update_freq: 1250  # 0 to disable => equivalent to SQIL

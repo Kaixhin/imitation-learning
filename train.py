@@ -31,12 +31,14 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
   assert cfg.bc_pretraining.iterations >= 0
   assert cfg.imitation.trajectories >= 0
   assert cfg.imitation.subsample >= 1
+  assert cfg.imitation.mix_expert_data in ['none', 'mixed_batch', 'prefill_memory']
   if cfg.algorithm == 'AdRIL': 
-    assert cfg.imitation.mix_expert_data
+    assert cfg.imitation.mix_expert_data == 'mixed_batch'
     assert cfg.imitation.update_freq >= 0
   elif cfg.algorithm == 'DRIL': 
     assert 0 <= cfg.imitation.quantile_cutoff <= 1
   elif cfg.algorithm == 'GAIL':
+    assert cfg.imitation.mix_expert_data != 'prefill_memory'  # Technically possible, but makes the control flow for training the discriminator more complicated
     assert cfg.imitation.discriminator.reward_function in ['AIRL', 'FAIRL', 'GAIL']
     assert cfg.imitation.grad_penalty >= 0
     assert cfg.imitation.entropy_bonus >= 0
@@ -128,11 +130,17 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
     if cfg.check_time_usage:
       metrics['pre_training_time'] = time.time() - start_time
       start_time = time.time()
-  elif cfg.algorithm == 'PWIL' and cfg.imitation.mix_expert_data:
-    with torch.inference_mode():
-      for i, transition in tqdm(enumerate(expert_memory), leave=False):
-        expert_memory.rewards[i] = discriminator.compute_reward(transition['states'].unsqueeze(dim=0), transition['actions'].unsqueeze(dim=0))  # Greedily calculate the reward for PWIL for expert data and rewrite memory
-        if transition['terminals'] or transition['timeouts']: discriminator.reset()  # Reset the expert data for PWIL
+
+    if cfg.imitation.mix_expert_data == 'prefill_memory': memory.transfer_transitions(expert_memory)  # Once pretraining is over, transfer expert transitions to agent replay memory
+  elif cfg.algorithm == 'PWIL':
+    if cfg.imitation.mix_expert_data != 'none':
+      with torch.inference_mode():
+        for i, transition in tqdm(enumerate(expert_memory), leave=False):
+          expert_memory.rewards[i] = discriminator.compute_reward(transition['states'].unsqueeze(dim=0), transition['actions'].unsqueeze(dim=0))  # Greedily calculate the reward for PWIL for expert data and rewrite memory
+          if transition['terminals'] or transition['timeouts']: discriminator.reset()  # Reset the expert data for PWIL
+    if cfg.imitation.mix_expert_data == 'prefill_memory': memory.transfer_transitions(expert_memory)  # Once rewards have been calculated, transfer expert transitions to agent replay memory
+  elif cfg.algorithm == 'GMMIL':
+    if cfg.imitation.mix_expert_data == 'prefill_memory': memory.transfer_transitions(expert_memory)
 
   # Training
   t, state, terminal, train_return = 0, env.reset(), False, 0
@@ -172,7 +180,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
           discriminator.eval()
 
         # Optionally, mix expert data into agent data for training
-        if cfg.imitation.mix_expert_data and cfg.algorithm != 'AdRIL': mix_expert_agent_transitions(transitions, expert_transitions)
+        if cfg.imitation.mix_expert_data == 'mixed_batch' and cfg.algorithm != 'AdRIL': mix_expert_agent_transitions(transitions, expert_transitions)
         # Predict rewards
         states, actions, next_states, terminals, weights = transitions['states'], transitions['actions'], transitions['next_states'], transitions['terminals'], transitions['weights']
         expert_states, expert_actions, expert_next_states, expert_terminals, expert_weights = expert_transitions['states'], expert_transitions['actions'], expert_transitions['next_states'], expert_transitions['terminals'], expert_transitions['weights']  # Note that using the entire dataset is prohibitively slow in off-policy case (for relevant algorithms)

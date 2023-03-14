@@ -44,7 +44,7 @@ imitation:
   subsample: 1  # Note that 20 was default in original GAIL implementation
   state_only: false
   absorbing: true
-  mix_expert_data: false
+  mix_expert_data: none
   bc_aux_loss: false
 # Miscellaneous options
 num_workers: 4  # Number of multiprocess workers for data loader

@@ -1,9 +1,11 @@
+from __future__ import annotations
 from typing import Dict, Optional, Union
 
 import numpy as np
 import torch
 from torch import Tensor
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 
 # Replay memory returns transition tuples of the form (s, a, r, s', terminal, timeout, w)
@@ -40,6 +42,10 @@ class ReplayMemory(Dataset):
     self.idx = (self.idx + 1) % self.size
     self.full = self.full or self.idx == 0
     if terminal or timeout: self.num_trajectories += 1
+
+  def transfer_transitions(self, memory: ReplayMemory):
+    for transition in tqdm(memory, leave=False):
+      self.append(*[val for key, val in transition.items() if key != 'weights'])
 
   # Returns a uniformly sampled valid transition index
   def _sample_idx(self) -> int:
