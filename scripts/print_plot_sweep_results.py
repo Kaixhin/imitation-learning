@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 import numpy as np
 from plotly import express as px, graph_objects as go
@@ -8,8 +9,8 @@ import pandas as pd
 import torch
 import yaml
 
-
-ENVS = ['ant', 'halfcheetah', 'hopper', 'walker2d']  # TODO: Relative import from environments?
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # Allow importing from root dir
+from environments import ENVS
 
 
 parser = argparse.ArgumentParser(description='Plot hyperparameter sweep results')
