@@ -2,3 +2,9 @@
 
 defaults:
   - SAC
+
+params:
+  training.batch_size:
+    type: choice
+    values: [128, 256]
+    value_type: int
