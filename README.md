@@ -73,9 +73,9 @@ python train.py algorithm=GAIL env=hopper
 
 Results will be saved in `outputs/<ALGO>_<ENV>/m-d_H-M-S` with the last subfolder indicating the current datetime.
 
-Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/<ALG>.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `optimised_hyperparameters=<ALG>_<NUM_TRAJECTORIES>_trajectories`. For example:
+Hyperparameters can be found in `conf/config.yaml` and `conf/algorithm/<ALG>.yaml`. To use algorithm- + number-of-trajectory-specific tuned hyperparameters [[AL21]](#references), add option `optimised_hyperparameters=<ALG>_<NUM_TRAJECTORIES>_trajectories` (note that `algorithm=<ALG>` also needs to be specified to load other algorithm-specific hyperparameters). For example:
 ```sh
-python train.py use_optimised_hyperparameters=AdRIL_5_trajectories env=halfcheetah
+python train.py algorithm=AdRIL optimised_hyperparameters=AdRIL_5_trajectories env=halfcheetah
 ```
 
 Running the algorithm on all environments in parallel can be achieved with:
@@ -88,10 +88,15 @@ with results saved in `outputs/<ALGO>_all/m-d_H-M-S`, containing subdirectories 
 
 A hyperparameter sweep can be performed using `-m` and a series of hyperparameter values. For example:
 ```sh
-python train.py -m algorithm=PWIL env=walker2d seed=1,2,3,4,5 
+python train.py -m algorithm=PWIL env=walker2d reinforcement.discount=0.97,0.98,0.99
 ```
 
 Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
+
+Therefore to run seed sweeps with optimised hyperparameters, we can run the following:
+```sh
+python train.py -m algorithm=RED optimised_hyperparameters=RED_25_trajectories env=halfcheetah seed=1,2,3,4,5
+```
 
 ### Hyperparameter optimisation
 

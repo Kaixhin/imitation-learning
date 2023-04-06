@@ -1,6 +1,5 @@
 # @package _global_
 
-algorithm: BC
 bc_pretraining:
   iterations: 78326
   learning_rate: 0.0002687317801822095

@@ -1,6 +1,5 @@
 # @package _global_
 
-algorithm: AdRIL
 training:
   start: 10000
   batch_size: 256
