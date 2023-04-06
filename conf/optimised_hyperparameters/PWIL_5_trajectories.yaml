@@ -1,0 +1,15 @@
+# @package _global_
+
+algorithm: PWIL
+training:
+  start: 1000
+  batch_size: 128
+  learning_rate: 0.00024770155428908763
+reinforcement:
+  discount: 0.9698740625753999
+  target_temperature: -0.583675661124289
+  polyak_factor: 0.9763978546531871
+imitation:
+  trajectories: 5
+  reward_scale: 1.0
+  reward_bandwidth_scale: 1.0

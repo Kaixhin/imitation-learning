@@ -1,13 +1,15 @@
 # @package _global_
 
 algorithm: AdRIL
+training:
+  start: 10000
+  batch_size: 256
+  learning_rate: 0.00020860739624127742
 reinforcement:
-  discount: 0.99
-  polyak_factor: 0.995
-  target_temperature: -1
+  discount: 0.9850506550818682
+  target_temperature: -0.8435795628465712
+  polyak_factor: 0.9877724145120009
 imitation:
   trajectories: 5
-  balanced: False 
-  update_freq: 2500 
-training:
-  start: 1000 
+  balanced: true
+  update_freq: 0

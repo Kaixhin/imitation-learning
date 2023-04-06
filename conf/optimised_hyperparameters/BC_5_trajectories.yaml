@@ -2,7 +2,9 @@
 
 algorithm: BC
 bc_pretraining:
-  iterations: 10000
-  learning_rate: 0.00023259995609334602
+  iterations: 29212
+  learning_rate: 0.000147441143532693
+training:
+  batch_size: 128
 imitation:
   trajectories: 5
