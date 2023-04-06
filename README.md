@@ -95,7 +95,7 @@ Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirect
 
 Therefore to run seed sweeps with optimised hyperparameters, we can run the following:
 ```sh
-python train.py -m algorithm=RED optimised_hyperparameters=RED_25_trajectories env=halfcheetah seed=1,2,3,4,5
+python train.py -m algorithm=RED optimised_hyperparameters=RED_25_trajectories env=halfcheetah seed=1,2,3,4,5,6,7,8,9,10
 ```
 
 ### Hyperparameter optimisation
