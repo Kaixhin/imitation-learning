@@ -1,0 +1,22 @@
+# @package _global_
+
+training:
+  start: 10000
+  batch_size: 1024
+  learning_rate: 0.0002876944901514798
+reinforcement:
+  discount: 0.9556767428666353
+  target_temperature: -0.6292858296073973
+  polyak_factor: 0.9737426329916343
+imitation:
+  trajectories: 10
+  discriminator:
+    hidden_size: 32
+    depth: 1
+    activation: tanh
+    input_dropout: 0.3861142438836396
+    dropout: 0.6856888469308615
+  pretraining:
+    iterations: 47062
+  learning_rate: 3.393572749570012e-05
+  weight_decay: 2.46429905295372
