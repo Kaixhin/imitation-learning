@@ -1,0 +1,25 @@
+# @package _global
+
+training:
+  start: 1000
+  batch_size: 512
+  learning_rate: 0.00025869653815403576
+reinforcement:
+  discount: 0.9853741330653429
+  target_temperature: -0.7159424657002091
+  polyak_factor: 0.9747856917371973
+imitation:
+  trajectories: 10
+  discriminator:
+    hidden_size: 64
+    depth: 1
+    activation: relu
+    input_dropout: 0.0412533450871706
+    dropout: 0.4945892810821533
+    reward_function: AIRL
+  learning_rate: 0.000130893247006461
+  weight_decay: 0.6870482210069895
+  grad_penalty: 0.4359957529231906
+  spectral_norm: false
+  entropy_bonus: 0.024794470891356467
+  loss_function: Mixup

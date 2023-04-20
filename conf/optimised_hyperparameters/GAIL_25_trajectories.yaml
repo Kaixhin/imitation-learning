@@ -1,0 +1,25 @@
+# @package _global
+
+training:
+  start: 10000
+  batch_size: 256
+  learning_rate: 0.00029839155494235456
+reinforcement:
+  discount: 0.9824504262581467
+  target_temperature: -0.6418877332471311
+  polyak_factor: 0.9870679273782298
+imitation:
+  trajectories: 25
+  discriminator:
+    hidden_size: 128
+    depth: 1
+    activation: relu
+    input_dropout: 0.3630805714055896
+    dropout: 0.5584801669232548
+    reward_function: GAIL
+  learning_rate: 7.299440972507e-05
+  weight_decay: 6.3524082861840725
+  grad_penalty: 0.3203035416081548
+  spectral_norm: true
+  entropy_bonus: 0.015492475591599941
+  loss_function: BCE
