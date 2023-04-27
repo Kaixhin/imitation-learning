@@ -1,0 +1,14 @@
+# @package _global_
+
+training:
+  start: 1000
+  batch_size: 512
+  learning_rate: 0.00015730742379091678
+reinforcement:
+  discount: 0.9672360707446932
+  target_temperature: -0.889229909516871
+  polyak_factor: 0.9888987812725827
+imitation:
+  trajectories: 25
+  balanced: true
+  update_freq: 25000
