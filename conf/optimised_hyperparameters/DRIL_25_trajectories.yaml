@@ -1,0 +1,23 @@
+# @package _global_
+
+training:
+  start: 10000
+  batch_size: 1024
+  learning_rate: 0.00021894450648687777
+reinforcement:
+  discount: 0.9712518484517931
+  target_temperature: -0.9901782320812345
+  polyak_factor: 0.9888847432145849
+imitation:
+  trajectories: 25
+  discriminator:
+    hidden_size: 128
+    depth: 1
+    activation: relu
+    input_dropout: 0.08816632116213441
+    dropout: 0.386192240845412
+  pretraining:
+    iterations: 29746
+  learning_rate: 4.231499703601003
+  weight_decay: 5.6257253140211105
+  quantile_cutoff: 0.8563418197259307
