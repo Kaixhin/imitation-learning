@@ -13,7 +13,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # Allow importing f
 from environments import ENVS
 
 
-parser = argparse.ArgumentParser(description='Plot hyperparameter sweep results')
+parser = argparse.ArgumentParser(description='Plot hyperparameter optimisation results')
 parser.add_argument('--path', type=str, default='', help='Output path')
 args = parser.parse_args()
 assert os.path.exists(args.path), f'Output folder {args.path} does not exist'

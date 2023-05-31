@@ -146,5 +146,7 @@ static
 # PyCharm IDE
 .idea/*
 
-# Hydra Output
+# Hydra outputs
 outputs/*
+# Script outputs
+scripts/*.png
