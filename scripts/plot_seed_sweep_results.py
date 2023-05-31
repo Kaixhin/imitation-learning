@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 
+from matplotlib import pyplot as plt
 import numpy as np
 from rliable import library as rly, metrics, plot_utils
 import torch
@@ -20,22 +21,27 @@ args = parser.parse_args()
 
 
 # Load all data into normalised score matrices (runs x envs x evals)
-experiments = {}
+returns_dict = {}
 for trajectories in TRAJECTORIES:
-  experiments[trajectories] = {}
+  returns_dict[trajectories] = {}
   for algorithm in [BASELINE_ALGORITHM] + ALGORITHMS:
-     experiments[trajectories][algorithm] = np.zeros((30 * SEEDS, len(ENVS), 100))
+     returns_dict[trajectories][algorithm] = np.zeros((30 * SEEDS, len(ENVS), 100))
 
 for algorithm in [BASELINE_ALGORITHM] + ALGORITHMS:
   for e, env in enumerate(ENVS):
     for trajectories in TRAJECTORIES:
       for seed in range(SEEDS):
-        experiments[trajectories][algorithm][30 * seed:30 * (seed + 1), e, :] = np.asarray(torch.load(os.path.join('outputs', f'{algorithm}_{env}_sweeper', f'traj_{trajectories}', str(seed), 'metrics.pth'))['test_returns_normalized']).T
+        returns_dict[trajectories][algorithm][30 * seed:30 * (seed + 1), e, :] = np.asarray(torch.load(os.path.join('outputs', f'{algorithm}_{env}_sweeper', f'traj_{trajectories}', str(seed), 'metrics.pth'))['test_returns_normalized']).T
 
 
 # Calculate bootstrap metrics and plot
 aggregate_func = lambda x: np.array([metrics.aggregate_median(x[:, :, -1]), metrics.aggregate_iqm(x[:, :, -1]), metrics.aggregate_mean(x[:, :, -1]), metrics.aggregate_optimality_gap(x[:, :, -1])])
+iqm = lambda x: np.array([metrics.aggregate_iqm(x[..., t]) for t in range(x.shape[-1])])
 for trajectories in TRAJECTORIES:
-  aggregate_scores, aggregate_score_cis = rly.get_interval_estimates(experiments[trajectories], aggregate_func, reps=args.reps)
+  aggregate_scores, aggregate_score_cis = rly.get_interval_estimates(returns_dict[trajectories], aggregate_func, reps=args.reps)
   fig, axes = plot_utils.plot_interval_estimates(aggregate_scores, aggregate_score_cis, metric_names=['Median', 'IQM', 'Mean', 'Optimality Gap'], algorithms=[BASELINE_ALGORITHM] + ALGORITHMS, xlabel='Human Normalized Score')
-  fig.savefig(os.path.join('scripts', f'aggregate_scores_traj_{trajectories}.png'), bbox_inches='tight')
+  plt.savefig(os.path.join('scripts', f'aggregate_scores_traj_{trajectories}.png'), bbox_inches='tight')
+
+  iqm_scores, iqm_cis = rly.get_interval_estimates(returns_dict[trajectories], iqm, reps=args.reps)
+  axes = plot_utils.plot_sample_efficiency_curve(range(1, 101), iqm_scores, iqm_cis, algorithms=[BASELINE_ALGORITHM] + ALGORITHMS, xlabel=r'Training Steps (eval interval?)', ylabel='IQM Human Normalized Score')
+  plt.savefig(os.path.join('scripts', f'sample_efficiency_traj_{trajectories}.png'), bbox_inches='tight')
