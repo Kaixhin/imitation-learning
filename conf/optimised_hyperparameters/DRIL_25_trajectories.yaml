@@ -18,6 +18,6 @@ imitation:
     dropout: 0.386192240845412
   pretraining:
     iterations: 29746
-  learning_rate: 4.231499703601003
-  weight_decay: 5.6257253140211105
+  learning_rate: 3.121110613457859e-05
+  weight_decay: 4.231499703601003
   quantile_cutoff: 0.8563418197259307
