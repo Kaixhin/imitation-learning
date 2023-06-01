@@ -11,7 +11,7 @@ import torch
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # Allow importing from root dir
 from environments import ENVS
-ALGORITHMS = ['BC', 'AdRIL', 'GAIL', 'RED']
+ALGORITHMS = ['BC', 'AdRIL', 'GAIL', 'GMMIL', 'RED']
 TRAJECTORIES = ['5', '10', '25']
 SEEDS = 10
 

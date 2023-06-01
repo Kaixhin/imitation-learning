@@ -58,7 +58,7 @@ Requirements can be installed with:
 ```sh
 pip install -r requirements.txt
 ```
-Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL](https://github.com/Farama-Foundation/D4RL) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation.
+Notable required packages are [PyTorch](https://pytorch.org/), [OpenAI Gym](https://gym.openai.com/), [D4RL](https://github.com/Farama-Foundation/D4RL) and [Hydra](https://hydra.cc/). [Ax](https://ax.dev/) and the [Hydra Ax Sweeper plugin](https://hydra.cc/docs/next/plugins/ax_sweeper/) are required for hyperparameter optimisation.
 
 ## Normal run
 
@@ -91,7 +91,7 @@ A hyperparameter sweep can be performed using `-m` and a series of hyperparamete
 python train.py -m algorithm=PWIL env=walker2d reinforcement.discount=0.97,0.98,0.99
 ```
 
-Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
+Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run. By default, sweeps use the [Hydra Joblib Launcher plugin](https://hydra.cc/docs/plugins/joblib_launcher/) to parallelise runs.
 
 Therefore to run seed sweeps with optimised hyperparameters, we can run the following:
 ```sh

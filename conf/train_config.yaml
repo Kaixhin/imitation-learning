@@ -2,6 +2,7 @@ defaults:
   - _self_
   - algorithm: SAC
   - optional optimised_hyperparameters: null
+  - override hydra/launcher: joblib
 
 # General options
 seed: 0
