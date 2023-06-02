@@ -48,7 +48,6 @@ imitation:
   mix_expert_data: none
   bc_aux_loss: false
 # Miscellaneous options
-num_workers: 4  # Number of multiprocess workers for data loader
 check_time_usage: false
 save_trajectories: false
 render: false

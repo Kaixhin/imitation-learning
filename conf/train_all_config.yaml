@@ -5,8 +5,6 @@ defaults:
   - override hydra/launcher: basic  # Use basic launcher (Ax is incompatible with Joblib)
   - override hydra/sweeper: ax
 
-num_workers: 0  # Disable multiprocess dataloader for Ax sweeps
-
 hydra:
   run:
     dir: ./outputs/${algorithm}_all/${now:%m-%d_%H-%M-%S}  # Timestamp experiments up to second precision

@@ -91,7 +91,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
 
   # Behavioural cloning pretraining
   if cfg.bc_pretraining.iterations > 0:
-    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True)))
     actor_pretrain_optimiser = optim.AdamW(actor.parameters(), lr=cfg.bc_pretraining.learning_rate, weight_decay=cfg.bc_pretraining.weight_decay)  # Create separate pretraining optimiser
     for _ in tqdm(range(cfg.bc_pretraining.iterations), leave=False):
       expert_transitions = next(expert_dataloader)
@@ -113,7 +113,7 @@ def train(cfg: DictConfig, file_prefix: str='') -> float:
 
   # Pretraining "discriminators"
   if cfg.algorithm in ['DRIL', 'RED']:
-    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True, num_workers=cfg.num_workers)))
+    expert_dataloader = iter(cycle(DataLoader(expert_memory, batch_size=cfg.training.batch_size, shuffle=True, drop_last=True)))
     for _ in tqdm(range(cfg.imitation.pretraining.iterations), leave=False):
       expert_transition = next(expert_dataloader)
       if cfg.algorithm == 'DRIL':
