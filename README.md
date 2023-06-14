@@ -91,7 +91,7 @@ A hyperparameter sweep can be performed using `-m` and a series of hyperparamete
 python train.py -m algorithm=PWIL env=walker2d reinforcement.discount=0.97,0.98,0.99
 ```
 
-Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run. By default, sweeps use the [Hydra Joblib Launcher plugin](https://hydra.cc/docs/plugins/joblib_launcher/) to parallelise runs.
+Results will be saved in `outputs/<ALGO>_<ENV>_sweep/m-d_H-M-S` with a subdirectory (named by job number) for each run.
 
 Therefore to run seed sweeps with optimised hyperparameters, we can run the following:
 ```sh

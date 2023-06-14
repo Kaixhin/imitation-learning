@@ -2,7 +2,6 @@ defaults:
   - train_config  # Use default config as base
   - _self_
   - optional hyperparameter_search_space: ${algorithm} 
-  - override hydra/launcher: basic  # Use basic launcher (Ax is incompatible with Joblib)
   - override hydra/sweeper: ax
 
 hydra:
