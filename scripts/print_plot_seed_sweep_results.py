@@ -1,4 +1,5 @@
 import argparse
+import math
 import os
 import sys
 
@@ -14,25 +15,27 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))  # Allow importing f
 from environments import ENVS
 ALGORITHMS = ['BC', 'AdRIL', 'DRIL', 'GAIL', 'GMMIL', 'PWIL', 'RED']
 TRAJECTORIES = ['5', '10', '25']
-SEEDS = 10
 
 parser = argparse.ArgumentParser(description='Plot seed sweep results')
 parser.add_argument('--reps', type=int, default=50000, help='Number of bootstrap samples')
+parser.add_argument('--algorithms', type=lambda algorithms: [algorithm for algorithm in algorithms.split(',')], default=ALGORITHMS, help='Algorithms to evaluate')
+parser.add_argument('--envs', type=lambda envs: [env for env in envs.split(',')], default=ENVS, help='Envs to evaluate')
+parser.add_argument('--seeds', type=int, default=10, help='Max number of seeds to evaluate')
 args = parser.parse_args()
 cfg = OmegaConf.load(os.path.join('conf', 'train_config.yaml'))  # Load default config
 
 
-# Load all data into normalised score matrices (runs x envs x evals)
+# Create normalised score matrices (runs x envs x evals)
 returns_dict = {}
 for trajectories in TRAJECTORIES:
   returns_dict[trajectories] = {}
-  for algorithm in ALGORITHMS:
-    returns_dict[trajectories][algorithm] = np.zeros((SEEDS, len(ENVS), cfg.steps // cfg.evaluation.interval))
-
-for algorithm in ALGORITHMS:
-  for e, env in enumerate(ENVS):
+  for algorithm in args.algorithms:
+    returns_dict[trajectories][algorithm] = np.zeros((args.seeds, len(args.envs), cfg.steps // cfg.evaluation.interval))
+# Load data into matrices
+for algorithm in args.algorithms:
+  for e, env in enumerate(args.envs):
     for trajectories in TRAJECTORIES:
-      for seed in range(SEEDS):
+      for seed in range(args.seeds):
         returns = np.asarray(torch.load(os.path.join('outputs', f'{algorithm}_{env}_sweeper', f'traj_{trajectories}', str(seed), 'metrics.pth'))['test_returns_normalized']).T
         returns_dict[trajectories][algorithm][seed:seed + 1, e, :] = scipy.stats.trim_mean(returns, proportiontocut=0.25, axis=0)  # Use IQM over evaluation episodes for each seed
 
@@ -44,8 +47,8 @@ for trajectories in TRAJECTORIES:
   iqm_scores, iqm_cis = rly.get_interval_estimates(returns_dict[trajectories], iqm, reps=args.reps)
 
   print(f'\nTrajectories: {trajectories}')
-  for algorithm in ALGORITHMS: print(f'{algorithm}: {iqm_scores[algorithm][-1]:.3f} ± {(iqm_cis[algorithm][1, -1] - iqm_cis[algorithm][0, -1]) // 2:.3f}')
+  for algorithm in args.algorithms: print(f'{algorithm}: {iqm_scores[algorithm][-1]:.3f} ± {(iqm_cis[algorithm][1, -1] - iqm_cis[algorithm][0, -1]) // 2:.3f}')
   
-  axes = plot_utils.plot_sample_efficiency_curve(range(1, cfg.steps + 1, cfg.evaluation.interval), iqm_scores, iqm_cis, algorithms=ALGORITHMS, xlabel=r'Training Steps', ylabel='IQM Normalised Score')
+  axes = plot_utils.plot_sample_efficiency_curve(range(1, cfg.steps + 1, cfg.evaluation.interval), iqm_scores, iqm_cis, algorithms=args.algorithms, xlabel=r'Training Steps', ylabel='IQM Normalised Score')
   plt.legend()
   plt.savefig(os.path.join('scripts', f'sample_efficiency_traj_{trajectories}.png'), bbox_inches='tight')
