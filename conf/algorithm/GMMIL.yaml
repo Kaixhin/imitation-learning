@@ -1,3 +1,5 @@
 # @package _global_
 
 algorithm: GMMIL
+imitation:
+  bc_aux_loss: true
