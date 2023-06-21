@@ -33,12 +33,8 @@ for algorithm in ALGORITHMS:
   for e, env in enumerate(ENVS):
     for trajectories in TRAJECTORIES:
       for seed in range(SEEDS):
-        try:
-          returns = np.asarray(torch.load(os.path.join('outputs', f'{algorithm}_{env}_sweeper', f'traj_{trajectories}', str(seed), 'metrics.pth'))['test_returns_normalized']).T
-          returns_dict[trajectories][algorithm][seed:seed + 1, e, :] = scipy.stats.trim_mean(returns, proportiontocut=0.25, axis=0)  # Use IQM over evaluation episodes for each seed
-        except FileNotFoundError:
-          print(f'outputs/{algorithm}_{env}_sweeper/traj_{trajectories}/{seed}/metrics.pth not found')
-          pass  # TODO: Replace with break
+        returns = np.asarray(torch.load(os.path.join('outputs', f'{algorithm}_{env}_sweeper', f'traj_{trajectories}', str(seed), 'metrics.pth'))['test_returns_normalized']).T
+        returns_dict[trajectories][algorithm][seed:seed + 1, e, :] = scipy.stats.trim_mean(returns, proportiontocut=0.25, axis=0)  # Use IQM over evaluation episodes for each seed
 
 
 # Calculate bootstrap metrics, print and plot
