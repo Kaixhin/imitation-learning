@@ -17,7 +17,7 @@ General options include:
 - State-only imitation learning: `imitation.state-only: true/false; default false`
 - Absorbing state indicator [[KAD18]](#references): `imitation.absorbing: true/false; default true`
 - Training on a mix of agent and expert data: `imitation.mix_expert_data: none/mixed_batch/prefill_memory'; default none`
-- BC auxiliary loss: `imitation.bc_aux_loss: true/false; default false`
+- BC auxiliary loss: `imitation.bc_aux_loss: true/false; default false` (`true` for DRIL)
 
 DRIL, GAIL and RED include several options for their trained discriminators.
 
@@ -126,6 +126,10 @@ python scripts/print_plot_sweep_results.py --path outputs/BC_all_sweeper/03-09_1
 ## Acknowledgements
 
 - [@ikostrikov](https://github.com/ikostrikov) for [https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail)
+- [@RuohanW](https://github.com/RuohanW) for [https://github.com/RuohanW/RED](https://github.com/RuohanW/RED)
+- [@jonathantompson](https://github.com/jonathantompson) for [https://github.com/google-research/google-research/tree/master/dac](https://github.com/google-research/google-research/tree/master/dac)
+- [@gkswamy98](https://github.com/gkswamy98) for [https://github.com/gkswamy98/pillbox](https://github.com/gkswamy98/pillbox)
+- [@ddsh](https://github.com/ddsh) for [https://github.com/google-research/google-research/tree/master/pwil](https://github.com/google-research/google-research/tree/master/pwil)
 
 ## Citation
 
