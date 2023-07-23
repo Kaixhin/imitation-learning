@@ -2,22 +2,22 @@
 
 training:
   start: 1000
-  batch_size: 256
-  learning_rate: 0.00028489182455465194
+  batch_size: 128
+  learning_rate: 0.0001284688053186983
 reinforcement:
-  discount: 0.9896646160259843
-  target_temperature: -0.8068158598616719
-  polyak_factor: 0.9925654198089614
+  discount: 0.9520114393159747
+  target_temperature: -0.8161374577321112
+  polyak_factor: 0.9876051626214758
 imitation:
   trajectories: 10
   discriminator:
-    hidden_size: 64
+    hidden_size: 32
     depth: 2
     activation: relu
-    input_dropout: 0.13344469387084246
-    dropout: 0.6032694031484425
+    input_dropout: 0.09061072813346982
+    dropout: 0.4719164836220443
   pretraining:
-    iterations: 2677
-  learning_rate: 0.00011626775703392921
-  weight_decay: 5.6257253140211105
-  quantile_cutoff: 0.8107965866476298
+    iterations: 47314
+  learning_rate: 4.617722039110958e-05
+  weight_decay: 6.7458481807261705
+  quantile_cutoff: 0.9543988735228777
