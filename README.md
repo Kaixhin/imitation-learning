@@ -121,7 +121,7 @@ python scripts/print_plot_sweep_results.py --path outputs/BC_all_sweeper/03-09_1
 
 ## Results
 
-![PyBullet results](figures/pybullet.png) 
+![v2 results](figures/sample_efficiency_traj.png) 
 
 ## Acknowledgements
 
