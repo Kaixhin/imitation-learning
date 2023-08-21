@@ -25,7 +25,7 @@ parser.add_argument('--seeds', type=int, default=10, help='Max number of seeds t
 parser.add_argument('--unnormalise', action=argparse.BooleanOptionalAction, help='Use unnormalised returns')
 args = parser.parse_args()
 cfg = OmegaConf.load(os.path.join('conf', 'train_config.yaml'))  # Load default config
-plt.rcParams.update({'axes.titlesize': 12, 'axes.labelsize': 12, 'xtick.labelsize': 10, 'ytick.labelsize': 10, 'legend.fontsize': 10})
+plt.rcParams.update({'axes.titlesize': 16, 'figure.labelsize': 16, 'xtick.labelsize': 14, 'ytick.labelsize': 14, 'legend.fontsize': 14})
 if 'SAC' in args.algorithms: TRAJECTORIES, cfg.steps = ['0'], 3000000  # Overwrite args for SAC alone
 
 
