@@ -136,17 +136,17 @@ python scripts/print_plot_sweep_results.py --path outputs/BC_all_sweeper/03-09_1
 If you find this work useful and would like to cite it, please use the following:
 
 ```tex
-@article{arulkumaran2021pragmatic,
+@inproceedings{arulkumaran2023pragmatic,
   author = {Arulkumaran, Kai and Ogawa Lillrank, Dan},
   title = {A Pragmatic Look at Deep Imitation Learning},
-  journal={arXiv preprint arXiv:2108.01867},
-  year = {2021}
+  booktitle = {Asian Conference on Machine Learning},
+  year = {2023}
 }
 ```
 
 ## References
 
-[AL21] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
+[AL23] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
 [BK18] [Sample-Efficient Imitation Learning via Generative Adversarial Nets](https://arxiv.org/abs/1809.02064)  
 [BSH20] [Disagreement-Regularized Imitation Learning](https://openreview.net/forum?id=rkgbYyHtwB)  
 [BSK20] [Lipschitzness Is All You Need To Tame Off-policy Generative Adversarial Imitation Learning](https://arxiv.org/abs/2006.16785)  
