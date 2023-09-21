@@ -144,6 +144,8 @@ If you find this work useful and would like to cite it, please use the following
 }
 ```
 
+[v1.0](/../../releases/tag/1.0) of the library contains [on-policy IL algorithms](https://arxiv.org/abs/2108.01867v1). [v2.0](/../../releases/tag/2.0) of the library contains [off-policy IL algorithms](https://arxiv.org/abs/2108.01867v2).
+
 ## References
 
 [AL23] [A Pragmatic Look at Deep Imitation Learning](https://arxiv.org/abs/2108.01867)  
