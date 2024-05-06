@@ -13,4 +13,4 @@ PyYAML==6.0
 rliable==1.0.8
 seaborn==0.12.2
 torch==1.13.1
-tqdm==4.64.1
+tqdm==4.66.3
